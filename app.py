@@ -83,6 +83,26 @@ def webhooks():
         else:
             return {"data": "error"}
 
+@app.route("/orders")
+def woocom_orders():
+    params=request.args
+    query = {}
+    if len(params)>0:
+        if "status" in params:
+            if params["status"] != "":
+                query["status"] = params["status"]
+    orders = wcapi.get("orders", params=query).json()
+    if type(orders) == list:
+        for o in orders:
+            refunds = 0
+            for r in o["refunds"]:
+                refunds = refunds + float(r["total"])
+            o["total_refunds"] = refunds*-1
+            o["total"] = float(o["total"])
+        return render_template("woocom_orders.html", orders=orders, query=query)
+    else:
+        return orders
+
 if __name__ == "__main__":
     db.create_all()
     app.run()
