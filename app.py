@@ -4,9 +4,16 @@ from config import DevelopmentConfig
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-import uuid, datetime
+from custom import filter_orders, list_order_items, list_order_refunds, list_only_refunds
+from flask_datepicker import datepicker
+from werkzeug.datastructures import ImmutableMultiDict
+import uuid
+import datetime
+import pprint
+
 
 app = Flask(__name__, instance_relative_config=True)
+datepicker(app)
 
 app.config.from_object(DevelopmentConfig)
 db = SQLAlchemy(app)
@@ -17,13 +24,14 @@ wcapi = API(
     version="wc/v3"
 )
 
+
 class Orders(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date_created = db.Column(db.DateTime, onupdate=datetime.datetime.utcnow())
     date_modified = db.Column(db.DateTime, onupdate=datetime.datetime.utcnow())
     total = db.Column(db.Float)
-    firstname= db.Column(db.String)
-    lastname= db.Column(db.String)
+    firstname = db.Column(db.String)
+    lastname = db.Column(db.String)
     city = db.Column(db.String)
     phone_number = db.Column(db.String)
     address = db.Column(db.String)
@@ -32,24 +40,6 @@ class Orders(db.Model):
     date_paid = db.Column(db.String)
     whatsapp_message = db.Column(db.Text)
 
-def list_order_items(order_items):
-    msg = ""
-    for order_item in order_items:
-        msg = (
-                msg
-                + order_item["name"]
-                +" x "
-                + str(order_item["quantity"])
-                + "\n"
-                + "₹"
-                + str(order_item["price"])
-                + " x "
-                + str(order_item["quantity"])
-                + " = "
-                + str(order_item["subtotal"])
-                + "\n\n"
-            )
-    return msg
 
 @app.route("/", methods=["GET", "POST"])
 def webhooks():
@@ -61,21 +51,22 @@ def webhooks():
         data = request.get_json()
         if data != []:
             c_msg = "Hi - Your order is on the way.\n\nPlease check whether you are satisfied with the quality of items when you receive them. Feel free to Whatsapp me here if you have any queries.\n\nI hope you will like them. Looking forward to your feedback. :)\n\n\nHere are the order details:\n\n"
-            c_msg = c_msg + list_order_items(data["line_items"])+ "*Total Amount: "+data["total"]+"*"
+            c_msg = c_msg + list_order_items_without_refunds(
+                data["line_items"], o["id"]) + "*Total Amount: "+data["total"]+"*"
             order = Orders(
-                id = data["id"],
-                date_created = data["date_created"],
-                date_modified = data["date_modified"],
-                total = data["total"],
-                firstname = data["billing"]["first_name"],
-                lastname = data["billing"]["last_name"],
-                city = data["billing"]["city"],
-                phone_number = data["billing"]["phone"],
-                address = data["billing"]["address_1"],
-                address2 = data["billing"]["address_2"],
-                payment_method = data["payment_method"],
-                date_paid = data["date_paid"],
-                whatsapp_message = c_msg
+                id=data["id"],
+                date_created=data["date_created"],
+                date_modified=data["date_modified"],
+                total=data["total"],
+                firstname=data["billing"]["first_name"],
+                lastname=data["billing"]["last_name"],
+                city=data["billing"]["city"],
+                phone_number=data["billing"]["phone"],
+                address=data["billing"]["address_1"],
+                address2=data["billing"]["address_2"],
+                payment_method=data["payment_method"],
+                date_paid=data["date_paid"],
+                whatsapp_message=c_msg
             )
             db.session.add(order)
             db.session.commit()
@@ -83,15 +74,38 @@ def webhooks():
         else:
             return {"data": "error"}
 
+
 @app.route("/orders")
 def woocom_orders():
-    params=request.args
-    query = {}
-    if len(params)>0:
-        if "status" in params:
-            if params["status"] != "":
-                query["status"] = params["status"]
-    orders = wcapi.get("orders", params=query).json()
+    args = request.args.to_dict(flat=False)
+    new_ids = []
+    if "order_id" in args:
+        for i in args["order_id"]:
+            new_ids.append(int(i))
+    args["order_id"] = new_ids
+    orders = wcapi.get("orders").json()
+    f_orders = filter_orders(orders, args)
+    for o in f_orders:
+        order_refunds = []
+        if len(o["refunds"]) > 0:
+            order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+        c_msg = "Here are the order details:\n\n" + \
+            list_order_items(o["line_items"], order_refunds) + \
+            "*Total Amount: "+o["total"]+"*\n\n"
+        if len(o["refunds"]) > 0:
+            c_msg = c_msg+ \
+                list_order_refunds(order_refunds)+list_only_refunds(order_refunds)
+        s_msg = ("Order ID: "+str(o["id"])
+                 + "\n\nName: "+o["billing"]["first_name"] +
+                 " "+o["billing"]["last_name"]
+                 + "\nMobile: "+o["billing"]["phone"]
+                 + "\n\nAddress: "+o["billing"]["address_1"] +
+                 ", "+o["billing"]["address_2"]
+                 + "\n\nTotal Amount: "+str(o["total"])
+                 + "\n\n"+list_order_items(o["line_items"], order_refunds)
+                 + "Payment Status: Paid To LeapClub.")
+        o["c_msg"] = c_msg
+        o["s_msg"] = s_msg
     if type(orders) == list:
         for o in orders:
             refunds = 0
@@ -99,9 +113,10 @@ def woocom_orders():
                 refunds = refunds + float(r["total"])
             o["total_refunds"] = refunds*-1
             o["total"] = float(o["total"])
-        return render_template("woocom_orders.html", orders=orders, query=query)
+        return render_template("woocom_orders.html", orders=f_orders, query=args)
     else:
         return orders
+
 
 if __name__ == "__main__":
     db.create_all()

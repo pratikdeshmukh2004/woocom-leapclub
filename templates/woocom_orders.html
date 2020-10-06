@@ -16,11 +16,31 @@
 </nav>
 <div  class="mt-3 ml-3 d-flex mr-3">
 <div class="ml-auto">
-  <form>
-    <select title="Status" name="status" class="selectpicker">
-      <option value="on-hold">On Hold</option>
-      <option value="processing">Processing</option>
+  <form autocomplete="off" class = "form-inline" role = "form">
+    <select multiple title="Order ID" name="order_id" class="selectpicker mr-2">
+      {% for o in orders %}
+      <option {% if "order_id" in query %} {% if o.id in query["order_id"] %} selected {% endif %} {% endif %}>{{o.id}}</option>
+      {% endfor%}
     </select>
+    <select title="Status" name="status" class="selectpicker mr-2">
+      <option value="">Status</option>
+      <option {% if "status" in query %} {% if query.status[0] == "on-hold" %} selected {% endif %} {% endif %} value="on-hold">On Hold</option>
+      <option {% if "status" in query %} {% if query.status[0] == "processing" %} selected {% endif %} {% endif %} value="processing">Processing</option>
+      <option {% if "status" in query %} {% if query.status[0] == "failed" %} selected {% endif %} {% endif %} value="failed">Failed</option>
+    </select>
+    <select title="Payment Status" name="payment_status" class="selectpicker mr-2">
+      <option value="">Payment Status</option>
+      <option {% if "payment_status" in query %} {% if query.payment_status[0] == "paid" %} selected {% endif %} {% endif %} value="paid">Paid</option>
+      <option {% if "payment_status" in query %} {% if query.payment_status[0] == "unpaid" %} selected {% endif %} {% endif %} value="unpaid">Unpaid</option>
+    </select>
+    <script>
+      $( function() {
+        $( "#datepicker" ).datepicker();
+      } );
+      </script>
+    <input class="form-control mr-2" type="text" placeholder="Payment Date" {% if "payment_date" in query %} {% if query["payment_date"][0] != "" %} value="{{query["payment_date"][0]}}" {% endif %} {% endif %} name="payment_date" id="datepicker">
+    <input class="form-control mr-2" type="phone" placeholder="Phone Number" {% if "phone_number" in query %} {% if query["phone_number"][0] != "" %} value="{{query["phone_number"][0]}}" {% endif %} {% endif %} name="phone_number">
+    <input class="form-control mr-2" type="name" placeholder="Name" {% if "name" in query %} {% if query["name"][0] != "" %} value="{{query["name"][0]}}" {% endif %} {% endif %} name="name">
     <button class="btn btn-info"><i class="fa fa-filter" aria-hidden="true"></i>
     </button>
   </form>
@@ -30,6 +50,7 @@
   <table class="table">
     <thead>
       <tr class="bg-info text-white">
+        <th scope="col"></th>
         <th scope="col">Order ID</th>
         <th scope="col">Customer Name</th>
         <th scope="col">Phone Number</th>
@@ -46,6 +67,16 @@
     <tbody>
       {% for o in orders %}
       <tr>
+        <td scope="row">
+          <i title="Order Detail Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
+          <i title="Supplier Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn btn-warning ml-2"style="cursor: pointer;" aria-hidden="true"></i>
+          <p style="display: none;" id="c_msg_{{o.id}}">
+            {{o.c_msg}}
+          </p>
+          <p style="display: none;" id="s_msg_{{o.id}}">
+            {{o.s_msg}}
+          </p>
+        </td>
         <td scope="row">{{ o.id}}</td>
         <td scope="row">{{ o.billing.first_name}} {{ o.billing.last_name}}</td>
         <td scope="row">{{ o.billing.phone}}</td>
@@ -66,4 +97,17 @@
     </tbody>
   </table>
 </div>
+<script>
+  function copyToClipboard(id) {
+   console.log(id);
+   var tag = document.getElementById(""+id+"")
+   var text = tag.innerHTML.trim()
+   var input = document.body.appendChild(document.createElement("textarea"));
+   input.value = text;
+   input.select();
+   var status = document.execCommand("copy");
+   input.parentNode.removeChild(input);
+ }
+ </script>
+ 
 {% endblock %}

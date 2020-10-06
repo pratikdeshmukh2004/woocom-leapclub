@@ -16,13 +16,14 @@
       rel="stylesheet"
       href="{{url_for('static', filename='css/bootstrap-select.min.css')}}"
     />
-  </head>
-  <body>
-    <div>{% block content %}{% endblock %}</div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/themes/base/jquery-ui.min.css" integrity="sha512-okE4owXD0kfXzgVXBzCDIiSSlpXn3tJbNodngsTnIYPJWjuYhtJ+qMoc0+WUwLHeOwns0wm57Ka903FqQKM1sA==" crossorigin="anonymous" />  <link rel="stylesheet" href="/resources/demos/style.css">
     <script src="{{url_for('static', filename='js/jquery.js')}}"></script>
     <script src="{{url_for('static', filename='js/popper.js')}}"></script>
     <script src="{{url_for('static', filename='js/bootstrap.bundle.min.js')}}"></script>
     <script src="{{url_for('static', filename='js/bootstrap-selectpicker.min.js')}}"></script>
-    <script src="{{url_for('static', filename='js/custom.js')}}"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  </head>
+  <body>
+    <div>{% block content %}{% endblock %}</div>
   </body>
 </html>
