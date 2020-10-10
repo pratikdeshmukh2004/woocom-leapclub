@@ -8,7 +8,7 @@
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav ml-auto">
           <li class="nav-item">
-            <a class="nav-link" href="{{url_for('webhooks')}}">Webhooks</a>
+            <a class="nav-link" href="{{url_for('logout')}}">Logout</a>
           </li>
         </ul>
     </div>
@@ -108,7 +108,7 @@
           <div style="width: 120px;">
           <i title="Order Detail Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
           <i title="Supplier Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
-          <a href="{{url_for('send_whatsapp', order_id=o.id, status=nav_active)}}">
+          <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+o.billing.last_name, status=nav_active)}}">
             <i title="Supplier MSG on whatsapp" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
           </a>
           <p style="display: none;" id="c_msg_{{o.id}}">

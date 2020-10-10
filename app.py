@@ -1,9 +1,9 @@
-from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response
+from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response, g, session
 from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, list_order_refunds, list_only_refunds, get_totals, get_params, get_orders_with_messages, list_order_items_csv
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
@@ -28,6 +28,54 @@ wcapi = API(
 )
 
 
+class User:
+    def __init__(self, email, password):
+        self.email = email
+        self.password = password
+
+    def __repr__(self):
+        return f'<User: {self.email}>'
+
+
+users = []
+users.append(User(email=app.config["ADMIN_EMAIL"],
+                  password=app.config["ADMIN_PASSWORD"]))
+
+
+@app.before_request
+def before_request():
+    g.user = None
+    if 'user_id' in session:
+        user = [x for x in users if x.email == session['user_id']]
+        if len(user) > 0:
+            g.user = user[0]
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = ""
+    args = request.args.to_dict(flat=False)
+    if "error" in args:
+        error = args["error"][0]
+    if request.method == 'POST':
+        session.pop('user_id', None)
+        email = request.form['email']
+        password = request.form['password']
+        user = [x for x in users if x.email == email]
+        if len(user) > 0:
+            user = user[0]
+            if user.password == password:
+                session['user_id'] = email
+                return redirect(url_for('woocom_orders'))
+            else:
+                error = "Invalid User Password!"
+        else:
+            error = "You do not have accesss. Please contact To Admin!"
+        return redirect(url_for('login', error=error))
+    if "user_id" in session:
+        return redirect(url_for("woocom_orders"))
+    else:
+        return render_template('login.html', error=error)
 # class Orders(db.Model):
 #     id = db.Column(db.Integer, primary_key=True)
 #     date_created = db.Column(db.DateTime, onupdate=datetime.datetime.utcnow())
@@ -76,13 +124,10 @@ wcapi = API(
 #             return {"status": "Success..."}
 #         else:
 #             return {"data": "error"}
-@app.route("/", methods=["GET", "POST"])
-def webhooks():
-    return redirect(url_for("woocom_orders"))
-
-
 @app.route("/orders")
 def woocom_orders():
+    if not g.user:
+        return redirect(url_for('login'))
     args = request.args.to_dict(flat=False)
     new_ids = []
     if "order_ids" in args:
@@ -107,15 +152,13 @@ def woocom_orders():
         o["total"] = float(o["total"])
     return render_template("woocom_orders.html", orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status)
 
-
-def send_whatsapp_msg(order):
-    url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + \
-        order["billing"]["phone"]
+def send_whatsapp_msg(mobile, name):
+    url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
 
     payload = {
         "template_name": "order_intro_2308",
         "broadcast_name": "order_ack",
-        "parameters": "[{'name':'name', 'value':'"+order["billing"]["first_name"]+" " + order["billing"]["last_name"]+"'},{'name':'manager', 'value':'Pratik'}]"
+        "parameters": "[{'name':'name', 'value':'"+name+"'},{'name':'manager', 'value':'Pratik'}]"
     }
     headers = {
         'Authorization': app.config["WATI_AUTHORIZATION"],
@@ -128,51 +171,30 @@ def send_whatsapp_msg(order):
     return json.loads(response.text.encode('utf8'))
 
 
-@app.route("/send_whatsapp_msg/<string:order_id>")
-def send_whatsapp(order_id):
+@app.route("/send_whatsapp_msg/<string:mobile_number>/<string:name>")
+def send_whatsapp(mobile_number, name):
+    if not g.user:
+        return redirect(url_for('login'))
     args = request.args.to_dict(flat=False)
     if "status" in args:
         nav_active = args["status"][0]
     else:
         nav_active = "any"
-    order = wcapi.get("orders/"+order_id).json()
-    result = send_whatsapp_msg(order)
+    result = send_whatsapp_msg(mobile_number, name)
     if result["result"] == "success":
         w_status = "Message Sent."
     else:
-        w_status = "Message Not Sent."
+        w_status = result["info"]
     if nav_active != "any":
         return redirect(url_for("woocom_orders", w_status=w_status, status=nav_active))
     else:
         return redirect(url_for("woocom_orders", w_status=w_status))
 
 
-def get_csv_from_orders(orders):
-    f = open("sample.csv", "w+")
-    writer = csv.DictWriter(
-        f, fieldnames=["Order ID", "Customer Detail", "Total Amount", "Order Details", "Comments"])
-    writer.writeheader()
-    for o in orders:
-        refunds = []
-        if len(o["refunds"])>0:
-            refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
-        writer.writerow({
-            "Order ID": o["id"],
-            "Customer Detail": "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+o["billing"]["phone"]+"\nAddress: "+o["billing"]["address_1"]+", "+o["billing"]["address_2"],
-            "Total Amount": get_totals(o["total"], refunds),
-            "Order Details": list_order_items_csv(o["line_items"], refunds),
-            "Comments": "Payment Status: Paid To Leap"
-        })
-        writer.writerow({})
-    f.close()
-    f = open("sample.csv", "r")
-    result = f.read()
-    os.remove("sample.csv")
-    return result
-
-
 @app.route('/csv', methods=["POST"])
 def download_csv():
+    if not g.user:
+        return redirect(url_for('login'))
     data = request.form.to_dict(flat=False)
     orders = wcapi.get("orders", params=get_params(data)).json()
     csv_text = get_csv_from_orders(orders)
@@ -183,6 +205,12 @@ def download_csv():
     response.mimetype = 'text/csv'
 
     return response
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('login'))
 
 
 if __name__ == "__main__":

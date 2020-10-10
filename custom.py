@@ -116,6 +116,7 @@ def list_order_items(order_items, refunds):
             )
     return msg
 
+
 def list_order_items_csv(order_items, refunds):
     msg = ""
     total_refunds = []
@@ -161,7 +162,7 @@ def get_totals(total, refunds):
 
 
 def get_params(args):
-    params = {}
+    params = {"per_page": 50}
     if "status" in args:
         params["status"] = args["status"][0]
     else:
@@ -200,3 +201,26 @@ def get_orders_with_messages(orders, wcapi):
         o["c_msg"] = c_msg
         o["s_msg"] = s_msg
     return orders
+
+def get_csv_from_orders(orders):
+    f = open("sample.csv", "w+")
+    writer = csv.DictWriter(
+        f, fieldnames=["Order ID", "Customer Detail", "Total Amount", "Order Details", "Comments"])
+    writer.writeheader()
+    for o in orders:
+        refunds = []
+        if len(o["refunds"]) > 0:
+            refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+        writer.writerow({
+            "Order ID": o["id"],
+            "Customer Detail": "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+o["billing"]["phone"]+"\nAddress: "+o["billing"]["address_1"]+", "+o["billing"]["address_2"],
+            "Total Amount": get_totals(o["total"], refunds),
+            "Order Details": list_order_items_csv(o["line_items"], refunds),
+            "Comments": "Payment Status: Paid To Leap"
+        })
+        writer.writerow({})
+    f.close()
+    f = open("sample.csv", "r")
+    result = f.read()
+    os.remove("sample.csv")
+    return result
