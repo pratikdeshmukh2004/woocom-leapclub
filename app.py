@@ -109,7 +109,7 @@ def woocom_orders():
 
 
 def send_whatsapp_msg(order):
-    url = "https://live-server-54.wati.io/api/v1/sendTemplateMessage/" + \
+    url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + \
         order["billing"]["phone"]
 
     payload = {
@@ -120,7 +120,6 @@ def send_whatsapp_msg(order):
     headers = {
         'Authorization': app.config["WATI_AUTHORIZATION"],
         'Content-Type': 'application/json',
-        'Cookie': '__cfduid=d4f3524497b15c8e8434c2cb0cf4d47601602064478'
     }
 
     response = requests.request(
