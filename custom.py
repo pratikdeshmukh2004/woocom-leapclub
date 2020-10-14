@@ -1,5 +1,5 @@
 def filter_orders(orders, params):
-    if len(params) <= 3:
+    if len(params) <= 4:
         return orders
     f_orders = []
     for o in orders:
@@ -162,11 +162,16 @@ def get_totals(total, refunds):
 
 
 def get_params(args):
-    params = {"per_page": 50}
+    params = {"per_page": 20}
     if "status" in args:
         params["status"] = args["status"][0]
     else:
         params["status"] = "any"
+    
+    if "page" in args:
+        params["page"] = args["page"][0]
+    else:
+        params["page"] = 1
 
     if "order_ids" in args:
         id_text = ""
