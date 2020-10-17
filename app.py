@@ -13,6 +13,7 @@ import json
 import requests
 import csv
 import os
+import ast
 
 
 app = Flask(__name__, instance_relative_config=True)
@@ -20,7 +21,7 @@ datepicker(app)
 
 app.config.from_pyfile("config.py")
 
-# db = SQLAlchemy(app)
+db = SQLAlchemy(app)
 wcapi = API(
     url=app.config["WOOCOMMERCE_API_URL"],
     consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY"],
@@ -77,6 +78,22 @@ def login():
         return redirect(url_for("woocom_orders"))
     else:
         return render_template('login.html', error=error)
+
+
+class wtmessages(db.Model):
+    id = db.Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        unique=True,
+        nullable=False,
+    )
+    order_id = db.Column(db.Integer)
+    time_sent = db.Column(db.DateTime, default=datetime.utcnow())
+    template_name = db.Column(db.String)
+    broadcast_name = db.Column(db.String)
+    status = db.Column(db.String)
+
 # class Orders(db.Model):
 #     id = db.Column(db.Integer, primary_key=True)
 #     date_created = db.Column(db.DateTime, onupdate=datetime.datetime.utcnow())
@@ -151,22 +168,16 @@ def woocom_orders():
             refunds = refunds + float(r["total"])
         o["total_refunds"] = refunds*-1
         o["total"] = float(o["total"])
+        wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
+        o["wt_messages"] = wt_messages
     return render_template("woocom_orders.html", orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, page=int(params["page"]))
 
-def send_whatsapp_msg(mobile, name, template):
+
+def send_whatsapp_msg(mobile, name, noti, order_id):
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
-    if template == "hello_template":
-        template_name = TemplatesBroadcast().hello_template
-        broadcast_name = TemplatesBroadcast().hello_broadcast
-    elif template == "feedback_template":
-        template_name = TemplatesBroadcast().feedback_template
-        broadcast_name = TemplatesBroadcast().feedback_broadcast
-    elif template == "payment_remainder_template":
-        template_name = TemplatesBroadcast().payment_remainder_template
-        broadcast_name = TemplatesBroadcast().payment_remainder_broadcast
-    elif template == "delivery_notification_template":
-        template_name = TemplatesBroadcast().delivery_notification_template
-        broadcast_name = TemplatesBroadcast().delivery_notification_broadcast
+    if noti in TemplatesBroadcast.keys():
+        template_name = TemplatesBroadcast[noti]["template"]
+        broadcast_name = TemplatesBroadcast[noti]["broadcast"]
     else:
         return {"result": "error", "info": "Please Select Valid Button."}
     payload = {
@@ -182,11 +193,15 @@ def send_whatsapp_msg(mobile, name, template):
     response = requests.request(
         "POST", url, headers=headers, data=json.dumps(payload))
 
-    return json.loads(response.text.encode('utf8'))
+    result = json.loads(response.text.encode('utf8'))
+    if result["result"] != "success":
+        result["broadcast_name"] = broadcast_name
+        result["template_name"] = template_name
+    return result
 
 
-@app.route("/send_whatsapp_msg/<string:mobile_number>/<string:name>/<string:template_name>")
-def send_whatsapp(mobile_number, name, template_name):
+@app.route("/send_whatsapp_msg/<string:mobile_number>/<string:name>/<string:noti>/<int:order_id>")
+def send_whatsapp(mobile_number, name, noti, order_id):
     if not g.user:
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=False)
@@ -198,11 +213,17 @@ def send_whatsapp(mobile_number, name, template_name):
         nav_active = args["status"][0]
     else:
         nav_active = "any"
-    result = send_whatsapp_msg(mobile_number, name, template_name)
+    result = send_whatsapp_msg(mobile_number, name, noti, order_id)
     if result["result"] == "success":
+        new_wt = wtmessages(order_id=order_id, template_name=result["template_name"], broadcast_name=result[
+                            "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
         w_status = "Message Sent."
     else:
+        new_wt = wtmessages(order_id=order_id, template_name=result["template_name"], broadcast_name=result[
+                            "broadcast_name"], status="failed", time_sent=datetime.utcnow())
         w_status = result["info"]
+    db.session.add(new_wt)
+    db.session.commit()
     if nav_active != "any":
         return redirect(url_for("woocom_orders", w_status=w_status, status=nav_active, page=page))
     else:

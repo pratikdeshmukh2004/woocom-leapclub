@@ -102,28 +102,29 @@
         <th scope="col">Amount</th>
         <th scope="col">Refund</th>
         <th scope="col">Amount Payble</th>
+        <th scope="col">Whatsapp Messages</th>
       </tr>
     </thead>
     <tbody>
       {% for o in orders %}
       <tr>
         <td scope="row">
-          <div style="width: fit-content;">
+          <div style="min-width: 160px;">
           <i title="Order Detail Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
           <i title="Supplier Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
           {% if nav_active == "completed"%}
-              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'], template_name='payment_remainder_template')}}">
+              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'],order_id=o.id, noti='payment_remainder_msg')}}">
                 <i title="Payment Remainder" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
-              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'], template_name='feedback_template')}}">
+              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'],order_id=o.id, noti='feedback_msg')}}">
                 <i title="Feedback" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
           {% endif %}
           {% if nav_active == "processing"%}
-              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'], template_name='hello_template')}}">
+              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg')}}">
                 <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
-              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'], template_name='delivery_notification_template')}}">
+              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'],order_id=o.id, noti='delivery_notification_msg')}}">
                 <i title="Delivery Notification" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
           {% endif %}
@@ -150,6 +151,15 @@
         <td scope="row">{{ o.total}}</td>
         <td scope="row">{{ o.total_refunds}}</td>
         <td scope="row">{{ o.total-o.total_refunds}}</td>
+        <td scope="row">
+          {% for wt in o.wt_messages%}
+            {% if wt.status == "success"%}
+              <span class="text-success">{{wt.template_name}}, </span>
+            {%else%}
+              <span class="text-danger">{{wt.template_name}}, </span>
+            {% endif%}
+          {% endfor %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
