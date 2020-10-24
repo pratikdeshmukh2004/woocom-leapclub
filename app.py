@@ -7,7 +7,7 @@ from custom import filter_orders, list_order_items, get_params, get_orders_with_
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
-from template_broadcast import TemplatesBroadcast
+from template_broadcast import TemplatesBroadcast, vendor_type
 import uuid
 import json
 import requests
@@ -170,14 +170,29 @@ def woocom_orders():
         o["total"] = float(o["total"])
         wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
         o["wt_messages"] = wt_messages
-    return render_template("woocom_orders.html", orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, page=int(params["page"]))
+        vendor = ""
+        manager=""
+        for item in o["meta_data"]:
+            if item["key"] == "wos_vendor_data":
+                vendor = item["value"]["vendor_name"]
+            elif item["key"] == "_wc_acof_6":
+                vendor = item["value"]
+            elif item["key"] == "_wc_acof_3":
+                manager = item["value"]
+        o["vendor"] = vendor
+        if vendor in vendor_type.keys():
+            o["vendor_type"] = vendor_type[vendor]
+        else:
+            o["vendor_type"] = ""
+        o["manager"] = manager
+    return render_template("woocom_orders.html", orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status)
 
 
-def send_whatsapp_msg(mobile, name, noti, order_id):
+def send_whatsapp_msg(mobile, name, noti, order_id, vendor_type):
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
     if noti in TemplatesBroadcast.keys():
-        template_name = TemplatesBroadcast[noti]["template"]
-        broadcast_name = TemplatesBroadcast[noti]["broadcast"]
+        template_name = TemplatesBroadcast[noti][vendor_type]["template"]
+        broadcast_name = TemplatesBroadcast[noti][vendor_type]["broadcast"]
     else:
         return {"result": "error", "info": "Please Select Valid Button."}
     payload = {
@@ -200,34 +215,28 @@ def send_whatsapp_msg(mobile, name, noti, order_id):
     return result
 
 
-@app.route("/send_whatsapp_msg/<string:mobile_number>/<string:name>/<string:noti>/<int:order_id>")
-def send_whatsapp(mobile_number, name, noti, order_id):
+@app.route("/send_whatsapp_msg/<string:mobile_number>/<string:name>/<string:noti>/<int:order_id>/<string:vendor_type>")
+def send_whatsapp(mobile_number, name, noti, order_id, vendor_type):
     if not g.user:
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=False)
-    if "page" in args:
-        page = args["page"][0]
-    else:
-        page = page
     if "status" in args:
         nav_active = args["status"][0]
     else:
         nav_active = "any"
-    result = send_whatsapp_msg(mobile_number, name, noti, order_id)
+    result = send_whatsapp_msg(mobile_number, name, noti, order_id, vendor_type)
     if result["result"] == "success":
         new_wt = wtmessages(order_id=order_id, template_name=result["template_name"], broadcast_name=result[
                             "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
-        w_status = "Message Sent."
     else:
         new_wt = wtmessages(order_id=order_id, template_name=result["template_name"], broadcast_name=result[
                             "broadcast_name"], status="failed", time_sent=datetime.utcnow())
-        w_status = result["info"]
     db.session.add(new_wt)
     db.session.commit()
     if nav_active != "any":
-        return redirect(url_for("woocom_orders", w_status=w_status, status=nav_active, page=page))
+        return redirect(url_for("woocom_orders", status=nav_active))
     else:
-        return redirect(url_for("woocom_orders", w_status=w_status, page=page))
+        return redirect(url_for("woocom_orders"))
 
 
 @app.route('/csv', methods=["POST"])
@@ -236,7 +245,7 @@ def download_csv():
         return redirect(url_for('login'))
     data = request.form.to_dict(flat=False)
     orders = wcapi.get("orders", params=get_params(data)).json()
-    csv_text = get_csv_from_orders(orders)
+    csv_text = get_csv_from_orders(orders, wcapi)
     filename = str(datetime.utcnow())+"-" + data["status"][0]+".csv"
     response = make_response(csv_text)
     cd = 'attachment; filename='+filename

@@ -18,28 +18,25 @@
 </nav>
 <ul class="nav nav-tabs mt-2 ml-1">
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'pending' %} active {%endif%}" href="{{url_for('woocom_orders', status='pending')}}">Pending</a>
+    <a class="nav-link {% if nav_active == 'failed' %} active {%endif%}" href="{{url_for('woocom_orders', status='failed')}}">Failed</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'processing' %} active {%endif%}" href="{{url_for('woocom_orders', status='processing')}}">Processing</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'on-hold' %} active {%endif%}" href="{{url_for('woocom_orders', status='on-hold')}}">On-hold</a>
+    <a class="nav-link {% if nav_active == 'tbd-paid, tbd-unpaid' %} active {%endif%}" href="{{url_for('woocom_orders', status='tbd-paid, tbd-unpaid')}}">To Be Delivered</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'completed' %} active {%endif%}" href="{{url_for('woocom_orders', status='completed')}}">Completed</a>
+    <a class="nav-link {% if nav_active == 'tbd-unpaid' %} active {%endif%}" href="{{url_for('woocom_orders', status='tbd-unpaid')}}">Delivered Unpaid</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'cancelled' %} active {%endif%}" href="{{url_for('woocom_orders', status='cancelled')}}">Cancelled</a>
+    <a class="nav-link {% if nav_active == 'tbd-paid' %} active {%endif%}" href="{{url_for('woocom_orders', status='tbd-paid')}}">Delivered Paid</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'refunded' %} active {%endif%}" href="{{url_for('woocom_orders', status='refunded')}}">Refunded</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'failed' %} active {%endif%}" href="{{url_for('woocom_orders', status='failed')}}">Failed</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'trash' %} active {%endif%}" href="{{url_for('woocom_orders', status='trash')}}">Trash</a>
+    <a class="nav-link {% if nav_active == 'cancelled' %} active {%endif%}" href="{{url_for('woocom_orders', status='cancelled')}}">Cancelled</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'any' %} active {%endif%}" href="{{url_for('woocom_orders')}}">All</a>
@@ -47,12 +44,6 @@
 </ul>
 <div  class="mt-3 ml-3 mr-3">
     <form autocomplete="off" class = "form-inline" role = "form">
-      {% if nav_active != '' %}
-        <input style="display: none;" name="status" value="{{nav_active}}">
-      {% endif %}
-      {% if page != 1 %}
-      <input style="display: none;" name="page" value="{{page}}">
-    {% endif %}
       <select multiple title="Order ID" name="order_ids" class="selectpicker mr-2">
         {% for o in orders %}
         <option {% if "order_ids" in query %} {% if o.id in query["order_ids"] %} selected {% endif %} {% endif %}>{{o.id}}</option>
@@ -80,7 +71,13 @@
       {% endif %}
       <select multiple required title="Order ID" name="order_ids" class="selectpicker mr-2">
         {% for o in orders %}
-        <option>{{o.id}}</option>
+        <option value="{{o.id}}">{{o.id}} - {{ o.billing.first_name}} - 
+          {% for item in o.meta_data%}
+          {% if item.key == "wos_vendor_data"%}
+              {{item.value.vendor_name[:4]}}
+          {% endif%}
+        {% endfor %}
+        </option>
         {% endfor%}
       </select>
       <button class="btn btn-info"><i class="fa fa-download" aria-hidden="true"></i>
@@ -103,31 +100,72 @@
         <th scope="col">Refund</th>
         <th scope="col">Amount Payble</th>
         <th scope="col">Whatsapp Messages</th>
+        <th scope="col">Vendor</th>
+        <th scope="col">Manager</th>
       </tr>
     </thead>
     <tbody>
       {% for o in orders %}
       <tr>
-        <td scope="row">
-          <div style="min-width: 160px;">
+        <td style="min-width: 98px;" scope="row">
+            <div>
           <i title="Order Detail Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
           <i title="Supplier Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
-          {% if nav_active == "completed"%}
-              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'],order_id=o.id, noti='payment_remainder_msg')}}">
-                <i title="Payment Remainder" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
-              </a>
-              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'],order_id=o.id, noti='feedback_msg')}}">
-                <i title="Feedback" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
-              </a>
-          {% endif %}
+          </div>
+          <div class="mt-1">
           {% if nav_active == "processing"%}
-              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg')}}">
-                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+              <a href="
+              {% if o.manager and o.vendor_type %}
+                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg', vendor_type=o.vendor_type)}}
+              {%else%}
+                  #
+              {%endif%}
+                ">
+                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
               </a>
-              <a href="{{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, page = page, order_ids=query['order_ids'],order_id=o.id, noti='delivery_notification_msg')}}">
+              <a href="
+              {% if o.manager and o.vendor_type %}
+                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='order_detail_msg', vendor_type=o.vendor_type)}}
+              {%else%}
+                  #
+              {%endif%}              ">
                 <i title="Delivery Notification" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
           {% endif %}
+          {% if nav_active == "tbd-paid, tbd-unpaid"%}
+              <a href="
+              {% if o.manager and o.vendor_type %}
+                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_notification_msg', vendor_type=o.vendor_type)}}
+              {%else%}
+                  #
+              {%endif%}
+                ">
+                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+              </a>
+          {% endif %}
+          {% if nav_active == "tbd-unpaid"%}
+              <a href="
+              {% if o.manager and o.vendor_type %}
+                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='payment_remainder_msg', vendor_type=o.vendor_type)}}
+              {%else%}
+                  #
+              {%endif%}
+                ">
+                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+              </a>
+          {% endif %}
+          {% if nav_active == "tbd-paid"%}
+              <a href="
+              {% if o.manager and o.vendor_type %}
+                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='feedback_msg')}}
+              {%else%}
+                  #
+              {%endif%}
+                ">
+                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+              </a>
+          {% endif %}
+          
           <p style="display: none;" id="c_msg_{{o.id}}">
             {{o.c_msg}}
           </p>
@@ -160,18 +198,17 @@
             {% endif%}
           {% endfor %}
         </td>
-      </tr>
+        <td scope="row">
+          {{o.vendor}}
+        </td>
+        <td scope="row">
+        {{o.manager}}
+        </td>
+        </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
-<nav aria-label="Page navigation example">
-  <ul class="pagination justify-content-center">
-    <li class="page-item {% if page == 1 %} disabled {%endif%}"><a href="{{url_for('woocom_orders', status=nav_active, page=page-1, order_ids=query['order_ids'])}}" class="page-link" href="#">Previous</a></li>
-    <li class="page-item {% if orders|length < 20 %} disabled {%endif%}"><a href="{{url_for('woocom_orders', status=nav_active, page=page+1, order_ids=query['order_ids'])}}" class="page-link" href="#">Next</a></li>
-  </ul>
-</nav>
-
 <script>
   function copyToClipboard(id) {
    console.log(id);
@@ -183,10 +220,6 @@
    var status = document.execCommand("copy");
    input.parentNode.removeChild(input);
  }
- {% if is_w%}
- alert("{{query.w_status[0]}}")
-
- {% endif %}
  </script>
  
 {% endblock %}

@@ -165,17 +165,11 @@ def get_totals(total, refunds):
 
 
 def get_params(args):
-    params = {"per_page": 20}
+    params = {"per_page": 100}
     if "status" in args:
         params["status"] = args["status"][0]
     else:
         params["status"] = "any"
-    
-    if "page" in args:
-        params["page"] = args["page"][0]
-    else:
-        params["page"] = 1
-
     if "order_ids" in args:
         id_text = ""
         for id in args["order_ids"]:
@@ -185,7 +179,6 @@ def get_params(args):
 
 
 def get_orders_with_messages(orders, wcapi):
-    orders = orders
     for o in orders:
         order_refunds = []
         if len(o["refunds"]) > 0:
@@ -210,7 +203,7 @@ def get_orders_with_messages(orders, wcapi):
         o["s_msg"] = s_msg
     return orders
 
-def get_csv_from_orders(orders):
+def get_csv_from_orders(orders, wcapi):
     f = open("sample.csv", "w+")
     writer = csv.DictWriter(
         f, fieldnames=["Order ID", "Customer Detail", "Total Amount", "Order Details", "Comments"])
