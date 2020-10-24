@@ -4,6 +4,17 @@ TemplatesBroadcast = {
         'grocery': {"template": "order_intro_2308", "broadcast": "order_ack"},
         'personal_care': {"template": "order_intro_2308", "broadcast": "order_ack"}
     },
+    'order_detail_msg':{
+                'bakery':  {"template": "bakery_v4", "broadcast": "order_summary"},
+        'grocery': {"template": "groceries_v4", "broadcast": "order_summary"},
+        # 'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
+
+    },
+    "delivery_notification_msg": {
+        'bakery':    {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
+        'grocery': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
+        'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
+    },
     "payment_remainder_msg": {
         'bakery': {"template": "payment_reminder", "broadcast": "payment_reminder"},
         'grocery': {"template": "payment_reminder", "broadcast": "payment_reminder"},
@@ -15,11 +26,7 @@ TemplatesBroadcast = {
         'grocery': {"template": "feed_past", "broadcast": "feedback"},
         'personal_care': {"template": "feed_past", "broadcast": "feedback"}
     },
-    "delivery_notification_msg": {
-        'bakery':    {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
-        'grocery': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
-        'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
-    }
+
 
 }
 

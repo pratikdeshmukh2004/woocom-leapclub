@@ -188,7 +188,7 @@ def woocom_orders():
     return render_template("woocom_orders.html", orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status)
 
 
-def send_whatsapp_msg(mobile, name, noti, order_id, vendor_type):
+def send_whatsapp_msg(mobile, name, noti, order_id, vendor_type, amount, manager):
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
     if noti in TemplatesBroadcast.keys():
         template_name = TemplatesBroadcast[noti][vendor_type]["template"]
@@ -198,7 +198,7 @@ def send_whatsapp_msg(mobile, name, noti, order_id, vendor_type):
     payload = {
         "template_name": template_name,
         "broadcast_name": broadcast_name,
-        "parameters": "[{'name':'name', 'value':'"+name+"'},{'name':'manager', 'value':'Pratik'}]"
+        "parameters": "[{'name':'name', 'value':'"+name+"'},{'name':'manager', 'value':'"+manager+"'},{'name':'order_id', 'value':'"+str(order_id)+"'},{'name':'amount', 'value':'"+str(amount)+"'}]"
     }
     headers = {
         'Authorization': app.config["WATI_AUTHORIZATION"],
@@ -215,8 +215,8 @@ def send_whatsapp_msg(mobile, name, noti, order_id, vendor_type):
     return result
 
 
-@app.route("/send_whatsapp_msg/<string:mobile_number>/<string:name>/<string:noti>/<int:order_id>/<string:vendor_type>")
-def send_whatsapp(mobile_number, name, noti, order_id, vendor_type):
+@app.route("/send_whatsapp_msg/<string:mobile_number>/<string:name>/<string:noti>/<int:order_id>/<string:vendor_type>/<float:amount>/<string:manager>")
+def send_whatsapp(mobile_number, name, noti, order_id, vendor_type, amount, manager):
     if not g.user:
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=False)
@@ -224,7 +224,7 @@ def send_whatsapp(mobile_number, name, noti, order_id, vendor_type):
         nav_active = args["status"][0]
     else:
         nav_active = "any"
-    result = send_whatsapp_msg(mobile_number, name, noti, order_id, vendor_type)
+    result = send_whatsapp_msg(mobile_number, name, noti, order_id, vendor_type, amount, manager)
     if result["result"] == "success":
         new_wt = wtmessages(order_id=order_id, template_name=result["template_name"], broadcast_name=result[
                             "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
