@@ -29,5 +29,6 @@ vendor_type = {
     'Desi Utpad by Jaya': 'grocery',
     'Miche Artisan Bake': 'bakery',
     'The Womens Company': 'personal_care',
-    'desiutpadbyjaya': "bakery"
+    'desiutpadbyjaya': "bakery",
+    'organicgermanbakeshop': 'grocery'
 }

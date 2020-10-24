@@ -27,10 +27,10 @@
     <a class="nav-link {% if nav_active == 'tbd-paid, tbd-unpaid' %} active {%endif%}" href="{{url_for('woocom_orders', status='tbd-paid, tbd-unpaid')}}">To Be Delivered</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'tbd-unpaid' %} active {%endif%}" href="{{url_for('woocom_orders', status='tbd-unpaid')}}">Delivered Unpaid</a>
+    <a class="nav-link {% if nav_active == 'delivered-unpaid' %} active {%endif%}" href="{{url_for('woocom_orders', status='delivered-unpaid')}}">Delivered Unpaid</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'tbd-paid' %} active {%endif%}" href="{{url_for('woocom_orders', status='tbd-paid')}}">Delivered Paid</a>
+    <a class="nav-link {% if nav_active == 'completed' %} active {%endif%}" href="{{url_for('woocom_orders', status='completed')}}">Delivered Paid</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'refunded' %} active {%endif%}" href="{{url_for('woocom_orders', status='refunded')}}">Refunded</a>
@@ -114,56 +114,45 @@
           </div>
           <div class="mt-1">
           {% if nav_active == "processing"%}
+          {% if o.manager and o.vendor_type %}
               <a href="
-              {% if o.manager and o.vendor_type %}
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg', vendor_type=o.vendor_type)}}
-              {%else%}
-                  #
-              {%endif%}
                 ">
                 <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
               </a>
               <a href="
-              {% if o.manager and o.vendor_type %}
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='order_detail_msg', vendor_type=o.vendor_type)}}
-              {%else%}
-                  #
-              {%endif%}              ">
-                <i title="Delivery Notification" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+                ">
+                <i title="Order Detail Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
+              {%endif%}
           {% endif %}
           {% if nav_active == "tbd-paid, tbd-unpaid"%}
+          {% if o.manager and o.vendor_type %}
               <a href="
-              {% if o.manager and o.vendor_type %}
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_notification_msg', vendor_type=o.vendor_type)}}
-              {%else%}
-                  #
-              {%endif%}
                 ">
-                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+                <i title="Delivery Notification Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
               </a>
+              {%endif%}
           {% endif %}
-          {% if nav_active == "tbd-unpaid"%}
+          {% if nav_active == "delivered-unpaid"%}
+          {% if o.manager and o.vendor_type %}
               <a href="
-              {% if o.manager and o.vendor_type %}
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='payment_remainder_msg', vendor_type=o.vendor_type)}}
-              {%else%}
-                  #
-              {%endif%}
                 ">
-                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+                <i title="Payment Remainder Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
               </a>
+              {%endif%}
           {% endif %}
-          {% if nav_active == "tbd-paid"%}
+          {% if nav_active == "completed"%}
+          {% if o.manager and o.vendor_type %}
               <a href="
-              {% if o.manager and o.vendor_type %}
-                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='feedback_msg')}}
-              {%else%}
-                  #
-              {%endif%}
+                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name+' '+o.billing.last_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='feedback_msg', vendor_type=o.vendor_type)}}
                 ">
-                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+                <i title="Feedback Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
               </a>
+              {%endif%}
           {% endif %}
           
           <p style="display: none;" id="c_msg_{{o.id}}">
