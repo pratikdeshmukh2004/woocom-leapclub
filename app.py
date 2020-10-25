@@ -224,7 +224,7 @@ def send_whatsapp(mobile_number, name, noti, order_id, vendor_type, amount, mana
         nav_active = args["status"][0]
     else:
         nav_active = "any"
-
+    mobile_number = mobile_number.strip(" ")
     mobile_number = mobile_number.strip("+")
     mobile_number = ("91"+mobile_number) if len(mobile_number)==10 else mobile_number
     result = send_whatsapp_msg(mobile_number, name, noti, order_id, vendor_type, amount, manager)
