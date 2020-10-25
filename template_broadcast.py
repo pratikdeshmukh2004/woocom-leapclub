@@ -27,27 +27,25 @@ TemplatesBroadcast = {
         'personal_care': {"template": "feed_past", "broadcast": "feedback"}
     },
     'prepay_msg': {
-        'bakery':  {"template": "bakery_v4", "broadcast": "order_summary"},
-        'grocery': {"template": "groceries_v4", "broadcast": "order_summary"},
+        'bakery':  {"template": "prepay_2308", "broadcast": "prepay"},
+        'grocery': {"template": "prepay_23084", "broadcast": "prepay"},
         # 'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
 
     },
     'postpay_msg': {
-        'bakery':  {"template": "bakery_v4", "broadcast": "order_summary"},
-        'grocery': {"template": "groceries_v4", "broadcast": "order_summary"},
+        'bakery':  {"template": "pay_on_delivery_button_3", "broadcast": "postpay"},
+        'grocery': {"template": "pay_on_delivery_button_3", "broadcast": "postpay"},
         # 'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
 
     },
-
-
 }
-
 
 vendor_type = {
     'Organic German Bake Shop': 'bakery',
     'Desi Utpad by Jaya': 'grocery',
     'Miche Artisan Bake': 'bakery',
     'The Womens Company': 'personal_care',
-    'desiutpadbyjaya': "bakery",
-    'organicgermanbakeshop': 'grocery'
+    'desiutpadbyjaya': "grocery",
+    'organicgermanbakeshop': 'bakery',
+    'micheartisanbakery': 'bakery'
 }
