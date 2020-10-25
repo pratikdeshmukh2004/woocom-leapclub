@@ -4,8 +4,8 @@ TemplatesBroadcast = {
         'grocery': {"template": "order_intro_2308", "broadcast": "order_ack"},
         'personal_care': {"template": "order_intro_2308", "broadcast": "order_ack"}
     },
-    'order_detail_msg':{
-                'bakery':  {"template": "bakery_v4", "broadcast": "order_summary"},
+    'order_detail_msg': {
+        'bakery':  {"template": "bakery_v4", "broadcast": "order_summary"},
         'grocery': {"template": "groceries_v4", "broadcast": "order_summary"},
         # 'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
 
@@ -25,6 +25,18 @@ TemplatesBroadcast = {
         'bakery': {"template": "feed_past", "broadcast": "feedback"},
         'grocery': {"template": "feed_past", "broadcast": "feedback"},
         'personal_care': {"template": "feed_past", "broadcast": "feedback"}
+    },
+    'prepay_msg': {
+        'bakery':  {"template": "bakery_v4", "broadcast": "order_summary"},
+        'grocery': {"template": "groceries_v4", "broadcast": "order_summary"},
+        # 'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
+
+    },
+    'postpay_msg': {
+        'bakery':  {"template": "bakery_v4", "broadcast": "order_summary"},
+        'grocery': {"template": "groceries_v4", "broadcast": "order_summary"},
+        # 'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
+
     },
 
 

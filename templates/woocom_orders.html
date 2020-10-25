@@ -54,14 +54,10 @@
         <option {% if "payment_status" in query %} {% if query.payment_status[0] == "paid" %} selected {% endif %} {% endif %} value="paid">Paid</option>
         <option {% if "payment_status" in query %} {% if query.payment_status[0] == "unpaid" %} selected {% endif %} {% endif %} value="unpaid">Unpaid</option>
       </select>
-      <script>
-        $( function() {
-          $( "#datepicker" ).datepicker();
-        } );
-        </script>
-      <input class="form-control mr-2" type="text" placeholder="Payment Date" {% if "payment_date" in query %} {% if query["payment_date"][0] != "" %} value="{{query["payment_date"][0]}}" {% endif %} {% endif %} name="payment_date" id="datepicker">
       <input class="form-control mr-2" type="phone" placeholder="Phone Number" {% if "phone_number" in query %} {% if query["phone_number"][0] != "" %} value="{{query["phone_number"][0]}}" {% endif %} {% endif %} name="phone_number">
       <input class="form-control mr-2" type="name" placeholder="Name" {% if "name" in query %} {% if query["name"][0] != "" %} value="{{query["name"][0]}}" {% endif %} {% endif %} name="name">
+      <input class="form-control mr-2" type="vendor" placeholder="Vendor" {% if "vendor" in query %} {% if query["vendor"][0] != "" %} value="{{query["vendor"][0]}}" {% endif %} {% endif %} name="vendor">
+      <input class="form-control mr-2" type="manager" placeholder="Manager" {% if "manager" in query %} {% if query["manager"][0] != "" %} value="{{query["manager"][0]}}" {% endif %} {% endif %} name="manager">
       <button class="btn btn-info"><i class="fa fa-filter" aria-hidden="true"></i>
       </button>
     </form>
@@ -83,7 +79,7 @@
       <button class="btn btn-info"><i class="fa fa-download" aria-hidden="true"></i>
       </form>
 </div>
-<div class="ml-1 mr-1 pt-3">
+<div style="overflow-x: auto;" class="ml-1 mr-1 pt-3">
   <table class="table">
     <thead>
       <tr class="bg-info text-white">
@@ -109,8 +105,8 @@
       <tr>
         <td style="min-width: 98px;" scope="row">
             <div>
-          <i title="Order Detail Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
-          <i title="Supplier Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
+          <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
+          <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
           </div>
           <div class="mt-1">
           {% if nav_active == "processing"%}
@@ -125,7 +121,20 @@
                 ">
                 <i title="Order Detail Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
-              {%endif%}
+              {% if o.date_paid == None %}
+              <a href="
+              {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='postpay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+              ">
+              <i title="Postpay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+            </a>
+            {% else %}
+            <a href="
+            {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='prepay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+            ">
+            <i title="Prepay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+          </a>
+          {% endif %}
+          {%endif%}
           {% endif %}
           {% if nav_active == "tbd-paid, tbd-unpaid"%}
           {% if o.manager and o.vendor_type %}

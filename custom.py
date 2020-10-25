@@ -7,7 +7,7 @@ def filter_orders(orders, params):
     f_orders = []
     for o in orders:
         c = {"payment_status": False,
-             "phone_number": False, "name": False}
+             "phone_number": False, "name": False, "vendor": False, "manager": False}
 
         if "payment_status" in params:
             if params["payment_status"][0] != "":
@@ -27,11 +27,32 @@ def filter_orders(orders, params):
                 c["phone_number"] = True
         if "name" in params:
             if params["name"][0] != "":
-                if params["name"][0] in (o["billing"]["first_name"] + " " + o["billing"]["last_name"]):
+                if params["name"][0].lower() in (o["billing"]["first_name"] + " " + o["billing"]["last_name"]).lower():
                     c["name"] = True
             else:
                 c["name"] = True
-        if c["payment_status"] and c["phone_number"] and c["name"]:
+        vendor = ""
+        manager=""
+        for item in o["meta_data"]:
+            if item["key"] == "wos_vendor_data":
+                vendor = item["value"]["vendor_name"]
+            elif item["key"] == "_wc_acof_6":
+                vendor = item["value"]
+            elif item["key"] == "_wc_acof_3":
+                manager = item["value"]
+        if "vendor" in params:
+            if params["vendor"][0] != "":
+                if params["vendor"][0].lower() in vendor.lower():
+                    c["vendor"] = True
+            else:
+                c["vendor"] = True
+        if "manager" in params:
+            if params["manager"][0] != "":
+                if params["manager"][0].lower() in manager.lower():
+                    c["manager"] = True
+            else:
+                c["manager"] = True
+        if c["payment_status"] and c["phone_number"] and c["name"] and c["vendor"] and c["manager"]:
             f_orders.append(o)
     return f_orders
 
