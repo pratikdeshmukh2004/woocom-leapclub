@@ -41,17 +41,15 @@ def filter_orders(orders, params):
             elif item["key"] == "_wc_acof_3":
                 manager = item["value"]
         if "vendor" in params:
-            if params["vendor"][0] != "":
-                if params["vendor"][0].lower() in vendor.lower():
+            if vendor in params["vendor"]:
                     c["vendor"] = True
-            else:
-                c["vendor"] = True
+        else:
+            c["manager"] = True
         if "manager" in params:
-            if params["manager"][0] != "":
-                if params["manager"][0].lower() in manager.lower():
+            if manager in params["manager"]:
                     c["manager"] = True
-            else:
-                c["manager"] = True
+        else:
+            c["manager"] = True
         if c["payment_status"] and c["phone_number"] and c["name"] and c["vendor"] and c["manager"]:
             f_orders.append(o)
     return f_orders
@@ -196,6 +194,10 @@ def get_params(args):
         for id in args["order_ids"]:
             id_text = id_text+str(id)+", "
         params["include"] = id_text[:-2]
+    if "message_sent" in args:
+        params["message_sent"] = args["message_sent"][0]
+    else:
+        params["message_sent"] = "000"
     return params
 
 def get_shipping_total(o):

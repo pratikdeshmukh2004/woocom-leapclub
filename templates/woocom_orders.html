@@ -39,7 +39,7 @@
     <a class="nav-link {% if nav_active == 'cancelled' %} active {%endif%}" href="{{url_for('woocom_orders', status='cancelled')}}">Cancelled</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'any' %} active {%endif%}" href="{{url_for('woocom_orders')}}">All</a>
+    <a class="nav-link {% if nav_active == 'any' %} active {%endif%}" href="{{url_for('woocom_orders')}}">To be Processing</a>
   </li>
 </ul>
 <div  class="mt-3 ml-3 mr-3">
@@ -56,8 +56,19 @@
       </select>
       <input class="form-control mr-2" type="phone" placeholder="Phone Number" {% if "phone_number" in query %} {% if query["phone_number"][0] != "" %} value="{{query["phone_number"][0]}}" {% endif %} {% endif %} name="phone_number">
       <input class="form-control mr-2" type="name" placeholder="Name" {% if "name" in query %} {% if query["name"][0] != "" %} value="{{query["name"][0]}}" {% endif %} {% endif %} name="name">
-      <input class="form-control mr-2" type="vendor" placeholder="Vendor" {% if "vendor" in query %} {% if query["vendor"][0] != "" %} value="{{query["vendor"][0]}}" {% endif %} {% endif %} name="vendor">
-      <input class="form-control mr-2" type="manager" placeholder="Manager" {% if "manager" in query %} {% if query["manager"][0] != "" %} value="{{query["manager"][0]}}" {% endif %} {% endif %} name="manager">
+      <select data-live-search="true" multiple title="Vendor" name="vendor" class="selectpicker mr-2">
+        {% for v in vendors %}
+        {% if v != ""%}
+          <option {% if "vendor" in query %} {% if v in query["vendor"] %} selected {% endif %} {% endif %}>{{v}}</option>
+        {%endif%}
+        {% endfor%}
+      </select>      <select data-live-search="true" multiple title="Manager" name="manager" class="selectpicker mr-2">
+        {% for m in managers %}
+        {% if m != ""%}
+          <option {% if "manager" in query %} {% if m in query["manager"] %} selected {% endif %} {% endif %}>{{m}}</option>
+        {%endif%}
+        {% endfor%}
+      </select>
       <button class="btn btn-info"><i class="fa fa-filter" aria-hidden="true"></i>
       </button>
     </form>
@@ -103,7 +114,7 @@
     <tbody>
       {% for o in orders %}
       <tr>
-        <td scope="row">
+        <td class="{{o.id}}"scope="row">
           <div style="min-width: 92px;">
             <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
             <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
@@ -140,6 +151,18 @@
           {% endif %}
           {% if nav_active == "tbd-paid, tbd-unpaid"%}
           {% if o.manager and o.vendor_type %}
+          <div class="mb-1" style="min-width: 120px;">
+            <a href="
+            {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_today_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+            ">
+            <i title="Delivery Today Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+          </a>
+          <a href="
+            {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_tomorrow_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+            ">
+            <i title="Delivery Tomorrow Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+          </a>
+          </div>
             <div style="min-width: 120px;">
               <a href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
@@ -149,7 +172,7 @@
               <a href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='order_detail_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
                 ">
-                <i title="Order Detail Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+                <i title="Order Detail Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
               {% if o.date_paid == None %}
               <a href="
@@ -163,8 +186,8 @@
                 ">
                 <i title="Prepay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
-              </div>
               {% endif %}
+            </div>
               {%endif%}
           {% endif %}
           {% if nav_active == "delivered-unpaid"%}
@@ -247,6 +270,9 @@
    var status = document.execCommand("copy");
    input.parentNode.removeChild(input);
  }
+ $("html, body").animate({
+        scrollTop: $(".{{query["message_sent"][0]}}").offset().top,
+    });
  </script>
  
 {% endblock %}

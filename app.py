@@ -162,6 +162,8 @@ def woocom_orders():
     orders = wcapi.get("orders", params=params).json()
     f_orders = filter_orders(orders, args)
     orders = get_orders_with_messages(f_orders, wcapi)
+    vendors = []
+    managers = []
     for o in orders:
         refunds = 0
         for r in o["refunds"]:
@@ -171,7 +173,7 @@ def woocom_orders():
         wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
         o["wt_messages"] = wt_messages
         vendor = ""
-        manager=""
+        manager = ""
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
                 vendor = item["value"]["vendor_name"]
@@ -179,13 +181,17 @@ def woocom_orders():
                 vendor = item["value"]
             elif item["key"] == "_wc_acof_3":
                 manager = item["value"]
-        o["vendor"] = vendor
+        if vendor not in vendors:
+            vendors.append(vendor)
+        if manager not in managers:
+            managers.append(manager)
         if vendor in vendor_type.keys():
             o["vendor_type"] = vendor_type[vendor]
         else:
             o["vendor_type"] = ""
+        o["vendor"] = vendor
         o["manager"] = manager
-    return render_template("woocom_orders.html", orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status)
+    return render_template("woocom_orders.html", orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors)
 
 
 def send_whatsapp_msg(mobile, name, noti, order_id, vendor_type, amount, manager):
@@ -226,9 +232,11 @@ def send_whatsapp(mobile_number, name, noti, order_id, vendor_type, amount, mana
         nav_active = "any"
     mobile_number = mobile_number.strip(" ")
     mobile_number = mobile_number.strip("+")
-    mobile_number = ("91"+mobile_number) if len(mobile_number)==10 else mobile_number
+    mobile_number = (
+        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     manager = manager.capitalize()
-    result = send_whatsapp_msg(mobile_number, name, noti, order_id, vendor_type, amount, manager)
+    result = send_whatsapp_msg(
+        mobile_number, name, noti, order_id, vendor_type, amount, manager)
     if result["result"] == "success":
         new_wt = wtmessages(order_id=order_id, template_name=result["template_name"], broadcast_name=result[
                             "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
@@ -238,9 +246,9 @@ def send_whatsapp(mobile_number, name, noti, order_id, vendor_type, amount, mana
     db.session.add(new_wt)
     db.session.commit()
     if nav_active != "any":
-        return redirect(url_for("woocom_orders", status=nav_active))
+        return redirect(url_for("woocom_orders", status=nav_active, message_sent=order_id))
     else:
-        return redirect(url_for("woocom_orders"))
+        return redirect(url_for("woocom_orders", message_sent=order_id))
 
 
 @app.route('/csv', methods=["POST"])
