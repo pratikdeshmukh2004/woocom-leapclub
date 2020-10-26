@@ -194,10 +194,6 @@ def get_params(args):
         for id in args["order_ids"]:
             id_text = id_text+str(id)+", "
         params["include"] = id_text[:-2]
-    if "message_sent" in args:
-        params["message_sent"] = args["message_sent"][0]
-    else:
-        params["message_sent"] = "000"
     return params
 
 def get_shipping_total(o):

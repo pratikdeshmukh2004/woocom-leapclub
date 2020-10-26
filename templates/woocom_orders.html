@@ -271,7 +271,7 @@
    input.parentNode.removeChild(input);
  }
  $("html, body").animate({
-        scrollTop: $(".{{query["message_sent"][0]}}").offset().top,
+        scrollTop: $(".{% if "message_sent" in query%}{{query["message_sent"][0]}} {%endif%}").offset().top,
     });
  </script>
  
