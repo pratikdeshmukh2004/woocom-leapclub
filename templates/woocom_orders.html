@@ -44,7 +44,7 @@
 </ul>
 <div  class="mt-3 ml-3 mr-3">
     <form autocomplete="off" class = "form-inline" role = "form">
-      <select multiple title="Order ID" name="order_ids" class="selectpicker mr-2">
+      <select data-live-search="true" multiple title="Order ID" name="order_ids" class="selectpicker mr-2">
         {% for o in orders %}
         <option {% if "order_ids" in query %} {% if o.id in query["order_ids"] %} selected {% endif %} {% endif %}>{{o.id}}</option>
         {% endfor%}
@@ -65,7 +65,7 @@
       {% if nav_active != '' %}
         <input style="display: none;" name="status" value="{{nav_active}}">
       {% endif %}
-      <select multiple required title="Order ID" name="order_ids" class="selectpicker mr-2">
+      <select data-live-search="true" multiple required title="Order ID" name="order_ids" class="selectpicker mr-2">
         {% for o in orders %}
         <option value="{{o.id}}">{{o.id}} - {{ o.billing.first_name}} - 
           {% for item in o.meta_data%}
@@ -103,14 +103,15 @@
     <tbody>
       {% for o in orders %}
       <tr>
-        <td style="min-width: 98px;" scope="row">
-            <div>
-          <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
-          <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
+        <td scope="row">
+          <div style="min-width: 92px;">
+            <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
+            <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
           </div>
           <div class="mt-1">
           {% if nav_active == "processing"%}
           {% if o.manager and o.vendor_type %}
+          <div style="min-width: 120px;">
               <a href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
                 ">
@@ -133,20 +134,42 @@
             ">
             <i title="Prepay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
           </a>
+          </div>
           {% endif %}
           {%endif%}
           {% endif %}
           {% if nav_active == "tbd-paid, tbd-unpaid"%}
           {% if o.manager and o.vendor_type %}
+            <div style="min-width: 120px;">
               <a href="
-                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_notification_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
                 ">
-                <i title="Delivery Notification Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
               </a>
+              <a href="
+                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='order_detail_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+                ">
+                <i title="Order Detail Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+              </a>
+              {% if o.date_paid == None %}
+              <a href="
+              {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='postpay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+              ">
+              <i title="Postpay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+                </a>
+                {% else %}
+                <a href="
+                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='prepay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+                ">
+                <i title="Prepay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+              </a>
+              </div>
+              {% endif %}
               {%endif%}
           {% endif %}
           {% if nav_active == "delivered-unpaid"%}
           {% if o.manager and o.vendor_type %}
+              <div style="min-width: 92px;">
                <a href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='feedback_msg', vendor_type=o.vendor_type,amount=o.total, manager=o.manager)}}
                 ">
@@ -155,8 +178,9 @@
                <a href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='payment_remainder_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
                 ">
-                <i title="Payment Reminder Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+                <i title="Payment Reminder Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
+              </div>
               {%endif%}
           {% endif %}
           {% if nav_active == "completed"%}

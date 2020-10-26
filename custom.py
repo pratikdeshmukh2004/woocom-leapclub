@@ -198,6 +198,12 @@ def get_params(args):
         params["include"] = id_text[:-2]
     return params
 
+def get_shipping_total(o):
+    if float(o["shipping_total"])>0:
+        return " (Including delivery charge of Rs "+o["shipping_total"]+")"
+    else:
+        return ""
+
 
 def get_orders_with_messages(orders, wcapi):
     for o in orders:
@@ -206,7 +212,7 @@ def get_orders_with_messages(orders, wcapi):
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
         c_msg = "Here are the order details:\n\n" + \
             list_order_items(o["line_items"], order_refunds) + \
-            "*Total Amount: "+get_totals(o["total"], order_refunds)+"*\n\n"
+            "*Total Amount: "+get_totals(o["total"], order_refunds)+get_shipping_total(o)+"*\n\n"
         if len(o["refunds"]) > 0:
             c_msg = c_msg + \
                 list_order_refunds(order_refunds) + \
@@ -218,6 +224,7 @@ def get_orders_with_messages(orders, wcapi):
                  + "\n\nAddress: "+o["billing"]["address_1"] +
                  ", "+o["billing"]["address_2"]
                  + "\n\nTotal Amount: "+get_totals(o["total"], order_refunds)
+                 + get_shipping_total(o)
                  + "\n\n"+list_order_items(o["line_items"], order_refunds)
                  + "Payment Status: Paid To LeapClub.")
         o["c_msg"] = c_msg

@@ -252,6 +252,8 @@ def download_csv():
     csv_text = get_csv_from_orders(orders, wcapi)
     filename = str(datetime.utcnow())+"-" + data["status"][0]+".csv"
     response = make_response(csv_text)
+    if "," in filename:
+        filename = filename.replace(",", "-")
     cd = 'attachment; filename='+filename
     response.headers['Content-Disposition'] = cd
     response.mimetype = 'text/csv'
