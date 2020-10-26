@@ -10,10 +10,15 @@ TemplatesBroadcast = {
         # 'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
 
     },
-    "delivery_notification_msg": {
+    "delivery_tomorrow_msg": {
         'bakery':    {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
         'grocery': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
         'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
+    },
+    "delivery_today_msg": {
+        'bakery':    {"template": "delivery_today", "broadcast": "delivery_notification"},
+        'grocery': {"template": "delivery_today", "broadcast": "delivery_notification"},
+        'personal_care': {"template": "delivery_today", "broadcast": "delivery_notification"},
     },
     "payment_remainder_msg": {
         'bakery': {"template": "payment_reminder", "broadcast": "payment_reminder"},
