@@ -161,6 +161,7 @@ def woocom_orders():
     params = get_params(args)
     orders = wcapi.get("orders", params=params).json()
     f_orders = filter_orders(orders, args)
+    print(len(f_orders), params)
     orders = get_orders_with_messages(f_orders, wcapi)
     vendors = []
     managers = []

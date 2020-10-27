@@ -44,12 +44,13 @@ def filter_orders(orders, params):
             if vendor in params["vendor"]:
                     c["vendor"] = True
         else:
-            c["manager"] = True
+            c["vendor"] = True
         if "manager" in params:
             if manager in params["manager"]:
                     c["manager"] = True
         else:
             c["manager"] = True
+        print(c)
         if c["payment_status"] and c["phone_number"] and c["name"] and c["vendor"] and c["manager"]:
             f_orders.append(o)
     return f_orders
@@ -188,7 +189,7 @@ def get_params(args):
     if "status" in args:
         params["status"] = args["status"][0]
     else:
-        params["status"] = "any"
+        params["status"] = "tbd-paid, tbd-unpaid"
     if "order_ids" in args:
         id_text = ""
         for id in args["order_ids"]:
@@ -199,6 +200,11 @@ def get_params(args):
 def get_shipping_total(o):
     if float(o["shipping_total"])>0:
         return " (Including delivery charge of Rs "+o["shipping_total"]+")"
+    else:
+        return ""
+def get_shipping_total_for_csv(o):
+    if float(o["shipping_total"])>0:
+        return " (Including Rs "+o["shipping_total"]+" delivery charge)"
     else:
         return ""
 
@@ -241,7 +247,7 @@ def get_csv_from_orders(orders, wcapi):
         writer.writerow({
             "Order ID": o["id"],
             "Customer Detail": "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+o["billing"]["phone"]+"\nAddress: "+o["billing"]["address_1"]+", "+o["billing"]["address_2"],
-            "Total Amount": get_totals(o["total"], refunds),
+            "Total Amount": get_totals(o["total"], refunds)+get_shipping_total_for_csv(o) ,
             "Order Details": list_order_items_csv(o["line_items"], refunds),
             "Comments": "Payment Status: Paid To Leap"
         })

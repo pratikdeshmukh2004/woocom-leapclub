@@ -39,11 +39,14 @@
     <a class="nav-link {% if nav_active == 'cancelled' %} active {%endif%}" href="{{url_for('woocom_orders', status='cancelled')}}">Cancelled</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'any' %} active {%endif%}" href="{{url_for('woocom_orders')}}">All</a>
+    <a class="nav-link {% if nav_active == 'any' %} active {%endif%}" href="{{url_for('woocom_orders', status='any')}}">All</a>
   </li>
 </ul>
 <div  class="mt-3 ml-3 mr-3">
     <form autocomplete="off" class = "form-inline" role = "form">
+      {% if nav_active != '' %}
+        <input style="display: none;" name="status" value="{{nav_active}}">
+      {% endif %}
       <select data-live-search="true" multiple title="Order ID" name="order_ids" class="selectpicker mr-2">
         {% for o in orders %}
         <option {% if "order_ids" in query %} {% if o.id in query["order_ids"] %} selected {% endif %} {% endif %}>{{o.id}}</option>
@@ -96,12 +99,10 @@
       <tr class="bg-info text-white">
         <th scope="col"></th>
         <th scope="col">Order ID</th>
-        <th scope="col">Customer Name</th>
-        <th scope="col">Phone Number</th>
+        <th scope="col">Customer Name (Phone_Number)</th>
         <th scope="col">City</th>
         <th scope="col">Status</th>
-        <th scope="col">Payment Status</th>
-        <th scope="col">Payment Type</th>
+        <th scope="col">Payment Status (Payment_Type)</th>
         <th scope="col">Order Date</th>
         <th scope="col">Amount</th>
         <th scope="col">Refund</th>
@@ -115,10 +116,12 @@
       {% for o in orders %}
       <tr>
         <td class="{{o.id}}"scope="row">
+          {% if o.manager and o.vendor_type %}
           <div style="min-width: 92px;">
             <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
             <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
           </div>
+          {% endif %}
           <div class="mt-1">
           {% if nav_active == "processing"%}
           {% if o.manager and o.vendor_type %}
@@ -151,40 +154,34 @@
           {% endif %}
           {% if nav_active == "tbd-paid, tbd-unpaid"%}
           {% if o.manager and o.vendor_type %}
-          <div class="mb-1" style="min-width: 120px;">
-            <a href="
+          <div class="mb-1" style="min-width: 140px;">
+            <a title="Delivery Today Message" class="btn btn-success btn-sm"  href="
             {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_today_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-            ">
-            <i title="Delivery Today Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+            ">DT
           </a>
-          <a href="
+          <a title="Delivery Tomorrow Message" class="btn btn-success btn-sm ml-1" href="
             {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_tomorrow_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-            ">
-            <i title="Delivery Tomorrow Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+            ">DTM
           </a>
           </div>
             <div style="min-width: 120px;">
-              <a href="
+              <a title="Hello Message" class="btn btn-success btn-sm" href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-                ">
-                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+                ">H
               </a>
-              <a href="
+              <a title="Order Detail Message" class="btn btn-success btn-sm ml-1" href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='order_detail_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-                ">
-                <i title="Order Detail Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+                ">OD
               </a>
               {% if o.date_paid == None %}
-              <a href="
+              <a title="Postpay Message" class="btn btn-success btn-sm ml-1" href="
               {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='postpay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-              ">
-              <i title="Postpay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+              ">PO
                 </a>
                 {% else %}
-                <a href="
+                <a title="Prepay Message" class="btn btn-success btn-sm" href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='prepay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-                ">
-                <i title="Prepay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+                ">PR
               </a>
               {% endif %}
             </div>
@@ -225,16 +222,14 @@
           </div>
         </td>
         <td scope="row">{{ o.id}}</td>
-        <td scope="row">{{ o.billing.first_name}} {{ o.billing.last_name}}</td>
-        <td scope="row">{{ o.billing.phone}}</td>
+        <td scope="row">{{ o.billing.first_name}} {{ o.billing.last_name}} ({{ o.billing.phone}})</td>
         <td scope="row">{{ o.billing.city}}</td>
         <td scope="row">{{ o.status}}</td>
         {% if o.date_paid == None %}
-            <td scope="row">Unpaid</td>
+            <td scope="row">Unpaid ({{ o.payment_method}})</td>
             {% else %}
-            <td scope="row">Paid</td>
+            <td scope="row">Paid ({{ o.payment_method}})</td>
         {% endif %}
-        <td scope="row">{{ o.payment_method}}</td>
         <td scope="row">{{ o.date_created}}</td>
         <td scope="row">{{ o.total}}</td>
         <td scope="row">{{ o.total_refunds}}</td>
