@@ -161,7 +161,6 @@ def woocom_orders():
     params = get_params(args)
     orders = wcapi.get("orders", params=params).json()
     f_orders = filter_orders(orders, args)
-    print(len(f_orders), params)
     orders = get_orders_with_messages(f_orders, wcapi)
     vendors = []
     managers = []
@@ -175,6 +174,7 @@ def woocom_orders():
         o["wt_messages"] = wt_messages
         vendor = ""
         manager = ""
+        delivery_date = ""
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
                 vendor = item["value"]["vendor_name"]
@@ -182,6 +182,8 @@ def woocom_orders():
                 vendor = item["value"]
             elif item["key"] == "_wc_acof_3":
                 manager = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                delivery_date = item["value"]
         if vendor not in vendors:
             vendors.append(vendor)
         if manager not in managers:
@@ -191,6 +193,7 @@ def woocom_orders():
         else:
             o["vendor_type"] = ""
         o["vendor"] = vendor
+        o["delivery_date"] = delivery_date
         o["manager"] = manager
     return render_template("woocom_orders.html", orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors)
 

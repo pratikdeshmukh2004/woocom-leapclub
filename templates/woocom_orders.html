@@ -63,6 +63,8 @@
         {% for v in vendors %}
         {% if v != ""%}
           <option {% if "vendor" in query %} {% if v in query["vendor"] %} selected {% endif %} {% endif %}>{{v}}</option>
+        {% else %}
+          <option {% if "vendor" in query %} {% if v in query["vendor"] %} selected {% endif %} {% endif %} value="">Null</option>
         {%endif%}
         {% endfor%}
       </select>      <select data-live-search="true" multiple title="Manager" name="manager" class="selectpicker mr-2">
@@ -82,11 +84,7 @@
       <select data-live-search="true" multiple required title="Order ID" name="order_ids" class="selectpicker mr-2">
         {% for o in orders %}
         <option value="{{o.id}}">{{o.id}} - {{ o.billing.first_name}} - 
-          {% for item in o.meta_data%}
-          {% if item.key == "wos_vendor_data"%}
-              {{item.value.vendor_name[:4]}}
-          {% endif%}
-        {% endfor %}
+          {{o.vendor}}
         </option>
         {% endfor%}
       </select>
@@ -104,6 +102,7 @@
         <th scope="col">Status</th>
         <th scope="col">Payment Status (Payment_Type)</th>
         <th scope="col">Order Date</th>
+        <th scope="col">Delivery Date</th>
         <th scope="col">Amount</th>
         <th scope="col">Refund</th>
         <th scope="col">Amount Payble</th>
@@ -153,7 +152,7 @@
           {%endif%}
           {% endif %}
           {% if nav_active == "tbd-paid, tbd-unpaid"%}
-          {% if o.manager and o.vendor_type %}
+          {% if o.manager and o.vendor_type and o.delivery_date %}
           <div class="mb-1" style="min-width: 140px;">
             <a title="Delivery Today Message" class="btn btn-success btn-sm"  href="
             {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_today_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
@@ -231,6 +230,7 @@
             <td scope="row">Paid ({{ o.payment_method}})</td>
         {% endif %}
         <td scope="row">{{ o.date_created}}</td>
+        <td scope="row">{{ o.delivery_date}}</td>
         <td scope="row">{{ o.total}}</td>
         <td scope="row">{{ o.total_refunds}}</td>
         <td scope="row">{{ o.total-o.total_refunds}}</td>
@@ -256,9 +256,9 @@
 </div>
 <script>
   function copyToClipboard(id) {
-   console.log(id);
    var tag = document.getElementById(""+id+"")
    var text = tag.innerHTML.trim()
+   text = text.replace("&amp;", "&")
    var input = document.body.appendChild(document.createElement("textarea"));
    input.value = text;
    input.select();

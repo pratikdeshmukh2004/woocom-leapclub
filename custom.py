@@ -1,6 +1,7 @@
 import os
 import csv
 
+
 def filter_orders(orders, params):
     if len(params) <= 4:
         return orders
@@ -32,7 +33,7 @@ def filter_orders(orders, params):
             else:
                 c["name"] = True
         vendor = ""
-        manager=""
+        manager = ""
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
                 vendor = item["value"]["vendor_name"]
@@ -42,15 +43,14 @@ def filter_orders(orders, params):
                 manager = item["value"]
         if "vendor" in params:
             if vendor in params["vendor"]:
-                    c["vendor"] = True
+                c["vendor"] = True
         else:
             c["vendor"] = True
         if "manager" in params:
             if manager in params["manager"]:
-                    c["manager"] = True
+                c["manager"] = True
         else:
             c["manager"] = True
-        print(c)
         if c["payment_status"] and c["phone_number"] and c["name"] and c["vendor"] and c["manager"]:
             f_orders.append(o)
     return f_orders
@@ -197,13 +197,16 @@ def get_params(args):
         params["include"] = id_text[:-2]
     return params
 
+
 def get_shipping_total(o):
-    if float(o["shipping_total"])>0:
+    if float(o["shipping_total"]) > 0:
         return " (Including delivery charge of Rs "+o["shipping_total"]+")"
     else:
         return ""
+
+
 def get_shipping_total_for_csv(o):
-    if float(o["shipping_total"])>0:
+    if float(o["shipping_total"]) > 0:
         return " (Including Rs "+o["shipping_total"]+" delivery charge)"
     else:
         return ""
@@ -216,7 +219,9 @@ def get_orders_with_messages(orders, wcapi):
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
         c_msg = "Here are the order details:\n\n" + \
             list_order_items(o["line_items"], order_refunds) + \
-            "*Total Amount: "+get_totals(o["total"], order_refunds)+get_shipping_total(o)+"*\n\n"
+            "*Total Amount: " + \
+                get_totals(o["total"], order_refunds) + \
+            get_shipping_total(o)+"*\n\n"
         if len(o["refunds"]) > 0:
             c_msg = c_msg + \
                 list_order_refunds(order_refunds) + \
@@ -225,7 +230,7 @@ def get_orders_with_messages(orders, wcapi):
                  + "\n\nName: "+o["billing"]["first_name"] +
                  " "+o["billing"]["last_name"]
                  + "\nMobile: "+o["billing"]["phone"]
-                 + "\n\nAddress: "+o["billing"]["address_1"] +
+                 + "\nAddress: "+o["shipping"]["address_1"] +", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
                  ", "+o["billing"]["address_2"]
                  + "\n\nTotal Amount: "+get_totals(o["total"], order_refunds)
                  + get_shipping_total(o)
@@ -234,6 +239,7 @@ def get_orders_with_messages(orders, wcapi):
         o["c_msg"] = c_msg
         o["s_msg"] = s_msg
     return orders
+
 
 def get_csv_from_orders(orders, wcapi):
     f = open("sample.csv", "w+")
@@ -246,8 +252,9 @@ def get_csv_from_orders(orders, wcapi):
             refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
         writer.writerow({
             "Order ID": o["id"],
-            "Customer Detail": "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+o["billing"]["phone"]+"\nAddress: "+o["billing"]["address_1"]+", "+o["billing"]["address_2"],
-            "Total Amount": get_totals(o["total"], refunds)+get_shipping_total_for_csv(o) ,
+            "Customer Detail": "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+o["billing"]["phone"]
+            + "\nAddress: "+o["shipping"]["address_1"] +", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"],
+            "Total Amount": get_totals(o["total"], refunds)+get_shipping_total_for_csv(o),
             "Order Details": list_order_items_csv(o["line_items"], refunds),
             "Comments": "Payment Status: Paid To Leap"
         })
