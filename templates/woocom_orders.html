@@ -156,31 +156,31 @@
           <div class="mb-1" style="min-width: 140px;">
             <a title="Delivery Today Message" class="btn btn-success btn-sm"  href="
             {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_today_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-            ">DT
+            ">Today
           </a>
           <a title="Delivery Tomorrow Message" class="btn btn-success btn-sm ml-1" href="
             {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_tomorrow_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-            ">DTM
+            ">Tom
           </a>
           </div>
             <div style="min-width: 120px;">
               <a title="Hello Message" class="btn btn-success btn-sm" href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-                ">H
+                ">Hello
               </a>
               <a title="Order Detail Message" class="btn btn-success btn-sm ml-1" href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='order_detail_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-                ">OD
+                ">Order
               </a>
               {% if o.date_paid == None %}
               <a title="Postpay Message" class="btn btn-success btn-sm ml-1" href="
               {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='postpay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-              ">PO
+              ">Post
                 </a>
                 {% else %}
                 <a title="Prepay Message" class="btn btn-success btn-sm" href="
                 {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='prepay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-                ">PR
+                ">Pre
               </a>
               {% endif %}
             </div>

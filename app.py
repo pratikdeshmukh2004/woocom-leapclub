@@ -235,7 +235,7 @@ def send_whatsapp(mobile_number, name, noti, order_id, vendor_type, amount, mana
     else:
         nav_active = "any"
     mobile_number = mobile_number.strip(" ")
-    mobile_number = mobile_number.strip("+")
+    mobile_number = mobile_number[-10:]
     mobile_number = (
         "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     manager = manager.capitalize()
