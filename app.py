@@ -15,7 +15,6 @@ import csv
 import os
 import ast
 
-
 app = Flask(__name__, instance_relative_config=True)
 datepicker(app)
 
@@ -164,6 +163,7 @@ def woocom_orders():
     orders = get_orders_with_messages(f_orders, wcapi)
     vendors = []
     managers = []
+    wtmessages_list = {}
     for o in orders:
         refunds = 0
         for r in o["refunds"]:
@@ -171,7 +171,7 @@ def woocom_orders():
         o["total_refunds"] = refunds*-1
         o["total"] = float(o["total"])
         wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
-        o["wt_messages"] = wt_messages
+        wtmessages_list[o["id"]] = wt_messages
         vendor = ""
         manager = ""
         delivery_date = ""
@@ -195,20 +195,36 @@ def woocom_orders():
         o["vendor"] = vendor
         o["delivery_date"] = delivery_date
         o["manager"] = manager
-    return render_template("woocom_orders.html", orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors)
+    return render_template("woocom_orders.html",json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list)
 
 
-def send_whatsapp_msg(mobile, name, noti, order_id, vendor_type, amount, manager):
+def send_whatsapp_msg(mobile, c_name, name, order):
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
-    if noti in TemplatesBroadcast.keys():
-        template_name = TemplatesBroadcast[noti][vendor_type]["template"]
-        broadcast_name = TemplatesBroadcast[noti][vendor_type]["broadcast"]
+    if name in TemplatesBroadcast.keys():
+        template_name = TemplatesBroadcast[name][order["vendor_type"]]["template"]
+        broadcast_name = TemplatesBroadcast[name][order["vendor_type"]]["broadcast"]
     else:
         return {"result": "error", "info": "Please Select Valid Button."}
+    parameters = {
+        "name": name,
+        "manager": order["manager"],
+        "order_id": order["id"],
+        "total_amount": order["total"],
+        "delivery_date": order["delivery_date"],
+        "pay_method": order["payment_method_title"],
+        "delivery_charge": order["shipping_total"],
+        "seller": order["vendor"],
+        "item_amount": float(order["total"])-float(order["shipping_total"])
+    }
+    parameters_s = "["
+    for d in parameters:
+        parameters_s= parameters_s+"{'name':'"+str(d)+"', 'value':'"+str(parameters[d])+"'},"
+    parameters_s=parameters_s[:-1]
+    parameters_s=parameters_s+"]"
     payload = {
         "template_name": template_name,
         "broadcast_name": broadcast_name,
-        "parameters": "[{'name':'name', 'value':'"+name+"'},{'name':'manager', 'value':'"+manager+"'},{'name':'order_id', 'value':'"+str(order_id)+"'},{'name':'amount', 'value':'"+str(amount)+"'}]"
+        "parameters": parameters_s
     }
     headers = {
         'Authorization': app.config["WATI_AUTHORIZATION"],
@@ -225,34 +241,36 @@ def send_whatsapp_msg(mobile, name, noti, order_id, vendor_type, amount, manager
     return result
 
 
-@app.route("/send_whatsapp_msg/<string:mobile_number>/<string:name>/<string:noti>/<int:order_id>/<string:vendor_type>/<float:amount>/<string:manager>")
-def send_whatsapp(mobile_number, name, noti, order_id, vendor_type, amount, manager):
+@app.route("/send_whatsapp_msg/<string:name>")
+def send_whatsapp(name):
     if not g.user:
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=False)
+    order = args["order"][0]
+    order = json.loads(order)
     if "status" in args:
         nav_active = args["status"][0]
     else:
         nav_active = "any"
-    mobile_number = mobile_number.strip(" ")
+    mobile_number = order["billing"]["phone"].strip(" ")
     mobile_number = mobile_number[-10:]
     mobile_number = (
         "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
-    manager = manager.capitalize()
+    manager = order["manager"].capitalize()
     result = send_whatsapp_msg(
-        mobile_number, name, noti, order_id, vendor_type, amount, manager)
+        mobile_number, order["billing"]["first_name"], name, order)
     if result["result"] == "success":
-        new_wt = wtmessages(order_id=order_id, template_name=result["template_name"], broadcast_name=result[
+        new_wt = wtmessages(order_id=order["id"], template_name=result["template_name"], broadcast_name=result[
                             "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
     else:
-        new_wt = wtmessages(order_id=order_id, template_name=result["template_name"], broadcast_name=result[
+        new_wt = wtmessages(order_id=order["id"], template_name=result["template_name"], broadcast_name=result[
                             "broadcast_name"], status="failed", time_sent=datetime.utcnow())
     db.session.add(new_wt)
     db.session.commit()
     if nav_active != "any":
-        return redirect(url_for("woocom_orders", status=nav_active, message_sent=order_id))
+        return redirect(url_for("woocom_orders", status=nav_active, message_sent=order["id"]))
     else:
-        return redirect(url_for("woocom_orders", message_sent=order_id))
+        return redirect(url_for("woocom_orders", message_sent=order["id"]))
 
 
 @app.route('/csv', methods=["POST"])

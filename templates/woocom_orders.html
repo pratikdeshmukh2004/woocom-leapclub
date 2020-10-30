@@ -126,24 +126,24 @@
           {% if o.manager and o.vendor_type %}
           <div style="min-width: 120px;">
               <a href="
-                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-                ">
+              {{url_for('send_whatsapp', order=json.dumps(o), name='hello_msg', status=nav_active)}}
+              ">
                 <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
               </a>
               <a href="
-                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='order_detail_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-                ">
+              {{url_for('send_whatsapp', order=json.dumps(o), name='order_detail_msg', status=nav_active)}}
+              ">
                 <i title="Order Detail Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
               {% if o.date_paid == None %}
               <a href="
-              {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='postpay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+              {{url_for('send_whatsapp', order=json.dumps(o), name='postpay_msg', status=nav_active)}}
               ">
               <i title="Postpay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
             </a>
             {% else %}
             <a href="
-            {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='prepay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+            {{url_for('send_whatsapp', order=json.dumps(o), name='prepay_msg', status=nav_active)}}
             ">
             <i title="Prepay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
           </a>
@@ -152,34 +152,36 @@
           {%endif%}
           {% endif %}
           {% if nav_active == "tbd-paid, tbd-unpaid"%}
-          {% if o.manager and o.vendor_type and o.delivery_date %}
+          {% if o.manager and o.vendor_type and o.delivery_date and o.payment_method %}
           <div class="mb-1" style="min-width: 140px;">
             <a title="Delivery Today Message" class="btn btn-success btn-sm"  href="
-            {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_today_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+            {{url_for('send_whatsapp', order=json.dumps(o), name='delivery_today_msg', status=nav_active)}}
             ">Today
           </a>
           <a title="Delivery Tomorrow Message" class="btn btn-success btn-sm ml-1" href="
-            {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='delivery_tomorrow_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+            {{url_for('send_whatsapp', order=json.dumps(o), name='delivery_tomorrow_msg', status=nav_active)}}
             ">Tom
           </a>
           </div>
             <div style="min-width: 120px;">
               <a title="Hello Message" class="btn btn-success btn-sm" href="
-                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='hello_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+                {{url_for('send_whatsapp', order=json.dumps(o), name='hello_msg', status=nav_active)}}
                 ">Hello
               </a>
-              <a title="Order Detail Message" class="btn btn-success btn-sm ml-1" href="
-                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='order_detail_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+              <a title="Order Detail Message" class="btn btn-success btn-sm ml-1 " href="
+                {{url_for('send_whatsapp', order=json.dumps(o), name='order_detail_msg', status=nav_active)}}
                 ">Order
               </a>
+            </div>
+            <div class="mt-1" style="min-width: 60px;">  
               {% if o.date_paid == None %}
-              <a title="Postpay Message" class="btn btn-success btn-sm ml-1" href="
-              {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='postpay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+              <a title="Postpay Message" class="btn btn-success btn-sm" href="
+              {{url_for('send_whatsapp', order=json.dumps(o), name='postpay_msg', status=nav_active)}}
               ">Post
                 </a>
                 {% else %}
                 <a title="Prepay Message" class="btn btn-success btn-sm" href="
-                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='prepay_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
+                {{url_for('send_whatsapp', order=json.dumps(o), name='prepay_msg', status=nav_active)}}
                 ">Pre
               </a>
               {% endif %}
@@ -190,13 +192,13 @@
           {% if o.manager and o.vendor_type %}
               <div style="min-width: 92px;">
                <a href="
-                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='feedback_msg', vendor_type=o.vendor_type,amount=o.total, manager=o.manager)}}
-                ">
+               {{url_for('send_whatsapp', order=json.dumps(o), name='feedback_msg', status=nav_active)}}
+               ">
                 <i title="Feedback Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
               </a>
                <a href="
-                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='payment_remainder_msg', vendor_type=o.vendor_type, amount=o.total, manager=o.manager)}}
-                ">
+               {{url_for('send_whatsapp', order=json.dumps(o), name='payment_remainder_msg', status=nav_active)}}
+               ">
                 <i title="Payment Reminder Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
               </a>
               </div>
@@ -205,8 +207,8 @@
           {% if nav_active == "completed"%}
           {% if o.manager and o.vendor_type %}
               <a href="
-                {{url_for('send_whatsapp', mobile_number=o.billing.phone, name=o.billing.first_name, status=nav_active, order_ids=query['order_ids'],order_id=o.id, noti='feedback_msg', vendor_type=o.vendor_type,amount=o.total, manager=o.manager)}}
-                ">
+              {{url_for('send_whatsapp', order=json.dumps(o), name='feedback_msg', status=nav_active)}}
+              ">
                 <i title="Feedback Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
               </a>
               {%endif%}
@@ -235,7 +237,7 @@
         <td scope="row">{{ o.total_refunds}}</td>
         <td scope="row">{{ o.total-o.total_refunds}}</td>
         <td scope="row">
-          {% for wt in o.wt_messages%}
+          {% for wt in wtmessages_list[o.id]%}
             {% if wt.status == "success"%}
               <span class="text-success">{{wt.template_name}}, </span>
             {%else%}
