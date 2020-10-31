@@ -221,7 +221,7 @@ def get_orders_with_messages(orders, wcapi):
             list_order_items(o["line_items"], order_refunds) + \
             "*Total Amount: " + \
                 get_totals(o["total"], order_refunds) + \
-            get_shipping_total(o)+"*\n\n"
+            get_shipping_total(o)+"*\n\n"+"Customer Note: "+o["customer_note"]
         if len(o["refunds"]) > 0:
             c_msg = c_msg + \
                 list_order_refunds(order_refunds) + \
@@ -235,7 +235,8 @@ def get_orders_with_messages(orders, wcapi):
                  + "\n\nTotal Amount: "+get_totals(o["total"], order_refunds)
                  + get_shipping_total(o)
                  + "\n\n"+list_order_items(o["line_items"], order_refunds)
-                 + "Payment Status: Paid To LeapClub.")
+                 + "Payment Status: Paid To LeapClub."
+                 + "\nCustomer Note: "+o["customer_note"])
         o["c_msg"] = c_msg
         o["s_msg"] = s_msg
     return orders
@@ -244,7 +245,7 @@ def get_orders_with_messages(orders, wcapi):
 def get_csv_from_orders(orders, wcapi):
     f = open("sample.csv", "w+")
     writer = csv.DictWriter(
-        f, fieldnames=["Order ID", "Customer Detail", "Total Amount", "Order Details", "Comments"])
+        f, fieldnames=["Order ID", "Customer Detail", "Total Amount", "Order Details", "Comments", "Customer Note"])
     writer.writeheader()
     for o in orders:
         refunds = []
@@ -256,7 +257,8 @@ def get_csv_from_orders(orders, wcapi):
             + "\nAddress: "+o["shipping"]["address_1"] +", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"],
             "Total Amount": get_totals(o["total"], refunds)+get_shipping_total_for_csv(o),
             "Order Details": list_order_items_csv(o["line_items"], refunds),
-            "Comments": "Payment Status: Paid To Leap"
+            "Comments": "Payment Status: Paid To Leap",
+            "Customer Note": o["customer_note"]
         })
         writer.writerow({})
     f.close()

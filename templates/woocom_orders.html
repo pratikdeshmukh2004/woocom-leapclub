@@ -267,9 +267,11 @@
    var status = document.execCommand("copy");
    input.parentNode.removeChild(input);
  }
+ {% if "message_sent" in query%}
  $("html, body").animate({
-        scrollTop: $(".{% if "message_sent" in query%}{{query["message_sent"][0]}} {%endif%}").offset().top,
+        scrollTop: $(".{{query["message_sent"][0]}}").offset().top,
     });
+    {%endif%}
  </script>
  
 {% endblock %}
