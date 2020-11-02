@@ -5,8 +5,8 @@ TemplatesBroadcast = {
         'personal_care': {"template": "order_intro_2308", "broadcast": "order_ack"}
     },
     'order_detail_msg': {
-        'bakery':  {"template": "bakery_v4", "broadcast": "order_summary"},
-        'grocery': {"template": "groceries_v4", "broadcast": "order_summary"},
+        'bakery':  {"template": "order_details_0211_2", "broadcast": "order_summary"},
+        'grocery': {"template": "order_details_0211_2", "broadcast": "order_summary"},
         # 'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
 
     },
@@ -38,8 +38,8 @@ TemplatesBroadcast = {
 
     },
     'postpay_msg': {
-        'bakery':  {"template": "pay_on_delivery_button_3", "broadcast": "postpay"},
-        'grocery': {"template": "pay_on_delivery_button_3", "broadcast": "postpay"},
+        'bakery':  {"template": "postpay_0211_1", "broadcast": "postpay"},
+        'grocery': {"template": "postpay_0211_1", "broadcast": "postpay"},
         # 'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
 
     },

@@ -175,6 +175,7 @@ def woocom_orders():
         vendor = ""
         manager = ""
         delivery_date = ""
+        wallet_payment = 0
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
                 vendor = item["value"]["vendor_name"]
@@ -184,6 +185,12 @@ def woocom_orders():
                 manager = item["value"]
             elif item["key"] == "_wc_acof_2_formatted":
                 delivery_date = item["value"]
+
+        if len(o["fee_lines"])>0:
+            for item in o["fee_lines"]:
+                if item["name"] == "Via wallet":
+                    wallet_payment = (-1)*float(item["total"])
+
         if vendor not in vendors:
             vendors.append(vendor)
         if manager not in managers:
@@ -195,6 +202,7 @@ def woocom_orders():
         o["vendor"] = vendor
         o["delivery_date"] = delivery_date
         o["manager"] = manager
+        o["wallet_payment"] =  wallet_payment
     return render_template("woocom_orders.html",json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list)
 
 
@@ -206,15 +214,16 @@ def send_whatsapp_msg(mobile, c_name, name, order):
     else:
         return {"result": "error", "info": "Please Select Valid Button."}
     parameters = {
-        "name": name,
-        "manager": order["manager"],
+        "name": order['billing']['first_name'],
+        "manager": order["manager"].capitalize(),
         "order_id": order["id"],
-        "total_amount": order["total"],
+        "total_amount": order["total"] + order["wallet_payment"],
+        "amount": order["total"] + order["wallet_payment"],
         "delivery_date": order["delivery_date"],
-        "pay_method": order["payment_method_title"],
+        "payment_method": order["payment_method_title"],
         "delivery_charge": order["shipping_total"],
         "seller": order["vendor"],
-        "item_amount": float(order["total"])-float(order["shipping_total"])
+        "items_amount": float(order["total"])-float(order["shipping_total"])
     }
     parameters_s = "["
     for d in parameters:
@@ -256,7 +265,6 @@ def send_whatsapp(name):
     mobile_number = mobile_number[-10:]
     mobile_number = (
         "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
-    manager = order["manager"].capitalize()
     result = send_whatsapp_msg(
         mobile_number, order["billing"]["first_name"], name, order)
     if result["result"] == "success":
