@@ -223,7 +223,7 @@ def send_whatsapp_msg(mobile, c_name, name, order):
         "payment_method": order["payment_method_title"],
         "delivery_charge": order["shipping_total"],
         "seller": order["vendor"],
-        "items_amount": float(order["total"])-float(order["shipping_total"])
+        "items_amount": float(order["total"])-float(order["shipping_total"])+float(order["wallet_payment"])
     }
     parameters_s = "["
     for d in parameters:
