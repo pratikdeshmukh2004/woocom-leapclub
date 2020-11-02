@@ -203,6 +203,7 @@ def woocom_orders():
         o["delivery_date"] = delivery_date
         o["manager"] = manager
         o["wallet_payment"] =  wallet_payment
+        o["total"]  = float(o["total"]) + float(o["wallet_payment"] )
     return render_template("woocom_orders.html",json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list)
 
 
@@ -217,13 +218,13 @@ def send_whatsapp_msg(mobile, c_name, name, order):
         "name": order['billing']['first_name'],
         "manager": order["manager"].capitalize(),
         "order_id": order["id"],
-        "total_amount": order["total"] + order["wallet_payment"],
-        "amount": order["total"] + order["wallet_payment"],
+        "total_amount": order["total"],
+        "amount": order["total"],
         "delivery_date": order["delivery_date"],
         "payment_method": order["payment_method_title"],
         "delivery_charge": order["shipping_total"],
         "seller": order["vendor"],
-        "items_amount": float(order["total"])-float(order["shipping_total"])+float(order["wallet_payment"])
+        "items_amount": float(order["total"])-float(order["shipping_total"])
     }
     parameters_s = "["
     for d in parameters:
