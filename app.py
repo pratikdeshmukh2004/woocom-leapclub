@@ -158,9 +158,9 @@ def woocom_orders():
         is_w = False
         w_status = ""
     params = get_params(args)
+    params["page"] = request.args.get("page", 1, type=int)
     orders = wcapi.get("orders", params=params).json()
     f_orders = filter_orders(orders, args)
-    orders = get_orders_with_messages(f_orders, wcapi)
     vendors = []
     managers = []
     wtmessages_list = {}
@@ -204,7 +204,8 @@ def woocom_orders():
         o["manager"] = manager
         o["wallet_payment"] =  wallet_payment
         o["total"]  = float(o["total"]) + float(o["wallet_payment"] )
-    return render_template("woocom_orders.html",json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list)
+    orders = get_orders_with_messages(f_orders, wcapi)
+    return render_template("woocom_orders.html",json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, c_page=params["page"])
 
 
 def send_whatsapp_msg(mobile, c_name, name, order):

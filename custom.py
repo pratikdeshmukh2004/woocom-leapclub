@@ -175,7 +175,7 @@ def list_only_refunds(order_refunds):
 
 
 def get_totals(total, refunds):
-    msg = total
+    msg = str(total)
     for r in refunds:
         msg = msg+" - " + str(r["amount"])
         total = float(total) - float(r["amount"])
@@ -185,7 +185,7 @@ def get_totals(total, refunds):
 
 
 def get_params(args):
-    params = {"per_page": 100}
+    params = {"per_page": 50}
     if "status" in args:
         params["status"] = args["status"][0]
     else:
@@ -248,6 +248,13 @@ def get_csv_from_orders(orders, wcapi):
         f, fieldnames=["Order ID", "Customer Detail", "Total Amount", "Order Details", "Comments", "Customer Note"])
     writer.writeheader()
     for o in orders:
+        wallet_payment = 0
+        if len(o["fee_lines"])>0:
+            for item in o["fee_lines"]:
+                if item["name"] == "Via wallet":
+                    wallet_payment = (-1)*float(item["total"])
+                    break
+        o["total"]  = float(o["total"]) + float(wallet_payment)
         refunds = []
         if len(o["refunds"]) > 0:
             refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
