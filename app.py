@@ -246,10 +246,6 @@ def send_whatsapp(name):
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=True)
     if len(args)> 0:
-        if "status" in args:
-            nav_active = args["status"]
-        else:
-            nav_active = "any"
         mobile_number = args["mobile_number"].strip(" ")
         mobile_number = mobile_number[-10:]
         mobile_number = (
@@ -263,10 +259,7 @@ def send_whatsapp(name):
                                 "broadcast_name"], status="failed", time_sent=datetime.utcnow())
         db.session.add(new_wt)
         db.session.commit()
-        if nav_active != "any":
-            return redirect(url_for("woocom_orders", status=nav_active, message_sent=args["order_id"]))
-        else:
-            return redirect(url_for("woocom_orders", message_sent=args["order_id"]))
+        return result
 
 
 @app.route('/csv', methods=["POST"])
@@ -292,7 +285,10 @@ def logout():
     session.pop('user_id', None)
     return redirect(url_for('login'))
 
+@app.route("/api")
+def api():
+    return {"Name": "Pratik"}
 
 if __name__ == "__main__":
     # db.create_all()
-    app.run()
+    app.run(debug=True)
