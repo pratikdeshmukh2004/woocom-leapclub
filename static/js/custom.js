@@ -10,6 +10,9 @@ function makeGetRequest(path) {
           message: "Success, Message Sent!",
           type: "success",
         });
+        row = $(".wtmessage-"+res.parameteres[2].value)
+        span = $('<span class="text-success">'+res.template_name+', </span>')
+        row.append(span)
       } else {
         $.nok({
           message: "Error, Message Not Sent!",
