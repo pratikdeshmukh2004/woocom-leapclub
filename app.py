@@ -208,28 +208,16 @@ def woocom_orders():
     return render_template("woocom_orders.html",json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, c_page=params["page"])
 
 
-def send_whatsapp_msg(mobile, c_name, name, order):
+def send_whatsapp_msg(args, mobile, name):
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
     if name in TemplatesBroadcast.keys():
-        template_name = TemplatesBroadcast[name][order["vendor_type"]]["template"]
-        broadcast_name = TemplatesBroadcast[name][order["vendor_type"]]["broadcast"]
+        template_name = TemplatesBroadcast[name][args["vendor_type"]]["template"]
+        broadcast_name = TemplatesBroadcast[name][args["vendor_type"]]["broadcast"]
     else:
         return {"result": "error", "info": "Please Select Valid Button."}
-    parameters = {
-        "name": order['billing']['first_name'],
-        "manager": order["manager"].capitalize(),
-        "order_id": order["id"],
-        "total_amount": order["total"],
-        "amount": order["total"],
-        "delivery_date": order["delivery_date"],
-        "payment_method": order["payment_method_title"],
-        "delivery_charge": order["shipping_total"],
-        "seller": order["vendor"],
-        "items_amount": float(order["total"])-float(order["shipping_total"])
-    }
     parameters_s = "["
-    for d in parameters:
-        parameters_s= parameters_s+"{'name':'"+str(d)+"', 'value':'"+str(parameters[d])+"'},"
+    for d in args:
+        parameters_s= parameters_s+"{'name':'"+str(d)+"', 'value':'"+str(args[d])+"'},"
     parameters_s=parameters_s[:-1]
     parameters_s=parameters_s+"]"
     payload = {
@@ -256,31 +244,29 @@ def send_whatsapp_msg(mobile, c_name, name, order):
 def send_whatsapp(name):
     if not g.user:
         return redirect(url_for('login'))
-    args = request.args.to_dict(flat=False)
-    order = args["order"][0]
-    order = json.loads(order)
-    if "status" in args:
-        nav_active = args["status"][0]
-    else:
-        nav_active = "any"
-    mobile_number = order["billing"]["phone"].strip(" ")
-    mobile_number = mobile_number[-10:]
-    mobile_number = (
-        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
-    result = send_whatsapp_msg(
-        mobile_number, order["billing"]["first_name"], name, order)
-    if result["result"] == "success":
-        new_wt = wtmessages(order_id=order["id"], template_name=result["template_name"], broadcast_name=result[
-                            "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
-    else:
-        new_wt = wtmessages(order_id=order["id"], template_name=result["template_name"], broadcast_name=result[
-                            "broadcast_name"], status="failed", time_sent=datetime.utcnow())
-    db.session.add(new_wt)
-    db.session.commit()
-    if nav_active != "any":
-        return redirect(url_for("woocom_orders", status=nav_active, message_sent=order["id"]))
-    else:
-        return redirect(url_for("woocom_orders", message_sent=order["id"]))
+    args = request.args.to_dict(flat=True)
+    if len(args)> 0:
+        if "status" in args:
+            nav_active = args["status"]
+        else:
+            nav_active = "any"
+        mobile_number = args["mobile_number"].strip(" ")
+        mobile_number = mobile_number[-10:]
+        mobile_number = (
+            "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+        result = send_whatsapp_msg(args, mobile_number, name)
+        if result["result"] == "success":
+            new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+        else:
+            new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                "broadcast_name"], status="failed", time_sent=datetime.utcnow())
+        db.session.add(new_wt)
+        db.session.commit()
+        if nav_active != "any":
+            return redirect(url_for("woocom_orders", status=nav_active, message_sent=args["order_id"]))
+        else:
+            return redirect(url_for("woocom_orders", message_sent=args["order_id"]))
 
 
 @app.route('/csv', methods=["POST"])
