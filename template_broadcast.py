@@ -1,8 +1,8 @@
 TemplatesBroadcast = {
     "hello_msg": {
-        'bakery': {"template": "order_intro_2308", "broadcast": "order_ack"},
-        'grocery': {"template": "order_intro_2308", "broadcast": "order_ack"},
-        'personal_care': {"template": "order_intro_2308", "broadcast": "order_ack"}
+        'bakery': {"template": "order_intro_2910", "broadcast": "order_ack"},
+        'grocery': {"template": "order_intro_2910", "broadcast": "order_ack"},
+        'personal_care': {"template": "order_intro_2910", "broadcast": "order_ack"}
     },
     'order_detail_msg': {
         'bakery':  {"template": "order_details_0211_2", "broadcast": "order_summary"},
@@ -32,8 +32,8 @@ TemplatesBroadcast = {
         'personal_care': {"template": "feed_past", "broadcast": "feedback"}
     },
     'prepay_msg': {
-        'bakery':  {"template": "prepay_2308", "broadcast": "prepay"},
-        'grocery': {"template": "prepay_23084", "broadcast": "prepay"},
+        'bakery':  {"template": "reply_order", "broadcast": "prepay"},
+        'grocery': {"template": "reply_order", "broadcast": "prepay"},
         # 'personal_care': {"template": "delivery_tomorrow", "broadcast": "delivery_notification"},
 
     },
