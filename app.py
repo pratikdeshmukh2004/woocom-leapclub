@@ -285,10 +285,6 @@ def logout():
     session.pop('user_id', None)
     return redirect(url_for('login'))
 
-@app.route("/api")
-def api():
-    return {"Name": "Pratik"}
-
 if __name__ == "__main__":
     # db.create_all()
     app.run(debug=True)

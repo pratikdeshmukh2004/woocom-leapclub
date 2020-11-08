@@ -75,7 +75,8 @@
         {%endif%}
         {% endfor%}
       </select>
-      <button class="btn btn-info"><i class="fa fa-filter" aria-hidden="true"></i>
+      <input type="text" name="delivery_date" id="datepicker" class="form-control" {% if "delivery_date" in query %} {% if query["delivery_date"][0] != "" %} value="{{query["delivery_date"][0]}}" {% endif %} {% endif %}>
+      <button class="btn btn-info ml-1"><i class="fa fa-filter" aria-hidden="true"></i>
       </button>
     </form>
     <form autocomplete="off" action="{{url_for('download_csv')}}", method="POST" class = "form-inline mt-2" role = "form">
@@ -260,20 +261,20 @@
     <ul class="pagination justify-content-center">
       {%if c_page > 1%}
       <li class="page-item">
-        <a class="page-link" href="{{url_for('woocom_orders', page=c_page-1, status=nav_active)}}"
+        <a class="page-link" href="{{url_for('woocom_orders',page=c_page-1,status=nav_active, delivery_date=query['delivery_date'], payment_status=query.payment_status, phone_number=query.phone_number, name=query.name)}}"
           >{{c_page-1}}</a
         >
       </li>
       {%endif%}
       <li class="page-item active">
-        <a class="page-link" href="{{url_for('woocom_orders', page=c_page-1, status=nav_active)}}"
+        <a class="page-link" href="{{url_for('woocom_orders', page=c_page-1, status=nav_active, delivery_date=query['delivery_date'], payment_status=query.payment_status, phone_number=query.phone_number, name=query.name)}}"
           >{{c_page}} <span class="sr-only">(current)</span></a
         >
         {{orders.length}}
       </li>
       {%if orders|length >49 %}
       <li class="page-item">
-        <a class="page-link" href="{{url_for('woocom_orders', page=c_page+1, status=nav_active)}}"
+        <a class="page-link" href="{{url_for('woocom_orders', page=c_page+1, status=nav_active, delivery_date=query['delivery_date'], payment_status=query.payment_status, phone_number=query.phone_number, name=query.name)}}"
           >{{c_page+1}}</a
         >
       </li>
