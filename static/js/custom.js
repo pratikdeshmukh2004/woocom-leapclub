@@ -1,3 +1,9 @@
+$( document ).ready(function() {
+  console.log( "ready!" );
+  $( "#datepicker" ).datepicker({
+    dateFormat: 'MM/dd/yy',
+  });
+});
 function makeGetRequest(path) {
   $.ajax({
     type: "GET",
