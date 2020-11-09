@@ -297,3 +297,7 @@ def get_csv_from_orders(orders, wcapi):
     result = f.read()
     os.remove("sample.csv")
     return result
+
+def get_checkout_url(o):
+    url = "https://store.leapclub.in/checkout/order-pay/"+str(o["id"])+"/?pay_for_order=true&key="+o["order_key"]
+    return url

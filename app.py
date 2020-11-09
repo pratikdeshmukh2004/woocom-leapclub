@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
@@ -204,6 +204,7 @@ def woocom_orders():
         o["manager"] = manager
         o["wallet_payment"] =  wallet_payment
         o["total"]  = float(o["total"]) + float(o["wallet_payment"] )
+        o["checkout_url"] = get_checkout_url(o)
     orders = get_orders_with_messages(f_orders, wcapi)
     return render_template("woocom_orders.html",json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, c_page=params["page"])
 
