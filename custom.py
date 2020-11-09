@@ -66,7 +66,6 @@ def filter_orders(orders, params):
         if "delivery_date" in params:
             if params["delivery_date"][0] != "":
                 d = format_delivery_date(params["delivery_date"][0])
-                print(d, delivery_date)
                 if d == delivery_date:
                     c["delivery_date"] = True
                 else:

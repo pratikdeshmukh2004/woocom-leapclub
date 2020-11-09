@@ -186,7 +186,7 @@ def woocom_orders():
             elif item["key"] == "_wc_acof_2_formatted":
                 delivery_date = item["value"]
 
-        if len(o["fee_lines"])>0:
+        if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if item["name"] == "Via wallet":
                     wallet_payment = (-1)*float(item["total"])
@@ -202,11 +202,11 @@ def woocom_orders():
         o["vendor"] = vendor
         o["delivery_date"] = delivery_date
         o["manager"] = manager
-        o["wallet_payment"] =  wallet_payment
-        o["total"]  = float(o["total"]) + float(o["wallet_payment"] )
+        o["wallet_payment"] = wallet_payment
+        o["total"] = float(o["total"]) + float(o["wallet_payment"])
         o["checkout_url"] = get_checkout_url(o)
     orders = get_orders_with_messages(f_orders, wcapi)
-    return render_template("woocom_orders.html",json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, c_page=params["page"])
+    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, c_page=params["page"])
 
 
 def send_whatsapp_msg(args, mobile, name):
@@ -217,10 +217,12 @@ def send_whatsapp_msg(args, mobile, name):
     else:
         return {"result": "error", "info": "Please Select Valid Button."}
     parameters_s = "["
+    args["name"]=args["c_name"]
     for d in args:
-        parameters_s= parameters_s+"{'name':'"+str(d)+"', 'value':'"+str(args[d])+"'},"
-    parameters_s=parameters_s[:-1]
-    parameters_s=parameters_s+"]"
+        parameters_s = parameters_s + \
+            '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
+    parameters_s = parameters_s[:-1]
+    parameters_s = parameters_s+"]"
     payload = {
         "template_name": template_name,
         "broadcast_name": broadcast_name,
@@ -246,7 +248,11 @@ def send_whatsapp(name):
     if not g.user:
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=True)
-    if len(args)> 0:
+    if len(args) > 0:
+        if "status" in args:
+            nav_active = args["status"]
+        else:
+            nav_active = "any"
         mobile_number = args["mobile_number"].strip(" ")
         mobile_number = mobile_number[-10:]
         mobile_number = (
@@ -260,7 +266,10 @@ def send_whatsapp(name):
                                 "broadcast_name"], status="failed", time_sent=datetime.utcnow())
         db.session.add(new_wt)
         db.session.commit()
-        return result
+        if nav_active != "any":
+            return redirect(url_for("woocom_orders", status=nav_active, message_sent=args["order_id"], page=args["page"][0]))
+        else:
+            return redirect(url_for("woocom_orders", message_sent=args["order_id"], page=args["page"][0]))
 
 
 @app.route('/csv', methods=["POST"])
@@ -285,6 +294,7 @@ def download_csv():
 def logout():
     session.pop('user_id', None)
     return redirect(url_for('login'))
+
 
 if __name__ == "__main__":
     # db.create_all()
