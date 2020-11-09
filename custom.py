@@ -1,14 +1,23 @@
 import os
 import csv
 
-
+def format_delivery_date(d):
+    d_s = d.split("/")
+    f_s = d_s[0]+" "
+    if "0" in d_s[1]:
+        f_s = f_s+d_s[1][1]
+    else:
+        f_s = f_s+d_s[1]
+    f_s = f_s+", "
+    f_s = f_s+d_s[2]
+    return f_s
 def filter_orders(orders, params):
     if len(params) <= 4:
         return orders
     f_orders = []
     for o in orders:
         c = {"payment_status": False,
-             "phone_number": False, "name": False, "vendor": False, "manager": False}
+             "phone_number": False, "name": False, "vendor": False, "manager": False, "delivery_date": False}
 
         if "payment_status" in params:
             if params["payment_status"][0] != "":
@@ -34,6 +43,7 @@ def filter_orders(orders, params):
                 c["name"] = True
         vendor = ""
         manager = ""
+        delivery_date = ""
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
                 vendor = item["value"]["vendor_name"]
@@ -41,6 +51,8 @@ def filter_orders(orders, params):
                 vendor = item["value"]
             elif item["key"] == "_wc_acof_3":
                 manager = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                delivery_date = item["value"]
         if "vendor" in params:
             if vendor in params["vendor"]:
                 c["vendor"] = True
@@ -51,7 +63,18 @@ def filter_orders(orders, params):
                 c["manager"] = True
         else:
             c["manager"] = True
-        if c["payment_status"] and c["phone_number"] and c["name"] and c["vendor"] and c["manager"]:
+        if "delivery_date" in params:
+            if params["delivery_date"][0] != "":
+                d = format_delivery_date(params["delivery_date"][0])
+                if d == delivery_date:
+                    c["delivery_date"] = True
+                else:
+                    c["delivery_date"] = False
+            else:
+                c["delivery_date"] = True
+        else:
+            c["delivery_date"] = True
+        if c["payment_status"] and c["phone_number"] and c["name"] and c["vendor"] and c["manager"] and c["delivery_date"]:
             f_orders.append(o)
     return f_orders
 
@@ -273,3 +296,7 @@ def get_csv_from_orders(orders, wcapi):
     result = f.read()
     os.remove("sample.csv")
     return result
+
+def get_checkout_url(o):
+    url = "https://store.leapclub.in/checkout/order-pay/"+str(o["id"])+"/?pay_for_order=true&key="+o["order_key"]
+    return url

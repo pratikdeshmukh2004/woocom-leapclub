@@ -75,7 +75,8 @@
         {%endif%}
         {% endfor%}
       </select>
-      <button class="btn btn-info"><i class="fa fa-filter" aria-hidden="true"></i>
+      <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker" class="form-control" {% if "delivery_date" in query %} {% if query["delivery_date"][0] != "" %} value="{{query["delivery_date"][0]}}" {% endif %} {% endif %}>
+      <button class="btn btn-info ml-1"><i class="fa fa-filter" aria-hidden="true"></i>
       </button>
     </form>
     <form autocomplete="off" action="{{url_for('download_csv')}}", method="POST" class = "form-inline mt-2" role = "form">
@@ -110,6 +111,7 @@
         <th scope="col">Whatsapp Messages</th>
         <th scope="col">Vendor</th>
         <th scope="col">Manager</th>
+        <th scope="col">Checkout URL</th>
       </tr>
     </thead>
     <tbody>
@@ -126,28 +128,24 @@
           {% if nav_active == "processing"%}
           {% if o.manager and o.vendor_type %}
           <div style="min-width: 120px;">
-              <a href="
-              {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='hello_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
+              <a class="btn btn-success btn-sm" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='hello_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
               ">
-                <i title="Hello Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+                <i title="Hello Message" class="fa fa-whatsapp" aria-hidden="true"></i>
               </a>
-              <a href="
-              {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_detail_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
+              <a class="btn btn-success btn-sm ml-1" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_detail_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
               ">
-                <i title="Order Detail Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+                <i title="Order Detail Message" class="fa fa-whatsapp" aria-hidden="true"></i>
               </a>
               {% if o.date_paid == None %}
-              <a href="
-              {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='postpay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
+              <a class="btn btn-success btn-sm ml-1" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='postpay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
               ">
-              <i title="Postpay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
+              <i title="Postpay Message" class="fa fa-whatsapp" aria-hidden="true"></i>
             </a>
             {% else %}
-            <a href="
-            {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='prepay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
+            <a class="btn btn-success btn-sm ml-1" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='prepay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
             ">
-            <i title="Prepay Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
-          </a>
+            <i title="Prepay Message" class="fa fa-whatsapp" aria-hidden="true"></i>
+          </button>
           </div>
           {% endif %}
           {%endif%}
@@ -155,36 +153,30 @@
           {% if nav_active == "tbd-paid, tbd-unpaid"%}
           {% if o.manager and o.vendor_type and o.delivery_date and o.payment_method %}
           <div class="mb-1" style="min-width: 140px;">
-            <a title="Delivery Today Message" class="btn btn-success btn-sm"  href="
-            {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='delivery_today_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
+            <a title="Delivery Today Message" class="btn btn-success btn-sm"  href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='delivery_today_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
             ">Today
-          </a>
-          <a title="Delivery Tomorrow Message" class="btn btn-success btn-sm ml-1" href="
-            {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='delivery_tomorrow_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
+            </a>
+          <a title="Delivery Tomorrow Message" class="btn btn-success btn-sm ml-1" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='delivery_tomorrow_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
             ">Tom
           </a>
           </div>
             <div style="min-width: 120px;">
-              <a title="Hello Message" class="btn btn-success btn-sm" href="
-              {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='hello_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
-              ">Hello
+              <a title="Hello Message" class="btn btn-success btn-sm" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='hello_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
+                ">Hello
               </a>
-              <a title="Order Detail Message" class="btn btn-success btn-sm ml-1 " href="
-              {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_detail_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
-              ">Order
+              <a title="Order Detail Message" class="btn btn-success btn-sm ml-1 " href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_detail_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
+                ">Order
               </a>
             </div>
             <div class="mt-1" style="min-width: 60px;">  
               {% if o.date_paid == None %}
-              <a title="Postpay Message" class="btn btn-success btn-sm" href="
-              {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='postpay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
+              <a title="Postpay Message" class="btn btn-success btn-sm" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='postpay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
               ">Post
-                </a>
-                {% else %}
-                <a title="Prepay Message" class="btn btn-success btn-sm" href="
-                {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='prepay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
-                ">Pre
               </a>
+                {% else %}
+                <a title="Prepay Message" class="btn btn-success btn-sm" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='prepay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
+                ">Pre
+                </a>
               {% endif %}
             </div>
               {%endif%}
@@ -192,25 +184,22 @@
           {% if nav_active == "delivered-unpaid"%}
           {% if o.manager and o.vendor_type %}
               <div style="min-width: 92px;">
-               <a href="
-               {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
+               <a class="btn btn-success btn-sm" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
                ">
-                <i title="Feedback Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
-              </a>
-               <a href="
-               {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='payment_remainder_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
+                <i title="Feedback Message" class="fa fa-whatsapp" aria-hidden="true"></i>
+               </a>
+               <a class="btn btn-success btn-sm ml-1" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='payment_remainder_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
                ">
-                <i title="Payment Reminder Message" class="fa fa-whatsapp btn btn-success btn-sm ml-1" aria-hidden="true"></i>
-              </a>
+                <i title="Payment Reminder Message" class="fa fa-whatsapp" aria-hidden="true"></i>
+               </a>
               </div>
               {%endif%}
           {% endif %}
           {% if nav_active == "completed"%}
           {% if o.manager and o.vendor_type %}
-              <a href="
-              {{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone)}}
+              <a class="btn btn-success btn-sm" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
               ">
-                <i title="Feedback Message" class="fa fa-whatsapp btn btn-success btn-sm" aria-hidden="true"></i>
+                <i title="Feedback Message" class="fa fa-whatsapp" aria-hidden="true"></i>
               </a>
               {%endif%}
           {% endif %}
@@ -237,7 +226,7 @@
         <td scope="row">{{ o.total}}</td>
         <td scope="row">{{ o.total_refunds}}</td>
         <td scope="row">{{ o.total-o.total_refunds}}</td>
-        <td scope="row">
+        <td class="wtmessage-{{o.id}}" scope="row">
           {% for wt in wtmessages_list[o.id]%}
             {% if wt.status == "success"%}
               <span class="text-success">{{wt.template_name}}, </span>
@@ -252,6 +241,9 @@
         <td scope="row">
         {{o.manager}}
         </td>
+        <td scope="row">
+          <a style="font-size: 15px;" target="blank" href="{{o.checkout_url}}">{{o.checkout_url}}</a>
+          </td>
         </tr>
       {% endfor %}
     </tbody>
@@ -260,20 +252,20 @@
     <ul class="pagination justify-content-center">
       {%if c_page > 1%}
       <li class="page-item">
-        <a class="page-link" href="{{url_for('woocom_orders', page=c_page-1, status=nav_active)}}"
+        <a class="page-link" href="{{url_for('woocom_orders',page=c_page-1,status=nav_active, delivery_date=query['delivery_date'], payment_status=query.payment_status, phone_number=query.phone_number, name=query.name)}}"
           >{{c_page-1}}</a
         >
       </li>
       {%endif%}
       <li class="page-item active">
-        <a class="page-link" href="{{url_for('woocom_orders', page=c_page-1, status=nav_active)}}"
+        <a class="page-link" href="{{url_for('woocom_orders', page=c_page-1, status=nav_active, delivery_date=query['delivery_date'], payment_status=query.payment_status, phone_number=query.phone_number, name=query.name)}}"
           >{{c_page}} <span class="sr-only">(current)</span></a
         >
         {{orders.length}}
       </li>
       {%if orders|length >49 %}
       <li class="page-item">
-        <a class="page-link" href="{{url_for('woocom_orders', page=c_page+1, status=nav_active)}}"
+        <a class="page-link" href="{{url_for('woocom_orders', page=c_page+1, status=nav_active, delivery_date=query['delivery_date'], payment_status=query.payment_status, phone_number=query.phone_number, name=query.name)}}"
           >{{c_page+1}}</a
         >
       </li>
@@ -291,6 +283,17 @@
    input.select();
    var status = document.execCommand("copy");
    input.parentNode.removeChild(input);
+   if (status) {
+    $.nok({
+      message: "Success, Message Copied!",
+      type: "success",
+    });
+   }else{
+    $.nok({
+      message: "Error, Message Not Copied!",
+      type: "error",
+    });
+   }
  }
  {% if "message_sent" in query%}
  $("html, body").animate({
