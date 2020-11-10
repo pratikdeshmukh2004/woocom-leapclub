@@ -14,7 +14,7 @@ import requests
 import csv
 import os
 import ast
-
+import time
 app = Flask(__name__, instance_relative_config=True)
 datepicker(app)
 
@@ -94,54 +94,6 @@ class wtmessages(db.Model):
     broadcast_name = db.Column(db.String)
     status = db.Column(db.String)
 
-# class Orders(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     date_created = db.Column(db.DateTime, onupdate=datetime.datetime.utcnow())
-#     date_modified = db.Column(db.DateTime, onupdate=datetime.datetime.utcnow())
-#     total = db.Column(db.Float)
-#     firstname = db.Column(db.String)
-#     lastname = db.Column(db.String)
-#     city = db.Column(db.String)
-#     phone_number = db.Column(db.String)
-#     address = db.Column(db.String)
-#     address2 = db.Column(db.String)
-#     payment_method = db.Column(db.String)
-#     date_paid = db.Column(db.String)
-#     whatsapp_message = db.Column(db.Text)
-
-
-# @app.route("/", methods=["GET", "POST"])
-# def webhooks():
-#     if request.method == "GET":
-#         page = request.args.get("page", 1, type=int)
-#         orders = Orders.query.paginate(page=page, per_page=50)
-#         return render_template("orders.html", orders=orders)
-#     else:
-#         data = request.get_json()
-#         if data != []:
-#             c_msg = "Hi - Your order is on the way.\n\nPlease check whether you are satisfied with the quality of items when you receive them. Feel free to Whatsapp me here if you have any queries.\n\nI hope you will like them. Looking forward to your feedback. :)\n\n\nHere are the order details:\n\n"
-#             c_msg = c_msg + list_order_items_without_refunds(
-#                 data["line_items"], o["id"]) + "*Total Amount: "+data["total"]+"*"
-#             order = Orders(
-#                 id=data["id"],
-#                 date_created=data["date_created"],
-#                 date_modified=data["date_modified"],
-#                 total=data["total"],
-#                 firstname=data["billing"]["first_name"],
-#                 lastname=data["billing"]["last_name"],
-#                 city=data["billing"]["city"],
-#                 phone_number=data["billing"]["phone"],
-#                 address=data["billing"]["address_1"],
-#                 address2=data["billing"]["address_2"],
-#                 payment_method=data["payment_method"],
-#                 date_paid=data["date_paid"],
-#                 whatsapp_message=c_msg
-#             )
-#             db.session.add(order)
-#             db.session.commit()
-#             return {"status": "Success..."}
-#         else:
-#             return {"data": "error"}
 @app.route("/orders")
 def woocom_orders():
     if not g.user:
@@ -160,8 +112,13 @@ def woocom_orders():
         w_status = ""
     params = get_params(args)
     params["page"] = request.args.get("page", 1, type=int)
+    start_time = time.time()
     orders = wcapi.get("orders", params=params).json()
+    fetch_time= time.time()
+    print("Time to fetch orders: " + str(fetch_time-start_time))
     f_orders = filter_orders(orders, args)
+    filter_time = time.time()
+    print("Time to filer:", str(filter_time-fetch_time))
     vendors = []
     managers = []
     wtmessages_list = {}
@@ -206,7 +163,12 @@ def woocom_orders():
         o["wallet_payment"] = wallet_payment
         o["total"] = float(o["total"]) + float(o["wallet_payment"])
         o["checkout_url"] = get_checkout_url(o)
+
+    data_time = time.time()
+    print("Calculating additional columns" + str(data_time-filter_time))
     orders = get_orders_with_messages(f_orders, wcapi)
+    message_time = time.time()
+    print("Create message time" + str(message_time-data_time))
     return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, c_page=params["page"])
 
 

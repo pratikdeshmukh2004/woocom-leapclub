@@ -1,6 +1,7 @@
 import os
 import csv
-
+import time
+import concurrent.futures
 def format_delivery_date(d):
     d_s = d.split("/")
     f_s = d_s[0]+" "
@@ -235,34 +236,45 @@ def get_shipping_total_for_csv(o):
         return ""
 
 
+
 def get_orders_with_messages(orders, wcapi):
-    for o in orders:
+
+    def _get_orders_with_messages(o):
         order_refunds = []
         if len(o["refunds"]) > 0:
+            refund_start = time.time()
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
-        c_msg = "Here are the order details:\n\n" + \
-            list_order_items(o["line_items"], order_refunds) + \
-            "*Total Amount: " + \
-                get_totals(o["total"], order_refunds) + \
-            get_shipping_total(o)+"*\n\n"+"Customer Note: "+o["customer_note"]
-        if len(o["refunds"]) > 0:
-            c_msg = c_msg + \
-                list_order_refunds(order_refunds) + \
-                list_only_refunds(order_refunds)
-        s_msg = ("Order ID: "+str(o["id"])
-                 + "\n\nName: "+o["billing"]["first_name"] +
-                 " "+o["billing"]["last_name"]
-                 + "\nMobile: "+o["billing"]["phone"]
-                 + "\nAddress: "+o["shipping"]["address_1"] +", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
-                 ", "+o["billing"]["address_2"]
-                 + "\n\nTotal Amount: "+get_totals(o["total"], order_refunds)
-                 + get_shipping_total(o)
-                 + "\n\n"+list_order_items(o["line_items"], order_refunds)
-                 + "Payment Status: Paid To LeapClub."
-                 + "\nCustomer Note: "+o["customer_note"])
-        o["c_msg"] = c_msg
-        o["s_msg"] = s_msg
-    return orders
+            print("Time to calculate refund: "+ str(time.time()-refund_start))
+            c_msg = "Here are the order details:\n\n" + \
+                list_order_items(o["line_items"], order_refunds) + \
+                "*Total Amount: " + \
+                    get_totals(o["total"], order_refunds) + \
+                get_shipping_total(o)+"*\n\n"+"Customer Note: "+o["customer_note"]
+            if len(o["refunds"]) > 0:
+                c_msg = c_msg + \
+                    list_order_refunds(order_refunds) + \
+                    list_only_refunds(order_refunds)
+            s_msg = ("Order ID: "+str(o["id"])
+                     + "\n\nName: "+o["billing"]["first_name"] +
+                     " "+o["billing"]["last_name"]
+                     + "\nMobile: "+o["billing"]["phone"]
+                     + "\nAddress: "+o["shipping"]["address_1"] +", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
+                     ", "+o["billing"]["address_2"]
+                     + "\n\nTotal Amount: "+get_totals(o["total"], order_refunds)
+                     + get_shipping_total(o)
+                     + "\n\n"+list_order_items(o["line_items"], order_refunds)
+                     + "Payment Status: Paid To LeapClub."
+                     + "\nCustomer Note: "+o["customer_note"])
+            o["c_msg"] = c_msg
+            o["s_msg"] = s_msg
+        return o
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(_get_orders_with_messages,orders)
+
+    return list(result)
+
+
 
 
 def get_csv_from_orders(orders, wcapi):
