@@ -14,7 +14,7 @@ import requests
 import csv
 import os
 import ast
-import time
+import time, datetime
 app = Flask(__name__, instance_relative_config=True)
 datepicker(app)
 
@@ -89,7 +89,7 @@ class wtmessages(db.Model):
         nullable=False,
     )
     order_id = db.Column(db.Integer)
-    time_sent = db.Column(db.DateTime, default=datetime.utcnow())
+    time_sent = db.Column(db.DateTime, default=datetime.datetime.utcnow())
     template_name = db.Column(db.String)
     broadcast_name = db.Column(db.String)
     status = db.Column(db.String)
@@ -122,6 +122,7 @@ def woocom_orders():
     vendors = []
     managers = []
     wtmessages_list = {}
+    orders = get_orders_with_messages(f_orders, wcapi)
     for o in orders:
         refunds = 0
         for r in o["refunds"]:
@@ -166,7 +167,6 @@ def woocom_orders():
 
     data_time = time.time()
     print("Calculating additional columns" + str(data_time-filter_time))
-    orders = get_orders_with_messages(f_orders, wcapi)
     message_time = time.time()
     print("Create message time" + str(message_time-data_time))
     return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, c_page=params["page"])
