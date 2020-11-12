@@ -14,7 +14,7 @@ import requests
 import csv
 import os
 import ast
-import time, datetime
+import time
 app = Flask(__name__, instance_relative_config=True)
 datepicker(app)
 
@@ -89,7 +89,7 @@ class wtmessages(db.Model):
         nullable=False,
     )
     order_id = db.Column(db.Integer)
-    time_sent = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    time_sent = db.Column(db.DateTime, default=datetime.utcnow())
     template_name = db.Column(db.String)
     broadcast_name = db.Column(db.String)
     status = db.Column(db.String)
