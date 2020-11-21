@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
@@ -42,6 +42,11 @@ class User:
 users = []
 users.append(User(email=app.config["ADMIN_EMAIL"],
                   password=app.config["ADMIN_PASSWORD"]))
+
+
+@app.errorhandler(404)
+def invalid_route(e):
+    return redirect(url_for("products"))
 
 
 @app.before_request
@@ -94,6 +99,7 @@ class wtmessages(db.Model):
     broadcast_name = db.Column(db.String)
     status = db.Column(db.String)
 
+
 @app.route("/orders")
 def woocom_orders():
     if not g.user:
@@ -114,7 +120,7 @@ def woocom_orders():
     params["page"] = request.args.get("page", 1, type=int)
     start_time = time.time()
     orders = wcapi.get("orders", params=params).json()
-    fetch_time= time.time()
+    fetch_time = time.time()
     print("Time to fetch orders: " + str(fetch_time-start_time))
     f_orders = filter_orders(orders, args)
     filter_time = time.time()
@@ -180,7 +186,7 @@ def send_whatsapp_msg(args, mobile, name):
     else:
         return {"result": "error", "info": "Please Select Valid Button."}
     parameters_s = "["
-    args["name"]=args["c_name"]
+    args["name"] = args["c_name"]
     for d in args:
         parameters_s = parameters_s + \
             '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
@@ -258,6 +264,73 @@ def logout():
     session.pop('user_id', None)
     return redirect(url_for('login'))
 
+
+@app.route("/products")
+def products():
+    if not g.user:
+        return redirect(url_for('login'))
+    args = request.args.to_dict(flat=True)
+    if "page" in args:
+        page = args["page"]
+    else:
+        page = 1
+    args["stock_status"] = "instock"
+    args["per_page"] = 50
+    products = wcapi.get("products", params=args).json()
+    total_categories = list_categories(wcapi)
+    print(len(total_categories))
+    return render_template("products/index.html", user=g.user, products=products, params=args, total_categories=total_categories, page=int(page))
+
+
+@app.route("/list_product_categories")
+def list_product_categories():
+    if not g.user:
+        return redirect(url_for('login'))
+    args = request.args.to_dict(flat=True)
+    args["stock_status"] = "instock"
+    args["per_page"] = 100
+    total_products = []
+    page = 1
+    while True:
+        args["page"] = page
+        products = wcapi.get("products", params=args).json()
+        total_products.extend(products)
+        page=page+1
+        if len(products)<100:
+            break
+    list_categories = list_categories_with_products(total_products)
+    filename = str(datetime.utcnow())+"-" + "categories-text.txt"
+    response = make_response(list_categories)
+    cd = 'attachment; filename='+filename
+    response.headers['Content-Disposition'] = cd
+    response.mimetype = 'text/csv'
+    return response
+
+@app.route("/list_product_categories_by_c")
+def list_product_categories_by_c():
+    if not g.user:
+        return redirect(url_for('login'))
+    args = request.args.to_dict(flat=False)
+    args["stock_status"] = "instock"
+    args["per_page"] = 100
+    total_products = []
+    for c in args["categories"]:
+        page = 1
+        args["category"] = str(c)
+        while True:
+            args["page"] = page
+            products = wcapi.get("products", params=args).json()
+            total_products.extend(products)
+            page=page+1
+            if len(products)<100:
+                break
+    list_categories = list_categories_with_products(total_products)
+    filename = str(datetime.utcnow())+"-" + "categories-text.txt"
+    response = make_response(list_categories)
+    cd = 'attachment; filename='+filename
+    response.headers['Content-Disposition'] = cd
+    response.mimetype = 'text/csv'
+    return response
 
 if __name__ == "__main__":
     # db.create_all()

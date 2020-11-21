@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      rel="icon"
+      href="{{url_for('static', filename='images/logo.jpeg')}}"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="{{url_for('static',filename='css/icons.min.css')}}"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <link
+      href="{{url_for('static',filename='css/app.min.css')}}"
+      rel="stylesheet"
+      type="text/css"
+      id="light-style"
+    />
+    <link
+      href="{{url_for('static',filename='css/app-dark.min.css')}}"
+      rel="stylesheet"
+      type="text/css"
+      id="dark-style"
+    />
+    <link
+      href="{{url_for('static',filename='css/_toaster.scss')}}"
+      rel="stylesheet"
+      type="text/css"
+      id="dark-style"
+    />
+    <title>Leap Club India</title>
+  </head>
+  <body
+    class="loading"
+    data-layout-config='{"leftSideBarTheme":"default","layoutBoxed":false, "leftSidebarCondensed":false, "leftSidebarScrollable":false,"darkMode":false, "showRightSidebarOnStart": true}'
+  >
+    <div class="wrapper">
+      <!-- ========== Left Sidebar Start ========== -->
+      <div class="left-side-menu">
+        <!-- LOGO -->
+        <a href="index.html" class="logo text-center logo-light">
+          <span class="logo-lg font-weight-bold text-white" style="font-size: 20px;">
+            Leap Club
+          </span>
+        </a>
+
+        <!-- LOGO -->
+        <a href="index.html" class="logo text-center logo-dark">
+          <span class="logo-lg font-weight-bold" style="font-size: 20px;">
+            Leap Club
+          </span>
+        </a>
+
+        <div class="h-100" id="left-side-menu-container" data-simplebar>
+          <!--- Sidemenu -->
+          <ul class="metismenu side-nav">
+            <li class="side-nav-title side-nav-item">Sales</li>
+
+            <li class="side-nav-item">
+              <a href="{{url_for('woocom_orders')}}" class="side-nav-link">
+                <i class="uil-store-alt"></i>
+                <span> Orders </span>
+              </a>
+            </li>
+
+            <li class="side-nav-title side-nav-item">Products</li>
+
+            <li class="side-nav-item">
+              <a href="{{url_for('products')}}" class="side-nav-link">
+                <i class="uil-shopping-basket"></i>
+                <span> Products </span>
+              </a>
+            </li>
+          </ul>
+
+          <div class="clearfix"></div>
+        </div>
+        <!-- Sidebar -left -->
+      </div>
+      <!-- Left Sidebar End -->
+      <div class="content-page">
+        <div class="content">
+          <!-- Topbar Start -->
+          <div class="navbar-custom">
+            <ul class="list-unstyled topbar-right-menu float-right mb-0">
+              <li class="dropdown notification-list">
+                <a
+                  class="nav-link dropdown-toggle nav-user arrow-none mr-0"
+                  data-toggle="dropdown"
+                  href="#"
+                  role="button"
+                  aria-haspopup="false"
+                  aria-expanded="false"
+                >
+                  <span>
+                    <span class="account-user-name">{{user.email}}</span>
+                    <span class="account-position">Admin</span>
+                  </span>
+                </a>
+                <div
+                  class="dropdown-menu dropdown-menu-right dropdown-menu-animated topbar-dropdown-menu profile-dropdown"
+                >
+                  <!-- item-->
+                  <div class="dropdown-header noti-title">
+                    <h6 class="text-overflow m-0">Welcome !</h6>
+                  </div>
+
+                  <a
+                    href="{{url_for('logout')}}"
+                    class="dropdown-item notify-item"
+                  >
+                    <i class="mdi mdi-logout mr-1"></i>
+                    <span>Logout</span>
+                  </a>
+                </div>
+              </li>
+            </ul>
+            <button class="button-menu-mobile open-left disable-btn">
+              <i class="mdi mdi-menu"></i>
+            </button>
+            <div class="app-search">
+              <form>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    class="form-control"
+                    placeholder="Search..."
+                  />
+                  <span class="mdi mdi-magnify"></span>
+                  <div class="input-group-append">
+                    <button class="btn btn-primary" type="submit">
+                      Search
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+          <!-- end Topbar -->
+          <div class="container-fluid">{% block content %}{% endblock %}</div>
+        </div>
+      </div>
+    </div>
+    <script src="{{url_for('static',filename='js/vendor.min.js')}}"></script>
+    <script src="{{url_for('static',filename='js/app.min.js')}}"></script>
+    <script src="{{url_for('static',filename='js/demo.dashboard.js')}}"></script>
+    <script src="{{url_for('static',filename='js/custom.js')}}"></script>
+  </body>
+</html>

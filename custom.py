@@ -316,3 +316,36 @@ def get_checkout_url(o):
     url = "https://store.leapclub.in/checkout/order-pay/" + \
         str(o["id"])+"/?pay_for_order=true&key="+o["order_key"]
     return url
+
+def list_categories_with_products(products):
+    main_list = {}
+    d_c=[]
+    for p in products:
+        if len(p["categories"])>1:
+            d_c.append(p)
+        for c in p["categories"]:
+            if c["name"] in main_list.keys():
+                main_list[c["name"]].append(p)
+            else:
+                main_list[c["name"]] = []
+    txt = ""
+    for c in main_list:
+        if len(main_list[c])>0:
+            txt = txt+"\n*"+c+"*\n\n"
+            for p in main_list[c]:
+                txt = txt+p["name"]+" - ₹"+p["price"]+"\n"
+    print(d_c)
+    return(txt)
+
+def list_categories(wcapi):
+    args = {"per_page": 100}
+    categories = []
+    page = 1
+    while True:
+        args["page"] = page
+        c = wcapi.get("products/categories", params=args).json()
+        categories.extend(c)
+        page=page+1
+        if len(c)<100:
+            break
+    return categories
