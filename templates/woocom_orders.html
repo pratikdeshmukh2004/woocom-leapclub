@@ -79,7 +79,8 @@
         {%endif%}
         {% endfor%}
       </select>
-      <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker" class="form-control" {% if "delivery_date" in query %} {% if query["delivery_date"][0] != "" %} value="{{query["delivery_date"][0]}}" {% endif %} {% endif %}>
+      <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker" class="form-control mr-2" {% if "delivery_date" in query %} {% if query["delivery_date"][0] != "" %} value="{{query["delivery_date"][0]}}" {% endif %} {% endif %}>
+      <input placeholder="Created VIA" type="text" name="created_via" class="form-control" {% if "created_via" in query %} {% if query["created_via"][0] != "" %} value="{{query["created_via"][0]}}" {% endif %} {% endif %}>
       <button class="btn btn-info ml-1"><i class="fa fa-filter" aria-hidden="true"></i>
       </button>
     </form>
@@ -115,7 +116,7 @@
         <th scope="col">Whatsapp Messages</th>
         <th scope="col">Vendor</th>
         <th scope="col">Manager</th>
-        <th scope="col">Wallet Balance</th>
+        <!-- <th scope="col">Wallet Balance</th> -->
         <th scope="col">Created VIA</th>
         <th scope="col">Checkout URL</th>
       </tr>
@@ -247,9 +248,9 @@
         <td scope="row">
         {{o.manager}}
         </td>
-        <td scope="row">
+        <!-- <td scope="row">
           {{o.wallet_balance}}
-          </td>
+          </td> -->
         <td scope="row">
           {{o.created_via}}
           </td>

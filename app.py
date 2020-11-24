@@ -137,10 +137,10 @@ def woocom_orders():
     managers = []
     wtmessages_list = {}
     orders = get_orders_with_messages(f_orders, wcapi)
-    fetch_time = time.time()
-    orders = get_orders_with_wallet_balance(orders, wcapiw)
-    wallet_fetch_time = time.time()
-    print("Time to Fetch Wallet Balance Of All Orders:", str(wallet_fetch_time-fetch_time))
+    # fetch_time = time.time()
+    # orders = get_orders_with_wallet_balance(orders, wcapiw)
+    # wallet_fetch_time = time.time()
+    # print("Time to Fetch Wallet Balance Of All Orders:", str(wallet_fetch_time-fetch_time))
     for o in orders:
         refunds = 0
         for r in o["refunds"]:

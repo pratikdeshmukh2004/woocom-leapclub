@@ -23,7 +23,7 @@ def filter_orders(orders, params):
     f_orders = []
     for o in orders:
         c = {"payment_status": False,
-             "phone_number": False, "name": False, "vendor": False, "manager": False, "delivery_date": False}
+             "phone_number": False, "name": False, "vendor": False, "manager": False, "delivery_date": False, "created_via": False}
 
         if "payment_status" in params:
             if params["payment_status"][0] != "":
@@ -69,6 +69,14 @@ def filter_orders(orders, params):
                 c["manager"] = True
         else:
             c["manager"] = True
+        if "created_via" in params:
+            if params["created_via"][0] != "":
+                if o["created_via"] in params["created_via"]:
+                    c["created_via"] = True
+            else:
+                c["created_via"] = True
+        else:
+            c["created_via"] = True
         if "delivery_date" in params:
             if params["delivery_date"][0] != "":
                 d = format_delivery_date(params["delivery_date"][0])
@@ -80,7 +88,7 @@ def filter_orders(orders, params):
                 c["delivery_date"] = True
         else:
             c["delivery_date"] = True
-        if c["payment_status"] and c["phone_number"] and c["name"] and c["vendor"] and c["manager"] and c["delivery_date"]:
+        if c["payment_status"] and c["phone_number"] and c["name"] and c["vendor"] and c["manager"] and c["delivery_date"] and c["created_via"]:
             f_orders.append(o)
     return f_orders
 
