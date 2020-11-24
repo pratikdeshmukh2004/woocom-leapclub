@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
@@ -26,6 +26,14 @@ wcapi = API(
     consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY"],
     consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET"],
     version="wc/v3",
+    timeout=15
+)
+
+wcapiw = API(
+    url=app.config["WOOCOMMERCE_API_URL"],
+    consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY_WALLET"],
+    consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET_WALLET"],
+    version="wp/v2",
     timeout=15
 )
 
@@ -129,6 +137,10 @@ def woocom_orders():
     managers = []
     wtmessages_list = {}
     orders = get_orders_with_messages(f_orders, wcapi)
+    fetch_time = time.time()
+    orders = get_orders_with_wallet_balance(orders, wcapiw)
+    wallet_fetch_time = time.time()
+    print("Time to Fetch Wallet Balance Of All Orders:", str(wallet_fetch_time-fetch_time))
     for o in orders:
         refunds = 0
         for r in o["refunds"]:

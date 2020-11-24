@@ -276,6 +276,14 @@ def get_orders_with_messages(orders, wcapi):
         result = executor.map(_get_orders_with_messages, orders)
     return list(result)
 
+def get_orders_with_wallet_balance(orders, wcapiw):
+    def _get_orders_with_wallet_balance(o):
+        balance = wcapiw.get("current_balance/"+str(o["customer_id"]))
+        o["wallet_balance"] = float(balance.text[1:-1])
+        return o
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(_get_orders_with_wallet_balance, orders)
+    return list(result)
 
 def get_csv_from_orders(orders, wcapi):
     f = open("sample.csv", "w+")
