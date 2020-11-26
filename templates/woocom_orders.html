@@ -31,6 +31,9 @@
     <a class="nav-link {% if nav_active == 'tbd-paid, tbd-unpaid' %} active {%endif%}" href="{{url_for('woocom_orders', status='tbd-paid, tbd-unpaid')}}">To Be Delivered</a>
   </li>
   <li class="nav-item">
+    <a class="nav-link {% if nav_active == 'subscription' %} active {%endif%}" href="{{url_for('woocom_orders', status='subscription')}}">Subscription</a>
+  </li>
+  <li class="nav-item">
     <a class="nav-link {% if nav_active == 'delivered-unpaid' %} active {%endif%}" href="{{url_for('woocom_orders', status='delivered-unpaid')}}">Delivered Unpaid</a>
   </li>
   <li class="nav-item">
@@ -157,7 +160,7 @@
           {% endif %}
           {%endif%}
           {% endif %}
-          {% if nav_active == "tbd-paid, tbd-unpaid"%}
+          {% if nav_active == "tbd-paid, tbd-unpaid" or nav_active == "subscription"%}
           {% if o.manager and o.vendor_type and o.delivery_date and o.payment_method %}
           <div class="mb-1" style="min-width: 140px;">
             <a title="Delivery Today Message" class="btn btn-success btn-sm"  href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='delivery_today_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')

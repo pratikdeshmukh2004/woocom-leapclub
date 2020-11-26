@@ -18,6 +18,7 @@ def format_delivery_date(d):
 
 
 def filter_orders(orders, params):
+    print(len(params))
     if len(params) <= 4:
         return orders
     f_orders = []
@@ -224,7 +225,10 @@ def get_totals(total, refunds):
 def get_params(args):
     params = {"per_page": 50}
     if "status" in args:
-        params["status"] = args["status"][0]
+        if args["status"][0] == 'subscription':
+            params["status"] = "tbd-paid, tbd-unpaid"
+        else:
+            params["status"] = args["status"][0]
     else:
         params["status"] = "tbd-paid, tbd-unpaid"
     if "order_ids" in args:
@@ -365,3 +369,18 @@ def list_categories(wcapi):
         if len(c)<100:
             break
     return categories
+
+def list_all_orders_tbd(wcapi):
+    orders = []
+    page = 1
+    while True:
+        order = wcapi.get("orders", params={"page":page, "per_page": 100, "status": "tbd-paid, tbd-unpaid"}).json()
+        orders.extend(order)
+        page=page+1
+        if len(order)<100:
+            break
+    total = []
+    for o in orders:
+        if o["created_via"] == "subscription":
+            total.append(o)
+    return total
