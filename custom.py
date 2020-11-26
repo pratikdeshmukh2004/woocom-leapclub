@@ -384,3 +384,10 @@ def list_all_orders_tbd(wcapi):
         if o["created_via"] == "subscription":
             total.append(o)
     return total
+
+def list_created_via_with_filter(orders):
+    created_vias = []
+    for o in orders:
+        if o["created_via"] not in created_vias:
+            created_vias.append(o["created_via"])
+    return created_vias

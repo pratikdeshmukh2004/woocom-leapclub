@@ -13,7 +13,7 @@
           </li>
           <li class="nav-item">
             <a class="nav-link" href="{{url_for('logout')}}">
-              <i class="fa fa-sign-out" aria-hidden="true"></i>
+              <i class="mdi mdi-logout" aria-hidden="true"></i>
               Logout</a>
           </li>
         </ul>
@@ -82,9 +82,21 @@
         {%endif%}
         {% endfor%}
       </select>
+      <select data-live-search="true" multiple title="Created Via" name="created_via" class="selectpicker mr-2">
+        {% for v in list_created_via %}
+        {% if v != ""%}
+          <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
+        {%endif%}
+        {% endfor%}
+      </select>      <select data-live-search="true" multiple title="Manager" name="manager" class="selectpicker mr-2">
+        {% for m in managers %}
+        {% if m != ""%}
+          <option {% if "manager" in query %} {% if m in query["manager"] %} selected {% endif %} {% endif %}>{{m}}</option>
+        {%endif%}
+        {% endfor%}
+      </select>
       <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker" class="form-control mr-2" {% if "delivery_date" in query %} {% if query["delivery_date"][0] != "" %} value="{{query["delivery_date"][0]}}" {% endif %} {% endif %}>
-      <input placeholder="Created VIA" type="text" name="created_via" class="form-control" {% if "created_via" in query %} {% if query["created_via"][0] != "" %} value="{{query["created_via"][0]}}" {% endif %} {% endif %}>
-      <button class="btn btn-info ml-1"><i class="fa fa-filter" aria-hidden="true"></i>
+      <button class="btn btn-info ml-1"><i class="mdi mdi-18px mdi-filter-variant" aria-hidden="true"></i>
       </button>
     </form>
     <form autocomplete="off" action="{{url_for('download_csv')}}", method="POST" class = "form-inline mt-2" role = "form">
@@ -98,7 +110,7 @@
         </option>
         {% endfor%}
       </select>
-      <button class="btn btn-info"><i class="fa fa-download" aria-hidden="true"></i>
+      <button class="btn btn-info"><i class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i>
       </form>
 </div>
 <div style="overflow-x: auto;" class="ml-1 mr-1 pt-3">
@@ -130,31 +142,32 @@
         <td class="{{o.id}}"scope="row">
           {% if o.manager and o.vendor_type %}
           <div style="min-width: 92px;">
-            <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
-            <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="fa fa-clipboard btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
+            <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
+            <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
           </div>
           {% endif %}
           <div class="mt-1">
           {% if nav_active == "processing"%}
           {% if o.manager and o.vendor_type %}
-          <div style="min-width: 120px;">
+          <div style="min-width: 125px;">
               <a class="btn btn-success btn-sm" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='hello_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
               ">
-                <i title="Hello Message" class="fa fa-whatsapp" aria-hidden="true"></i>
+                <i title="Hello Message" class="mdi mdi-18px mdi-whatsapp"></i>
               </a>
               <a class="btn btn-success btn-sm ml-1" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_detail_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
               ">
-                <i title="Order Detail Message" class="fa fa-whatsapp" aria-hidden="true"></i>
+                <i title="Order Detail Message" class="mdi mdi-18px mdi-whatsapp"></i>
               </a>
               {% if o.date_paid == None %}
               <a class="btn btn-success btn-sm ml-1" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='postpay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
               ">
-              <i title="Postpay Message" class="fa fa-whatsapp" aria-hidden="true"></i>
+              <i title="Postpay Message" class="mdi mdi-18px mdi-whatsapp"></i>
             </a>
             {% else %}
             <a class="btn btn-success btn-sm ml-1" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='prepay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
             ">
-            <i title="Prepay Message" class="fa fa-whatsapp" aria-hidden="true"></i>
+            <i title="Prepay Message" class="mdi mdi-18px mdi-whatsapp"></i>
+            </a>
           </button>
           </div>
           {% endif %}
@@ -196,11 +209,11 @@
               <div style="min-width: 92px;">
                <a class="btn btn-success btn-sm" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
                ">
-                <i title="Feedback Message" class="fa fa-whatsapp" aria-hidden="true"></i>
+                <i title="Feedback Message" class="mdi mdi-18px mdi-whatsapp" aria-hidden="true"></i>
                </a>
                <a class="btn btn-success btn-sm ml-1" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='payment_remainder_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
                ">
-                <i title="Payment Reminder Message" class="fa fa-whatsapp" aria-hidden="true"></i>
+                <i title="Payment Reminder Message" class="mdi mdi-18px mdi-whatsapp" aria-hidden="true"></i>
                </a>
               </div>
               {%endif%}
@@ -209,7 +222,7 @@
           {% if o.manager and o.vendor_type %}
               <a class="btn btn-success btn-sm" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=c_page)}}')
               ">
-                <i title="Feedback Message" class="fa fa-whatsapp" aria-hidden="true"></i>
+                <i title="Feedback Message" class="mdi mdi-18px mdi-whatsapp" aria-hidden="true"></i>
               </a>
               {%endif%}
           {% endif %}
