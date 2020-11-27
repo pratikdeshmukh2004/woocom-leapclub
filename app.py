@@ -29,13 +29,13 @@ wcapi = API(
     timeout=15
 )
 
-wcapiw = API(
-    url=app.config["WOOCOMMERCE_API_URL"],
-    consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY_WALLET"],
-    consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET_WALLET"],
-    version="wp/v2",
-    timeout=15
-)
+# wcapiw = API(
+#     url=app.config["WOOCOMMERCE_API_URL"],
+#     consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY_WALLET"],
+#     consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET_WALLET"],
+#     version="wp/v2",
+#     timeout=15
+# )
 
 
 class User:
