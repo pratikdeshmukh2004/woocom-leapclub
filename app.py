@@ -206,6 +206,7 @@ def send_whatsapp_msg(args, mobile, name):
         return {"result": "error", "info": "Please Select Valid Button."}
     parameters_s = "["
     args["name"] = args["c_name"]
+    args["order_note"] = "No changes to the order" if args["order_note"]=='' else args["order_note"]
     for d in args:
         parameters_s = parameters_s + \
             '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
