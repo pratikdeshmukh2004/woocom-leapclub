@@ -404,8 +404,8 @@ def new_order():
     params["url_post_pay"] = checkout_url
     od = datetime.strptime(o["date_created"],'%Y-%m-%dT%H:%M:%S')
     cd = datetime.now()
-    nd = (cd - timedelta(minutes=15))
-    if o["status"] == "processing" and o["created_via"] == "checkout" and vendor and od > nd:
+    nd = (cd - timedelta(minutes=5))
+    if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
         for num in mobile_numbers:
             print("sent to : "+num)
             if o["date_paid"] != None:
