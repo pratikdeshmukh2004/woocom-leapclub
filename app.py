@@ -362,8 +362,8 @@ def list_product_categories_by_c():
 @app.route("/new_order", methods=["GET", "POST"])
 def new_order():
     o = request.get_json()
-    customer_number = o["billing"]["phone"]
-    mobile_numbers = ["919325837420", "919517622867"]
+    customer_number = _format_mobile_number(o["billing"]["phone"])
+    mobile_numbers=[customer_number]
     params = {}
     vendor = ""
     delivery_date = ""
@@ -425,6 +425,12 @@ def new_order():
     print("Done")
     return {"Result": "Success No Error..."}
 
+
+def _format_mobile_number(number):
+    mobile_number = number.strip(" ").replace(" ", "")
+    mobile_number = mobile_number[-10:]
+    mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+    return mobile_number
 
 if __name__ == "__main__":
     # db.create_all()
