@@ -1,0 +1,145 @@
+{
+  "id": 6047,
+  "parent_id": 0,
+  "number": "6047",
+  "order_key": "wc_order_5fc780ecd2289",
+  "created_via": "checkout",
+  "version": "4.7.1",
+  "status": "processing",
+  "currency": "INR",
+  "date_created": "2020-12-02T17:26:28",
+  "date_created_gmt": "2020-12-02T11:56:28",
+  "date_modified": "2020-12-02T17:26:29",
+  "date_modified_gmt": "2020-12-02T11:56:29",
+  "discount_total": "0.00",
+  "discount_tax": "0.00",
+  "shipping_total": "100.00",
+  "shipping_tax": "0.00",
+  "cart_tax": "0.00",
+  "total": "320.00",
+  "total_tax": "0.00",
+  "prices_include_tax": true,
+  "customer_id": 2,
+  "customer_ip_address": "171.76.239.124",
+  "customer_user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
+  "customer_note": "",
+  "billing": {
+    "first_name": "Shubham",
+    "last_name": "Bansal",
+    "company": "",
+    "address_1": "940",
+    "address_2": "",
+    "city": "Jhansi",
+    "state": "UP",
+    "postcode": "284001",
+    "country": "IN",
+    "email": "shubhambansal.inbox@gmail.com",
+    "phone": "919517622867"
+  },
+  "shipping": {
+    "first_name": "Shubham",
+    "last_name": "Bansal",
+    "company": "",
+    "address_1": "940",
+    "address_2": "",
+    "city": "Jhansi",
+    "state": "UP",
+    "postcode": "284001",
+    "country": "IN"
+  },
+  "payment_method": "cod",
+  "payment_method_title": "Pay Online on Delivery",
+  "transaction_id": "",
+  "date_paid": null,
+  "date_paid_gmt": null,
+  "date_completed": null,
+  "date_completed_gmt": null,
+  "cart_hash": "9b2a524bb045ca295166bc24643503f7",
+  "meta_data": [
+    { "id": 141348, "key": "_wc_os_customer_permitted", "value": "" },
+    { "id": 141350, "key": "_vendor_id", "value": "119" },
+    { "id": 141351, "key": "_vendor_term", "value": "1" },
+    {
+      "id": 141352,
+      "key": "wos_vendor_data",
+      "value": {
+        "vendor_email": "shubham+vendortest@leapclub.in",
+        "vendor_name": "Organic German Bake Shop",
+        "vendor_slug": "organic-german-bake-shop"
+      }
+    },
+    { "id": 141353, "key": "cloned_from", "value": "6045" },
+    { "id": 141354, "key": "splitted_from", "value": "6045" },
+    { "id": 141356, "key": "_order_discount", "value": "" },
+    { "id": 141395, "key": "is_vat_exempt", "value": "no" },
+    {
+      "id": 141396,
+      "key": "_wc_facebook_for_woocommerce_order_placed",
+      "value": "yes"
+    },
+    { "id": 141401, "key": "_wcpv_commission_added", "value": "yes" },
+    { "id": 141402, "key": "split_status", "value": "1" },
+    { "id": 141404, "key": "_wos_remove_shipping", "value": "1" },
+    { "id": 141415, "key": "_wc_os_child_order", "value": "yes" },
+    { "id": 141416, "key": "_wc_os_report_included", "value": "yes" }
+  ],
+  "line_items": [
+    {
+      "id": 5099,
+      "name": "Multigrain Sourdough Bread  (500 g)",
+      "product_id": 2792,
+      "variation_id": 0,
+      "quantity": 1,
+      "tax_class": "",
+      "subtotal": "220.00",
+      "subtotal_tax": "0.00",
+      "total": "220.00",
+      "total_tax": "0.00",
+      "taxes": [],
+      "meta_data": [
+        {
+          "id": 49778,
+          "key": "_fulfillment_status",
+          "value": "unfulfilled",
+          "display_key": "_fulfillment_status",
+          "display_value": "unfulfilled"
+        },
+        {
+          "id": 49779,
+          "key": "_commission_status",
+          "value": "unpaid",
+          "display_key": "_commission_status",
+          "display_value": "unpaid"
+        }
+      ],
+      "sku": "Multigrain Sourdough Bread (500 g) Organic German Bake Shop",
+      "price": 220,
+      "parent_name": null,
+      "bundled_by": "",
+      "bundled_item_title": "",
+      "bundled_items": []
+    }
+  ],
+  "tax_lines": [],
+  "shipping_lines": [
+    {
+      "id": 5103,
+      "method_title": "Free Delivery Above 400",
+      "method_id": "table_rate",
+      "instance_id": "7",
+      "total": "100.00",
+      "total_tax": "0.00",
+      "taxes": [],
+      "meta_data": []
+    }
+  ],
+  "fee_lines": [],
+  "coupon_lines": [],
+  "refunds": [],
+  "currency_symbol": "₹",
+  "_links": {
+    "self": [{ "href": "https://leapclub.in/wp-json/wc/v3/orders/6047" }],
+    "collection": [{ "href": "https://leapclub.in/wp-json/wc/v3/orders" }],
+    "customer": [{ "href": "https://leapclub.in/wp-json/wc/v3/customers/2" }]
+  }
+}

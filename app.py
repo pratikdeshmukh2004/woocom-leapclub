@@ -172,7 +172,7 @@ def woocom_orders():
 
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
-                if item["name"] == "Via wallet":
+                if "wallet" in item["name"].lower():
                     wallet_payment = (-1)*float(item["total"])
 
         if vendor not in vendors:
@@ -206,7 +206,7 @@ def send_whatsapp_msg(args, mobile, name):
         return {"result": "error", "info": "Please Select Valid Button."}
     parameters_s = "["
     args["name"] = args["c_name"]
-    args["order_note"] = "No changes to the order" if args["order_note"]=='' else args["order_note"]
+    args["order_note"] = "No changes to the order" if args["order_note"] == '' else args["order_note"]
     for d in args:
         parameters_s = parameters_s + \
             '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
@@ -315,8 +315,8 @@ def list_product_categories():
         args["page"] = page
         products = wcapi.get("products", params=args).json()
         total_products.extend(products)
-        page=page+1
-        if len(products)<100:
+        page = page+1
+        if len(products) < 100:
             break
     list_categories = list_categories_with_products(total_products)
     filename = str(datetime.utcnow())+"-" + "categories-text.txt"
@@ -325,6 +325,7 @@ def list_product_categories():
     response.headers['Content-Disposition'] = cd
     response.mimetype = 'text/csv'
     return response
+
 
 @app.route("/list_product_categories_by_c")
 def list_product_categories_by_c():
@@ -341,8 +342,8 @@ def list_product_categories_by_c():
             args["page"] = page
             products = wcapi.get("products", params=args).json()
             total_products.extend(products)
-            page=page+1
-            if len(products)<100:
+            page = page+1
+            if len(products) < 100:
                 break
     list_categories = list_categories_with_products(total_products)
     filename = str(datetime.utcnow())+"-" + "categories-text.txt"
@@ -351,6 +352,61 @@ def list_product_categories_by_c():
     response.headers['Content-Disposition'] = cd
     response.mimetype = 'text/csv'
     return response
+
+
+@app.route("/new_order", methods=["GET", "POST"])
+def new_order():
+    mobile_numbers = ["919325837420", "919517622867"]
+    o = request.get_json()
+    params = {}
+    vendor = ""
+    for item in o["meta_data"]:
+            if item["key"] == "wos_vendor_data":
+                vendor = item["value"]["vendor_name"]
+            elif item["key"] == "_wc_acof_6":
+                vendor = item["value"]
+    if vendor in vendor_type.keys():
+        vendor_type1 = vendor_type[vendor]
+    else:
+        vendor_type1 = ""
+    checkout_url = str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])
+    wallet_payment = 0
+    if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment = (-1)*float(item["total"])
+    print(wallet_payment)
+    o["total"] = float(o["total"]) + float(wallet_payment)
+    params["c_name"] = o["billing"]["first_name"]
+    params["order_id"] = o["id"]
+    params["order_note"] = o["customer_note"]
+    params["total_amount"] = float(o["total"])
+    params["delivery_date"] = "December 3, 2020"
+    params["payment_method"] = o["payment_method_title"]
+    params["delivery_charge"] = o["shipping_total"]
+    params["items_amount"] = float(o["total"])-float(o["shipping_total"])
+    params["order_key"] = o["order_key"]
+    params["vendor_type"] = vendor_type1
+    params["seller"] = vendor
+    params["url_post_pay"] = checkout_url
+    if o["status"] == "processing" and o["created_via"] == "checkout" and vendor:
+        for num in mobile_numbers:
+            print("sent to : "+num)
+            if o["date_paid"] != None:
+                result = send_whatsapp_msg(params, num, "order_prepay")
+            else:
+                result = send_whatsapp_msg(params, num, "order_postpay")
+    else:
+        return {"Result": "Please Enter Valid Detal..."}
+    if result["result"] == "success":
+            new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+    else:
+        new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
+                            "broadcast_name"], status="failed", time_sent=datetime.utcnow())
+    db.session.add(new_wt)
+    db.session.commit()
+    return {"Result": "Success No Error..."}
 
 if __name__ == "__main__":
     # db.create_all()
