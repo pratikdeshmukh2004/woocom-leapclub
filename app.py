@@ -359,12 +359,11 @@ def list_product_categories_by_c():
     return response
 
 
-@app.route("/new_order", methods=["GET", "POST"])
+@app.route("/order_updates", methods=["GET", "POST"])
 def new_order():
     o = request.get_json()
     customer_number = o["billing"]["phone"]
     mobile_numbers = ["919325837420", "919517622867"]
-    print("\n\nEvent aaya hai........................."+str(o["id"]))
     params = {}
     vendor = ""
     delivery_date = ""
