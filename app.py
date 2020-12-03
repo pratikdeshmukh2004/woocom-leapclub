@@ -168,8 +168,12 @@ def woocom_orders():
                 vendor = item["value"]
             elif item["key"] == "_wc_acof_3":
                 manager = item["value"]
+            elif item["key"] == "_delivery_date":
+                if delivery_date == "":
+                    delivery_date = item["value"]
             elif item["key"] == "_wc_acof_2_formatted":
-                delivery_date = item["value"]
+                if delivery_date == "":
+                    delivery_date = item["value"]
 
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
@@ -357,16 +361,25 @@ def list_product_categories_by_c():
 
 @app.route("/new_order", methods=["GET", "POST"])
 def new_order():
-    print("\n\nEvent aaya hai.........................")
-    mobile_numbers = ["919325837420", "919517622867"]
     o = request.get_json()
+    customer_number = o["billing"]["phone"]
+    mobile_numbers = ["919325837420", "919517622867"]
+    print("\n\nEvent aaya hai........................."+str(o["id"]))
     params = {}
     vendor = ""
+    delivery_date = ""
     for item in o["meta_data"]:
-            if item["key"] == "wos_vendor_data":
-                vendor = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6":
-                vendor = item["value"]
+        if item["key"] == "wos_vendor_data":
+            vendor = item["value"]["vendor_name"]
+        elif item["key"] == "_wc_acof_6":
+            vendor = item["value"]
+        elif item["key"] == "_delivery_date":
+            if delivery_date == "":
+                delivery_date = item["value"]
+        elif item["key"] == "_wc_acof_2_formatted":
+            if delivery_date == "":
+                delivery_date = item["value"]
+    print(delivery_date)
     if vendor in vendor_type.keys():
         vendor_type1 = vendor_type[vendor]
     else:
@@ -374,15 +387,15 @@ def new_order():
     checkout_url = str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])
     wallet_payment = 0
     if len(o["fee_lines"]) > 0:
-            for item in o["fee_lines"]:
-                if "wallet" in item["name"].lower():
-                    wallet_payment = (-1)*float(item["total"])
+        for item in o["fee_lines"]:
+            if "wallet" in item["name"].lower():
+                wallet_payment = (-1)*float(item["total"])
     o["total"] = float(o["total"]) + float(wallet_payment)
     params["c_name"] = o["billing"]["first_name"]
     params["order_id"] = o["id"]
     params["order_note"] = o["customer_note"]
     params["total_amount"] = float(o["total"])
-    params["delivery_date"] = "December 3, 2020"
+    params["delivery_date"] = delivery_date
     params["payment_method"] = o["payment_method_title"]
     params["delivery_charge"] = o["shipping_total"]
     params["items_amount"] = float(o["total"])-float(o["shipping_total"])
@@ -394,7 +407,7 @@ def new_order():
     cd = datetime.now()
     nd = (cd - timedelta(minutes=15)).isoformat()
     nd = datetime.fromisoformat(nd)
-    if o["status"] == "processing" and o["created_via"] == "checkout" and vendor and od>nd:
+    if o["status"] == "processing" and o["created_via"] == "checkout" and vendor and od > nd:
         for num in mobile_numbers:
             print("sent to : "+num)
             if o["date_paid"] != None:
@@ -404,8 +417,8 @@ def new_order():
     else:
         return {"Result": "Please Enter Valid Detal..."}
     if result["result"] == "success":
-            new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
-                                "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+        new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
+                            "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
     else:
         new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
                             "broadcast_name"], status="failed", time_sent=datetime.utcnow())
@@ -413,6 +426,7 @@ def new_order():
     db.session.commit()
     print("Done")
     return {"Result": "Success No Error..."}
+
 
 if __name__ == "__main__":
     # db.create_all()
