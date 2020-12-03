@@ -402,10 +402,9 @@ def new_order():
     params["vendor_type"] = vendor_type1
     params["seller"] = vendor
     params["url_post_pay"] = checkout_url
-    od = datetime.fromisoformat(o["date_created"])
+    od = datetime.strptime(o["date_created"],'%Y-%m-%dT%H:%M:%S')
     cd = datetime.now()
-    nd = (cd - timedelta(minutes=15)).isoformat()
-    nd = datetime.fromisoformat(nd)
+    nd = (cd - timedelta(minutes=15))
     if o["status"] == "processing" and o["created_via"] == "checkout" and vendor and od > nd:
         for num in mobile_numbers:
             print("sent to : "+num)
