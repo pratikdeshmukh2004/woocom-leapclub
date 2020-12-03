@@ -359,7 +359,7 @@ def list_product_categories_by_c():
     return response
 
 
-@app.route("/order_updates", methods=["GET", "POST"])
+@app.route("/new_order", methods=["GET", "POST"])
 def new_order():
     o = request.get_json()
     customer_number = o["billing"]["phone"]
