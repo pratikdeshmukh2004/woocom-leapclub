@@ -16,6 +16,7 @@ import os
 import ast
 import time
 from datetime import datetime, timedelta
+from pytz import timezone
 app = Flask(__name__, instance_relative_config=True)
 datepicker(app)
 
@@ -403,7 +404,7 @@ def new_order():
     params["seller"] = vendor
     params["url_post_pay"] = checkout_url
     od = datetime.strptime(o["date_created"],'%Y-%m-%dT%H:%M:%S')
-    cd = datetime.now()
+    cd = datetime.now(tz=timezone('Asia/Kolkata')).replace(tzinfo=None)
     nd = (cd - timedelta(minutes=5))
     if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
         for num in mobile_numbers:
