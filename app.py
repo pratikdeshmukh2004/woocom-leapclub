@@ -15,6 +15,7 @@ import csv
 import os
 import ast
 import time
+from datetime import datetime, timedelta
 app = Flask(__name__, instance_relative_config=True)
 datepicker(app)
 
@@ -356,6 +357,7 @@ def list_product_categories_by_c():
 
 @app.route("/new_order", methods=["GET", "POST"])
 def new_order():
+    print("\n\nEvent aaya hai.........................")
     mobile_numbers = ["919325837420", "919517622867"]
     o = request.get_json()
     params = {}
@@ -375,7 +377,6 @@ def new_order():
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
                     wallet_payment = (-1)*float(item["total"])
-    print(wallet_payment)
     o["total"] = float(o["total"]) + float(wallet_payment)
     params["c_name"] = o["billing"]["first_name"]
     params["order_id"] = o["id"]
@@ -389,7 +390,11 @@ def new_order():
     params["vendor_type"] = vendor_type1
     params["seller"] = vendor
     params["url_post_pay"] = checkout_url
-    if o["status"] == "processing" and o["created_via"] == "checkout" and vendor:
+    od = datetime.fromisoformat(o["date_created"])
+    cd = datetime.now()
+    nd = (cd - timedelta(minutes=15)).isoformat()
+    nd = datetime.fromisoformat(nd)
+    if o["status"] == "processing" and o["created_via"] == "checkout" and vendor and od>nd:
         for num in mobile_numbers:
             print("sent to : "+num)
             if o["date_paid"] != None:
@@ -406,6 +411,7 @@ def new_order():
                             "broadcast_name"], status="failed", time_sent=datetime.utcnow())
     db.session.add(new_wt)
     db.session.commit()
+    print("Done")
     return {"Result": "Success No Error..."}
 
 if __name__ == "__main__":
