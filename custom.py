@@ -264,7 +264,7 @@ def get_orders_with_messages(orders, wcapi):
             list_order_items(o["line_items"], order_refunds) + \
             "*Total Amount: " + \
             get_totals(o["total"], order_refunds) + \
-            get_shipping_total(o)
+            get_shipping_total(o)+"*\n\n"
         c_msg = c_msg + \
             list_order_refunds(order_refunds) + \
             list_only_refunds(order_refunds)
