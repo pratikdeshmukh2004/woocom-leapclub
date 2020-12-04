@@ -161,6 +161,7 @@ def woocom_orders():
         vendor = ""
         manager = ""
         delivery_date = ""
+        order_note = ""
         wallet_payment = 0
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
@@ -169,6 +170,8 @@ def woocom_orders():
                 vendor = item["value"]
             elif item["key"] == "_wc_acof_3":
                 manager = item["value"]
+            elif item["key"] == "_wc_acof_7":
+                order_note = item["value"]
             elif item["key"] == "_delivery_date":
                 if delivery_date == "":
                     delivery_date = item["value"]
@@ -191,6 +194,7 @@ def woocom_orders():
             o["vendor_type"] = ""
         o["vendor"] = vendor
         o["delivery_date"] = delivery_date
+        o["order_note"] = order_note
         o["manager"] = manager
         o["wallet_payment"] = wallet_payment
         o["total"] = float(o["total"]) + float(o["wallet_payment"])
@@ -368,11 +372,14 @@ def new_order():
     params = {}
     vendor = ""
     delivery_date = ""
+    order_note = ""
     for item in o["meta_data"]:
         if item["key"] == "wos_vendor_data":
             vendor = item["value"]["vendor_name"]
         elif item["key"] == "_wc_acof_6":
             vendor = item["value"]
+        elif item["key"] == "_wc_acof_7":
+                order_note = item["value"]
         elif item["key"] == "_delivery_date":
             if delivery_date == "":
                 delivery_date = item["value"]
@@ -393,7 +400,7 @@ def new_order():
     o["total"] = float(o["total"]) + float(wallet_payment)
     params["c_name"] = o["billing"]["first_name"]
     params["order_id"] = o["id"]
-    params["order_note"] = o["customer_note"]
+    params["order_note"] = order_note
     params["total_amount"] = float(o["total"])
     params["delivery_date"] = delivery_date
     params["payment_method"] = o["payment_method_title"]
