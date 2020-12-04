@@ -1,6 +1,5 @@
 from custom import get_totals, get_shipping_total, list_order_items
-def send_slack_message(client, wcapi, id):
-    o = wcapi.get("orders/"+id).json()
+def send_slack_message(client, wcapi, o):
     if len(o["refunds"]) > 0:
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
     else:
