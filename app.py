@@ -420,6 +420,7 @@ def new_order():
     od = datetime.strptime(o["date_created"],'%Y-%m-%dT%H:%M:%S')
     cd = datetime.now(tz=timezone('Asia/Kolkata')).replace(tzinfo=None)
     nd = (cd - timedelta(minutes=5))
+    # Sending Whatsapp Template Message....
     if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
         for num in mobile_numbers:
             print("sent to : "+num)
@@ -427,8 +428,7 @@ def new_order():
                 result = send_whatsapp_msg(params, num, "order_prepay")
             else:
                 result = send_whatsapp_msg(params, num, "order_postpay")
-    else:
-        return {"Result": "Please Enter Valid Detal..."}
+    
     if result["result"] == "success":
         new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
                             "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
@@ -437,7 +437,12 @@ def new_order():
                             "broadcast_name"], status="failed", time_sent=datetime.utcnow())
     db.session.add(new_wt)
     db.session.commit()
-    print("Done")
+    # End Whatsapp Template Message.....
+
+    # Sending Slack Message....
+    if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and vendor and (od > nd):
+        send_slack_message(client, wcapi, o)
+    # End Slack Message....
     return {"Result": "Success No Error..."}
 
 
@@ -446,10 +451,6 @@ def _format_mobile_number(number):
     mobile_number = mobile_number[-10:]
     mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     return mobile_number
-
-@app.route("/send_slack/<string:id>", methods=["GET"])
-def send_slack(id):
-    return send_slack_message(client, wcapi, id)
 
 if __name__ == "__main__":
     # db.create_all()
