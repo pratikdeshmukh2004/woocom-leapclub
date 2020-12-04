@@ -17,6 +17,9 @@ import ast
 import time
 from datetime import datetime, timedelta
 from pytz import timezone
+from slack import WebClient
+from slack_bot import send_slack_message
+
 app = Flask(__name__, instance_relative_config=True)
 datepicker(app)
 
@@ -29,6 +32,10 @@ wcapi = API(
     consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET"],
     version="wc/v3",
     timeout=15
+)
+
+client = WebClient(
+    token=app.config["SLACK_APP_TOKEN"]
 )
 
 # wcapiw = API(
@@ -439,6 +446,10 @@ def _format_mobile_number(number):
     mobile_number = mobile_number[-10:]
     mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     return mobile_number
+
+@app.route("/send_slack/<string:id>", methods=["GET"])
+def send_slack(id):
+    return send_slack_message(client, wcapi, id)
 
 if __name__ == "__main__":
     # db.create_all()
