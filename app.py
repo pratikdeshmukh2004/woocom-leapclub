@@ -429,14 +429,14 @@ def new_order():
             else:
                 result = send_whatsapp_msg(params, num, "order_postpay")
     
-    if result["result"] == "success":
-        new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
-                            "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
-    else:
-        new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
-                            "broadcast_name"], status="failed", time_sent=datetime.utcnow())
-    db.session.add(new_wt)
-    db.session.commit()
+        if result["result"] == "success":
+            new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+        else:
+            new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                "broadcast_name"], status="failed", time_sent=datetime.utcnow())
+        db.session.add(new_wt)
+        db.session.commit()
     # End Whatsapp Template Message.....
 
     # Sending Slack Message....
