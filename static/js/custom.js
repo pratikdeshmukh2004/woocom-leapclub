@@ -59,7 +59,7 @@ $(document).ready(function () {
     dateFormat: "MM/dd/yy",
   });
 });
-function makeGetRequest(path) {
+function SendWhatsappMessage(path) {
   $.ajax({
     type: "GET",
     crossDomain: true,

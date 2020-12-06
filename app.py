@@ -272,10 +272,7 @@ def send_whatsapp(name):
                                 "broadcast_name"], status="failed", time_sent=datetime.utcnow())
         db.session.add(new_wt)
         db.session.commit()
-        if nav_active != "any":
-            return redirect(url_for("woocom_orders", status=nav_active, message_sent=args["order_id"], page=args["page"][0]))
-        else:
-            return redirect(url_for("woocom_orders", message_sent=args["order_id"], page=args["page"][0]))
+        return result
 
 
 @app.route('/csv', methods=["POST"])
