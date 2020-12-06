@@ -390,3 +390,10 @@ def list_created_via_with_filter(orders):
         if o["created_via"] not in created_vias:
             created_vias.append(o["created_via"])
     return created_vias
+
+def filter_orders_with_subscription(orders):
+    new_list = []
+    for o in orders:
+        if o["created_via"] != "subscription":
+            new_list.append(o)
+    return new_list

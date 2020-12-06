@@ -302,7 +302,7 @@
         >
         {{orders.length}}
       </li>
-      {%if orders|length >49 %}
+      {%if orders|length >49 or nav_active == "tbd-paid, tbd-unpaid" %}
       <li class="page-item">
         <a class="page-link" href="{{url_for('woocom_orders', page=c_page+1, status=nav_active, delivery_date=query['delivery_date'], payment_status=query.payment_status, phone_number=query.phone_number, name=query.name)}}"
           >{{c_page+1}}</a
