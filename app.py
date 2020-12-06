@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
@@ -135,6 +135,8 @@ def woocom_orders():
             orders = list_all_orders_tbd(wcapi)
         else:
             orders = wcapi.get("orders", params=params).json()
+            if args["status"][0] == "tbd-paid, tbd-unpaid":
+                orders = filter_orders_with_subscription(orders)
     else:
         orders = wcapi.get("orders", params=params).json()
     fetch_time = time.time()
