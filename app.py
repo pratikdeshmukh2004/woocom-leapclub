@@ -146,6 +146,7 @@ def woocom_orders():
                 orders = filter_orders_with_subscription(orders)
     else:
         orders = wcapi.get("orders", params=params).json()
+        orders = filter_orders_with_subscription(orders)
     fetch_time = time.time()
     print("Time to fetch orders: " + str(fetch_time-start_time))
     f_orders = filter_orders(orders, args)
@@ -423,6 +424,7 @@ def new_order():
     cd = datetime.now(tz=timezone('Asia/Kolkata')).replace(tzinfo=None)
     nd = (cd - timedelta(minutes=5))
     # Sending Whatsapp Template Message....
+    print(o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd)
     if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
         for num in mobile_numbers:
             print("sent to : "+num)
@@ -431,14 +433,14 @@ def new_order():
             else:
                 result = send_whatsapp_msg(params, num, "order_postpay")
 
-    if result["result"] == "success":
-        new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
-                            "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
-    else:
-        new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
-                            "broadcast_name"], status="failed", time_sent=datetime.utcnow())
-    db.session.add(new_wt)
-    db.session.commit()
+        if result["result"] == "success":
+            new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+        else:
+            new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                "broadcast_name"], status="failed", time_sent=datetime.utcnow())
+        db.session.add(new_wt)
+        db.session.commit()
 
     # End Whatsapp Template Message.....
 

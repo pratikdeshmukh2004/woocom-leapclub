@@ -9,6 +9,7 @@ verify_ssl = true
 flask = "*"
 woocommerce = "*"
 requests = "*"
+slack-bot = "*"
 
 [requires]
 python_version = "3.8"
