@@ -443,7 +443,6 @@ def new_order():
         db.session.commit()
 
     # End Whatsapp Template Message.....
-
     # Sending Slack Message....
     if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and vendor and (od > nd):
         send_slack_message(client, wcapi, o)
