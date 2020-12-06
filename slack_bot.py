@@ -16,7 +16,7 @@ def send_slack_message(client, wcapi, o):
              + "*\n\n"+list_order_items(o["line_items"], order_refunds)
                      + "Payment Status: "+o["payment_method_title"])
     response = client.chat_postMessage(
-        channel="customer-messages",
+        channel="flask-bot",
         blocks=[
             {
                 "type": "section",
