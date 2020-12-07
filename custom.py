@@ -385,11 +385,21 @@ def list_created_via_with_filter(orders):
             created_vias.append(o["created_via"])
     return created_vias
 
-def filter_orders_with_subscription(orders):
+def filter_orders_with_subscription(orders, args):
     new_list = []
-    for o in orders:
-        if o["created_via"] != "subscription":
-            new_list.append(o)
+    if "status" in args:
+        if args["status"][0] == "subscription":
+            for o in orders:
+                if o["created_via"] == "subscription":
+                    new_list.append(o)
+        elif args["status"][0] == "tbd-paid, tbd-unpaid":
+            for o in orders:
+                if o["created_via"] != "subscription":
+                    new_list.append(o)
+    else:
+        for o in orders:
+            if o["created_via"] != "subscription":
+                new_list.append(o)
     return new_list
 
 def list_orders_with_status(wcapi, params):
@@ -414,3 +424,21 @@ def list_orders_with_status(wcapi, params):
     for o in orders:
         o_list.extend(o.json())
     return o_list
+
+
+def get_data_from_metadata(o):
+    meta_data = {"vendor": "", "manager": "", "order_note": "", "delivery_date": ""}
+    for item in o["meta_data"]:
+        if item["key"] == "wos_vendor_data":
+            meta_data["vendor"] = item["value"]["vendor_name"]
+        elif item["key"] == "_wc_acof_6":
+            meta_data["vendor"] = item["value"]
+        elif item["key"] == "_wc_acof_3":
+            meta_data["manager"] = item["value"]
+        elif item["key"] == "_wc_acof_7":
+            meta_data["order_note"] = item["value"]
+        elif item["key"] == "_delivery_date":
+            meta_data["delivery_date"] = item["value"]
+        elif item["key"] == "_wc_acof_2_formatted":
+            meta_data["delivery_date"] = item["value"]
+    return meta_data

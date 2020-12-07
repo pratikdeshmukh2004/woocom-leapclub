@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_data_from_metadata
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
@@ -127,6 +127,7 @@ def woocom_orders():
     orders = list_orders_with_status(wcapi, params)
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
     orders = filter_orders(orders, args)
+    orders = filter_orders_with_subscription(orders, args)
     vendors, managers = [], []
     wtmessages_list = {}
     t_refunds = time.time()
@@ -141,23 +142,7 @@ def woocom_orders():
         o["total"] = float(o["total"])
         wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
         wtmessages_list[o["id"]] = wt_messages
-        vendor, manager, delivery_date, order_note,  = "", "", "", ""
-        for item in o["meta_data"]:
-            if item["key"] == "wos_vendor_data":
-                vendor = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6":
-                vendor = item["value"]
-            elif item["key"] == "_wc_acof_3":
-                manager = item["value"]
-            elif item["key"] == "_wc_acof_7":
-                order_note = item["value"]
-            elif item["key"] == "_delivery_date":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-            elif item["key"] == "_wc_acof_2_formatted":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-
+        vendor, manager, delivery_date, order_note,  = get_data_from_metadata(o)
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
@@ -179,7 +164,9 @@ def woocom_orders():
         o["total"] = float(o["total"]) + float(o["wallet_payment"])
         o["checkout_url"] = get_checkout_url(o)
     list_created_via = list_created_via_with_filter(orders)
-    print(args)
+    if "status" in args:
+        if args["status"][0] == "subscription":
+            params["status"] = "subscription"
     return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via)
 
 
@@ -344,7 +331,7 @@ def list_product_categories_by_c():
 def new_order():
     o = request.get_json()
     customer_number = _format_mobile_number(o["billing"]["phone"])
-    mobile_numbers=[customer_number]
+    mobile_numbers = [customer_number]
     params = {}
     vendor = ""
     delivery_date = ""
@@ -355,7 +342,7 @@ def new_order():
         elif item["key"] == "_wc_acof_6":
             vendor = item["value"]
         elif item["key"] == "_wc_acof_7":
-                order_note = item["value"]
+            order_note = item["value"]
         elif item["key"] == "_delivery_date":
             if delivery_date == "":
                 delivery_date = item["value"]
@@ -386,11 +373,12 @@ def new_order():
     params["vendor_type"] = vendor_type1
     params["seller"] = vendor
     params["url_post_pay"] = checkout_url
-    od = datetime.strptime(o["date_created"],'%Y-%m-%dT%H:%M:%S')
+    od = datetime.strptime(o["date_created"], '%Y-%m-%dT%H:%M:%S')
     cd = datetime.now(tz=timezone('Asia/Kolkata')).replace(tzinfo=None)
     nd = (cd - timedelta(minutes=5))
     # Sending Whatsapp Template Message....
-    print(o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd)
+    print(o["status"] == "processing") and (
+        o["created_via"] == "checkout") and vendor and (od > nd)
     if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
         for num in mobile_numbers:
             print("sent to : "+num)
@@ -419,8 +407,10 @@ def new_order():
 def _format_mobile_number(number):
     mobile_number = number.strip(" ").replace(" ", "")
     mobile_number = mobile_number[-10:]
-    mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+    mobile_number = (
+        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     return mobile_number
+
 
 if __name__ == "__main__":
     # db.create_all()
