@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_data_from_metadata
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
@@ -142,7 +142,22 @@ def woocom_orders():
         o["total"] = float(o["total"])
         wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
         wtmessages_list[o["id"]] = wt_messages
-        vendor, manager, delivery_date, order_note,  = get_data_from_metadata(o)
+        vendor, manager, delivery_date, order_note,  = "", "", "", ""
+        for item in o["meta_data"]:
+            if item["key"] == "wos_vendor_data":
+                vendor = item["value"]["vendor_name"]
+            elif item["key"] == "_wc_acof_6":
+                vendor = item["value"]
+            elif item["key"] == "_wc_acof_3":
+                manager = item["value"]
+            elif item["key"] == "_wc_acof_7":
+                order_note = item["value"]
+            elif item["key"] == "_delivery_date":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                if delivery_date == "":
+                    delivery_date = item["value"]
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
