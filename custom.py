@@ -421,7 +421,7 @@ def list_orders_with_status(wcapi, params):
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(get_order, p_list)
     orders = list(result)
-    orders.append(forder)
+    orders.insert(0, forder)
     o_list = []
     for o in orders:
         o_list.extend(o.json())
