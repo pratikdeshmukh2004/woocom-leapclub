@@ -396,6 +396,8 @@ def filter_orders_with_subscription(orders, args):
             for o in orders:
                 if o["created_via"] != "subscription":
                     new_list.append(o)
+        else:
+            return orders
     else:
         for o in orders:
             if o["created_via"] != "subscription":
