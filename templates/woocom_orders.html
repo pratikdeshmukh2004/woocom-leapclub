@@ -51,13 +51,12 @@
 </ul>
 <div  class="mt-3 ml-3 mr-3">
     <form autocomplete="off" class = "form-inline" role = "form">
-      <input style="display: none;" name="page" value="{{c_page}}">
       {% if nav_active != '' %}
         <input style="display: none;" name="status" value="{{nav_active}}">
       {% endif %}
       <select data-live-search="true" multiple title="Order ID" name="order_ids" class="selectpicker mr-2">
         {% for o in orders %}
-        <option {% if "order_ids" in query %} {% if o.id in query["order_ids"] %} selected {% endif %} {% endif %}>{{o.id}}</option>
+        <option {% if "order_ids" in query %} {% if o.id|string in query["order_ids"] %} selected {% endif %} {% endif %}>{{o.id}}</option>
         {% endfor%}
       </select>
       <select title="Payment Status" name="payment_status" class="selectpicker mr-2">
@@ -287,30 +286,6 @@
       {% endfor %}
     </tbody>
   </table>
-  <nav aria-label="Page navigation example">
-    <ul class="pagination justify-content-center">
-      {%if c_page > 1%}
-      <li class="page-item">
-        <a class="page-link" href="{{url_for('woocom_orders',page=c_page-1,status=nav_active, delivery_date=query['delivery_date'], payment_status=query.payment_status, phone_number=query.phone_number, name=query.name)}}"
-          >{{c_page-1}}</a
-        >
-      </li>
-      {%endif%}
-      <li class="page-item active">
-        <a class="page-link" href="{{url_for('woocom_orders', page=c_page-1, status=nav_active, delivery_date=query['delivery_date'], payment_status=query.payment_status, phone_number=query.phone_number, name=query.name)}}"
-          >{{c_page}} <span class="sr-only">(current)</span></a
-        >
-        {{orders.length}}
-      </li>
-      {%if orders|length >49 or nav_active == "tbd-paid, tbd-unpaid" %}
-      <li class="page-item">
-        <a class="page-link" href="{{url_for('woocom_orders', page=c_page+1, status=nav_active, delivery_date=query['delivery_date'], payment_status=query.payment_status, phone_number=query.phone_number, name=query.name)}}"
-          >{{c_page+1}}</a
-        >
-      </li>
-      {%endif%}
-    </ul>
-  </nav>
 </div>
 <script>
   function copyToClipboard(id) {

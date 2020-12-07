@@ -18,13 +18,12 @@ def format_delivery_date(d):
 
 
 def filter_orders(orders, params):
-    print(len(params))
     if len(params) <= 4:
         return orders
     f_orders = []
     for o in orders:
         c = {"payment_status": False,
-             "phone_number": False, "name": False, "vendor": False, "manager": False, "delivery_date": False, "created_via": False}
+             "phone_number": False, "vendor": False, "manager": False, "delivery_date": False, "created_via": False}
 
         if "payment_status" in params:
             if params["payment_status"][0] != "":
@@ -42,12 +41,6 @@ def filter_orders(orders, params):
                     c["phone_number"] = True
             else:
                 c["phone_number"] = True
-        if "name" in params:
-            if params["name"][0] != "":
-                if params["name"][0].lower() in (o["billing"]["first_name"] + " " + o["billing"]["last_name"]).lower():
-                    c["name"] = True
-            else:
-                c["name"] = True
         vendor = ""
         manager = ""
         delivery_date = ""
@@ -89,7 +82,7 @@ def filter_orders(orders, params):
                 c["delivery_date"] = True
         else:
             c["delivery_date"] = True
-        if c["payment_status"] and c["phone_number"] and c["name"] and c["vendor"] and c["manager"] and c["delivery_date"] and c["created_via"]:
+        if c["payment_status"] and c["phone_number"] and c["vendor"] and c["manager"] and c["delivery_date"] and c["created_via"]:
             f_orders.append(o)
     return f_orders
 
@@ -223,7 +216,7 @@ def get_totals(total, refunds):
 
 
 def get_params(args):
-    params = {"per_page": 50}
+    params = {"per_page": 100, "page": 1}
     if "status" in args:
         if args["status"][0] == 'subscription':
             params["status"] = "tbd-paid, tbd-unpaid"
@@ -236,6 +229,9 @@ def get_params(args):
         for id in args["order_ids"]:
             id_text = id_text+str(id)+", "
         params["include"] = id_text[:-2]
+    if "name" in args:
+        if args["name"][0] != "":
+            params["search"] = args["name"][0]
     return params
 
 
@@ -256,10 +252,8 @@ def get_shipping_total_for_csv(o):
 def get_orders_with_messages(orders, wcapi):
     def _get_orders_with_messages(o):
         order_refunds = []
-        refund_start = time.time()
         if len(o["refunds"]) > 0:
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
-            print("Time to calculate refund: " + str(time.time()-refund_start))
         c_msg = "Here are the order details:\n\n" + \
             list_order_items(o["line_items"], order_refunds) + \
             "*Total Amount: " + \
@@ -397,3 +391,26 @@ def filter_orders_with_subscription(orders):
         if o["created_via"] != "subscription":
             new_list.append(o)
     return new_list
+
+def list_orders_with_status(wcapi, params):
+    def get_order(params):
+        order = wcapi.get("orders", params=params)
+        return order
+    page = 1
+    ctime = time.time()
+    forder = wcapi.get("orders", params=params)
+    total_pages = int(forder.headers["X-WP-TotalPages"])
+    p_list = []
+    p=2
+    while p<total_pages+1:
+        params["page"] = p
+        p_list.append(params.copy())
+        p+=1
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(get_order, p_list)
+    orders = list(result)
+    orders.append(forder)
+    o_list = []
+    for o in orders:
+        o_list.extend(o.json())
+    return o_list

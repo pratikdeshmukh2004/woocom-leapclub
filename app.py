@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
@@ -122,45 +122,18 @@ def woocom_orders():
     if not g.user:
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=False)
-    new_ids = []
-    if "order_ids" in args:
-        for i in args["order_ids"]:
-            new_ids.append(int(i))
-    args["order_ids"] = new_ids
-    if "w_status" in args:
-        is_w = True
-        w_status = args["w_status"]
-    else:
-        is_w = False
-        w_status = ""
     params = get_params(args)
-    params["page"] = request.args.get("page", 1, type=int)
-    start_time = time.time()
-    if "status" in args:
-        if args["status"][0] == 'subscription':
-            params["status"] = "subscription"
-            orders = list_all_orders_tbd(wcapi)
-        else:
-            orders = wcapi.get("orders", params=params).json()
-            if args["status"][0] == "tbd-paid, tbd-unpaid":
-                orders = filter_orders_with_subscription(orders)
-    else:
-        orders = wcapi.get("orders", params=params).json()
-        orders = filter_orders_with_subscription(orders)
-    fetch_time = time.time()
-    print("Time to fetch orders: " + str(fetch_time-start_time))
-    f_orders = filter_orders(orders, args)
-    filter_time = time.time()
-    print("Time to filer:", str(filter_time-fetch_time))
-    vendors = []
-    managers = []
+    t_orders = time.time()
+    orders = list_orders_with_status(wcapi, params)
+    print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
+    orders = filter_orders(orders, args)
+    vendors, managers = [], []
     wtmessages_list = {}
-    orders = get_orders_with_messages(f_orders, wcapi)
-    # fetch_time = time.time()
-    # orders = get_orders_with_wallet_balance(orders, wcapiw)
-    # wallet_fetch_time = time.time()
-    # print("Time to Fetch Wallet Balance Of All Orders:", str(wallet_fetch_time-fetch_time))
+    t_refunds = time.time()
+    orders = get_orders_with_messages(orders, wcapi)
+    print("Time To Fetch Total Refunds: "+str(time.time()-t_refunds))
     for o in orders:
+        wallet_payment = 0
         refunds = 0
         for r in o["refunds"]:
             refunds = refunds + float(r["total"])
@@ -168,11 +141,7 @@ def woocom_orders():
         o["total"] = float(o["total"])
         wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
         wtmessages_list[o["id"]] = wt_messages
-        vendor = ""
-        manager = ""
-        delivery_date = ""
-        order_note = ""
-        wallet_payment = 0
+        vendor, manager, delivery_date, order_note,  = "", "", "", ""
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
                 vendor = item["value"]["vendor_name"]
@@ -210,11 +179,8 @@ def woocom_orders():
         o["total"] = float(o["total"]) + float(o["wallet_payment"])
         o["checkout_url"] = get_checkout_url(o)
     list_created_via = list_created_via_with_filter(orders)
-    data_time = time.time()
-    print("Calculating additional columns" + str(data_time-filter_time))
-    message_time = time.time()
-    print("Create message time" + str(message_time-data_time))
-    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], is_w=is_w, w_status=w_status, managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, c_page=params["page"], user=g.user, list_created_via=list_created_via)
+    print(args)
+    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via)
 
 
 def send_whatsapp_msg(args, mobile, name):
