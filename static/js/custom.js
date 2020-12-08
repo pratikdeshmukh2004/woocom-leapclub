@@ -1,11 +1,20 @@
-function makeGetRequest(path) {
+$(document).ready(function () {
+  $("#datepicker").datepicker({
+    dateFormat: "MM/dd/yy",
+  });
+});
+function SendWhatsappMessage(path) {
+  $.nok({
+    message: "Sending Whatsapp Message...",
+    type: "success",
+  });
   $.ajax({
     type: "GET",
     crossDomain: true,
     dataType: "json",
     url: path,
     success: function (res) {
-      if (res.result == "success") {
+      if (res.result == "success" || res.result == "PENDING") {
         $.nok({
           message: "Success, Message Sent!",
           type: "success",

@@ -225,13 +225,14 @@ def send_whatsapp(name):
     if not g.user:
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=True)
+    print(len(args)>0)
     if len(args)> 0:
         mobile_number = args["mobile_number"].strip(" ")
         mobile_number = mobile_number[-10:]
         mobile_number = (
             "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
         result = send_whatsapp_msg(args, mobile_number, name)
-        if result["result"] == "success":
+        if result["result"] in ["success", "PENDING"]:
             new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
                                 "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
         else:
