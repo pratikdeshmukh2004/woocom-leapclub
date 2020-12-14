@@ -347,7 +347,6 @@ def list_categories_with_products(products):
             txt = txt+"\n*"+c+"*\n\n"
             for p in main_list[c]:
                 txt = txt+p["name"]+" - ₹"+p["price"]+"\n"
-    print(d_c)
     return(txt)
 
 def list_categories(wcapi):

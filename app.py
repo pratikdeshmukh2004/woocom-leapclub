@@ -194,7 +194,11 @@ def send_whatsapp_msg(args, mobile, name):
         return {"result": "error", "info": "Please Select Valid Button."}
     parameters_s = "["
     args["name"] = args["c_name"]
-    args["order_note"] = "No changes to the order" if args["order_note"] == '' else args["order_note"]
+    if "order_note" in args:
+        if args["order_note"] == "":
+            args["order_note"] = "No changes to the order"
+    else:
+        args["order_note"] = "No changes to the order"
     for d in args:
         parameters_s = parameters_s + \
             '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
@@ -214,7 +218,8 @@ def send_whatsapp_msg(args, mobile, name):
         "POST", url, headers=headers, data=json.dumps(payload))
 
     result = json.loads(response.text.encode('utf8'))
-    if result["result"] != "success":
+    print(result)
+    if result["result"] not in ["success", "PENDING"]:
         result["broadcast_name"] = broadcast_name
         result["template_name"] = template_name
     return result
@@ -235,7 +240,7 @@ def send_whatsapp(name):
         mobile_number = (
             "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
         result = send_whatsapp_msg(args, mobile_number, name)
-        if result["result"] == "success":
+        if result["result"] in ["success", "PENDING"]:
             new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
                                 "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
         else:
@@ -364,7 +369,6 @@ def new_order():
         elif item["key"] == "_wc_acof_2_formatted":
             if delivery_date == "":
                 delivery_date = item["value"]
-    print(delivery_date)
     if vendor in vendor_type.keys():
         vendor_type1 = vendor_type[vendor]
     else:
@@ -392,8 +396,6 @@ def new_order():
     cd = datetime.now(tz=timezone('Asia/Kolkata')).replace(tzinfo=None)
     nd = (cd - timedelta(minutes=5))
     # Sending Whatsapp Template Message....
-    print(o["status"] == "processing") and (
-        o["created_via"] == "checkout") and vendor and (od > nd)
     if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
         for num in mobile_numbers:
             print("sent to : "+num)
