@@ -404,7 +404,7 @@ def new_order():
             else:
                 result = send_whatsapp_msg(params, num, "order_postpay")
 
-        if result["result"] == "success":
+        if result["result"] in  ["success", "PENDING"]:
             new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
                                 "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
         else:
