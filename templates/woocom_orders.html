@@ -87,12 +87,6 @@
           <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
         {%endif%}
         {% endfor%}
-      </select>      <select data-live-search="true" multiple title="Manager" name="manager" class="selectpicker mr-2">
-        {% for m in managers %}
-        {% if m != ""%}
-          <option {% if "manager" in query %} {% if m in query["manager"] %} selected {% endif %} {% endif %}>{{m}}</option>
-        {%endif%}
-        {% endfor%}
       </select>
       <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker" class="form-control mr-2" {% if "delivery_date" in query %} {% if query["delivery_date"][0] != "" %} value="{{query["delivery_date"][0]}}" {% endif %} {% endif %}>
       <button class="btn btn-info ml-1"><i class="mdi mdi-18px mdi-filter-variant" aria-hidden="true"></i>
