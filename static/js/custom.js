@@ -56,7 +56,7 @@ $(document).ready(function () {
   });
 
   $("#datepicker").datepicker({
-    dateFormat: "MM/dd/yy",
+    dateFormat: "yy/mm/dd",
   });
 });
 function makeGetRequest(path) {

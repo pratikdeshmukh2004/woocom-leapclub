@@ -8,10 +8,7 @@ import concurrent.futures
 def format_delivery_date(d):
     d_s = d.split("/")
     f_s = d_s[0]+" "
-    if "0" in d_s[1]:
-        f_s = f_s+d_s[1][1]
-    else:
-        f_s = f_s+d_s[1]
+    f_s = f_s+d_s[1]
     f_s = f_s+", "
     f_s = f_s+d_s[2]
     return f_s
@@ -22,8 +19,7 @@ def filter_orders(orders, params):
         return orders
     f_orders = []
     for o in orders:
-        c = {"payment_status": False,
-             "phone_number": False, "vendor": False, "manager": False, "delivery_date": False, "created_via": False}
+        c = {"payment_status": False, "manager": False}
 
         if "payment_status" in params:
             if params["payment_status"][0] != "":
@@ -35,54 +31,16 @@ def filter_orders(orders, params):
                         c["payment_status"] = True
             else:
                 c["payment_status"] = True
-        if "phone_number" in params:
-            if params["phone_number"][0] != "":
-                if params["phone_number"][0] in o["billing"]["phone"]:
-                    c["phone_number"] = True
-            else:
-                c["phone_number"] = True
-        vendor = ""
         manager = ""
-        delivery_date = ""
         for item in o["meta_data"]:
-            if item["key"] == "wos_vendor_data":
-                vendor = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6":
-                vendor = item["value"]
-            elif item["key"] == "_wc_acof_3":
+            if item["key"] == "_wc_acof_3":
                 manager = item["value"]
-            elif item["key"] == "_wc_acof_2_formatted":
-                delivery_date = item["value"]
-        if "vendor" in params:
-            if vendor in params["vendor"]:
-                c["vendor"] = True
-        else:
-            c["vendor"] = True
         if "manager" in params:
             if manager in params["manager"]:
                 c["manager"] = True
         else:
             c["manager"] = True
-        if "created_via" in params:
-            if params["created_via"][0] != "":
-                if o["created_via"] in params["created_via"]:
-                    c["created_via"] = True
-            else:
-                c["created_via"] = True
-        else:
-            c["created_via"] = True
-        if "delivery_date" in params:
-            if params["delivery_date"][0] != "":
-                d = format_delivery_date(params["delivery_date"][0])
-                if d == delivery_date:
-                    c["delivery_date"] = True
-                else:
-                    c["delivery_date"] = False
-            else:
-                c["delivery_date"] = True
-        else:
-            c["delivery_date"] = True
-        if c["payment_status"] and c["phone_number"] and c["vendor"] and c["manager"] and c["delivery_date"] and c["created_via"]:
+        if c["payment_status"] and c["manager"]:
             f_orders.append(o)
     return f_orders
 
@@ -232,6 +190,21 @@ def get_params(args):
     if "name" in args:
         if args["name"][0] != "":
             params["search"] = args["name"][0]
+    if "phone_number" in args:
+        if args["phone_number"][0] != "":
+            params["search"] = args["phone_number"][0]
+    if "created_via" in args:
+        if args["created_via"][0] != "":
+            params["created_via"] = args["created_via"][0]
+    if "vendor" in args:
+        id_text = ""
+        for id in args["vendor"]:
+            id_text = id_text+str(id)+","
+        params["vendor"] = id_text[:-1]
+    if "delivery_date" in args:
+        if args["delivery_date"][0] != "":
+            params["delivery_date"] = args["delivery_date"][0].replace(
+                "/", "-")
     return params
 
 
@@ -281,6 +254,7 @@ def get_orders_with_messages(orders, wcapi):
         result = executor.map(_get_orders_with_messages, orders)
     return list(result)
 
+
 def get_orders_with_wallet_balance(orders, wcapiw):
     def _get_orders_with_wallet_balance(o):
         balance = wcapiw.get("current_balance/"+str(o["customer_id"]))
@@ -289,6 +263,7 @@ def get_orders_with_wallet_balance(orders, wcapiw):
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(_get_orders_with_wallet_balance, orders)
     return list(result)
+
 
 def get_csv_from_orders(orders, wcapi):
     f = open("sample.csv", "w+")
@@ -330,11 +305,12 @@ def get_checkout_url(o):
         str(o["id"])+"/?pay_for_order=true&key="+o["order_key"]
     return url
 
+
 def list_categories_with_products(products):
     main_list = {}
-    d_c=[]
+    d_c = []
     for p in products:
-        if len(p["categories"])>1:
+        if len(p["categories"]) > 1:
             d_c.append(p)
         for c in p["categories"]:
             if c["name"] in main_list.keys():
@@ -343,11 +319,12 @@ def list_categories_with_products(products):
                 main_list[c["name"]] = []
     txt = ""
     for c in main_list:
-        if len(main_list[c])>0:
+        if len(main_list[c]) > 0:
             txt = txt+"\n*"+c+"*\n\n"
             for p in main_list[c]:
                 txt = txt+p["name"]+" - ₹"+p["price"]+"\n"
     return(txt)
+
 
 def list_categories(wcapi):
     args = {"per_page": 100}
@@ -357,19 +334,21 @@ def list_categories(wcapi):
         args["page"] = page
         c = wcapi.get("products/categories", params=args).json()
         categories.extend(c)
-        page=page+1
-        if len(c)<100:
+        page = page+1
+        if len(c) < 100:
             break
     return categories
+
 
 def list_all_orders_tbd(wcapi):
     orders = []
     page = 1
     while True:
-        order = wcapi.get("orders", params={"page":page, "per_page": 100, "status": "tbd-paid, tbd-unpaid"}).json()
+        order = wcapi.get("orders", params={
+                          "page": page, "per_page": 100, "status": "tbd-paid, tbd-unpaid"}).json()
         orders.extend(order)
-        page=page+1
-        if len(order)<100:
+        page = page+1
+        if len(order) < 100:
             break
     total = []
     for o in orders:
@@ -377,12 +356,14 @@ def list_all_orders_tbd(wcapi):
             total.append(o)
     return total
 
+
 def list_created_via_with_filter(orders):
     created_vias = []
     for o in orders:
         if o["created_via"] not in created_vias:
             created_vias.append(o["created_via"])
     return created_vias
+
 
 def filter_orders_with_subscription(orders, args):
     new_list = []
@@ -403,20 +384,21 @@ def filter_orders_with_subscription(orders, args):
                 new_list.append(o)
     return new_list
 
+
 def list_orders_with_status(wcapi, params):
     def get_order(params):
-        order = wcapi.get("orders", params=params)
+        order = wcapi.get("order2", params=params)
         return order
     page = 1
     ctime = time.time()
-    forder = wcapi.get("orders", params=params)
+    forder = wcapi.get("order2", params=params)
     total_pages = int(forder.headers["X-WP-TotalPages"])
     p_list = []
-    p=2
-    while p<total_pages+1:
+    p = 2
+    while p < total_pages+1:
         params["page"] = p
         p_list.append(params.copy())
-        p+=1
+        p += 1
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(get_order, p_list)
     orders = list(result)
@@ -425,5 +407,3 @@ def list_orders_with_status(wcapi, params):
     for o in orders:
         o_list.extend(o.json())
     return o_list
-
-
