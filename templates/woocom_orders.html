@@ -89,6 +89,10 @@
             {% if v != "subscription" %}
               <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
             {%endif%}
+          {% elif nav_active == "subscription" %}
+              {% if v == "subscription"%}
+              <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
+              {%endif%}
           {% else %}
           <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
         {%endif%}
