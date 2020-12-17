@@ -64,7 +64,7 @@ users.append(User(email=app.config["ADMIN_EMAIL"],
 
 @app.errorhandler(404)
 def invalid_route(e):
-    return redirect(url_for("products"))
+    return redirect(url_for("orders"))
 
 
 @app.before_request
@@ -187,6 +187,7 @@ def woocom_orders():
 def send_whatsapp_msg(args, mobile, name):
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
     if name in TemplatesBroadcast.keys():
+        print(args["vendor_type"])
         template_name = TemplatesBroadcast[name][args["vendor_type"]]["template"]
         broadcast_name = TemplatesBroadcast[name][args["vendor_type"]]["broadcast"]
     else:

@@ -19,10 +19,8 @@ $(document).ready(function () {
         event.target.shipping_class.value,
       success: function (res) {
         console.log(res);
-        var input = document.body.appendChild(
-          document.createElement("input")
-        );
-        res = res.replace("&amp;", "&")
+        var input = document.body.appendChild(document.createElement("input"));
+        res = res.replace("&amp;", "&");
         input.value = res;
         input.select();
         var status = document.execCommand("copy");
@@ -90,4 +88,22 @@ function makeGetRequest(path) {
       });
     },
   });
+}
+function copyText(text) {
+  var input = document.body.appendChild(document.createElement("textarea"));
+  input.value = text;
+  input.select();
+  var status = document.execCommand("copy");
+  input.parentNode.removeChild(input);
+  if (status) {
+    $.nok({
+      message: "Success, Checkout Url Copied!",
+      type: "success",
+    });
+  } else {
+    $.nok({
+      message: "Error, Checkout Url Not Copied!",
+      type: "error",
+    });
+  }
 }

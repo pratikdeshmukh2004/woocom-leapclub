@@ -88,6 +88,20 @@ TemplatesBroadcast = {
         'bakery':  {"template": "deliver_tomorrow_postpaid", "broadcast": "postpay"},
         'grocery': {"template": "deliver_tomorrow_postpaid", "broadcast": "postpay"},
         'dairy': {"template": "deliver_tomorrow_postpaid", "broadcast": "postpay"}
+    },
+    "cancel_msg": {
+        'bakery': {"template": "feed_past", "broadcast": "feedback"},
+        'grocery': {"template": "feed_past", "broadcast": "feedback"},
+        'personal_care': {"template": "feed_past", "broadcast": "feedback"},
+        'dairy': {"template": "feed_past", "broadcast": "feedback"}
+
+    },
+    "confirm_msg": {
+        'bakery': {"template": "feed_past", "broadcast": "feedback"},
+        'grocery': {"template": "feed_past", "broadcast": "feedback"},
+        'personal_care': {"template": "feed_past", "broadcast": "feedback"},
+        'dairy': {"template": "feed_past", "broadcast": "feedback"}
+
     }
 }
 
