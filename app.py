@@ -230,6 +230,7 @@ def send_whatsapp(name):
     if not g.user:
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=True)
+    print(args, "WTMS")
     if len(args) > 0:
         if "status" in args:
             nav_active = args["status"]

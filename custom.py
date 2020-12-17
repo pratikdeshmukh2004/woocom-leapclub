@@ -224,7 +224,6 @@ def get_params(args):
         if args["delivery_date"][0] != "":
             params["delivery_date"] = args["delivery_date"][0].replace(
                 "/", "-")
-    print(params)
     return params
 
 
