@@ -88,7 +88,9 @@
           {% if nav_active == "tbd-paid, tbd-unpaid" %}
             {% if v != "subscription" %}
               <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
-        {%endif%}
+            {%endif%}
+          {% else %}
+          <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
         {%endif%}
         {%endif%}
         {% endfor%}

@@ -124,7 +124,8 @@ def woocom_orders():
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=False)
     params = get_params(args)
-    args["created_via"] = params["created_via"]
+    if "created_via" in params:
+        args["created_via"] = params["created_via"]
     t_orders = time.time()
     orders = wcapi.get("order2", params=params).json()
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
