@@ -8,6 +8,7 @@ from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
 from template_broadcast import TemplatesBroadcast, vendor_type
+from customselectlist import list_created_via, list_vendor
 import uuid
 import json
 import requests
@@ -123,12 +124,12 @@ def woocom_orders():
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=False)
     params = get_params(args)
+    args["created_via"] = params["created_via"]
     t_orders = time.time()
-    orders = list_orders_with_status(wcapi, params)
+    orders = wcapi.get("order2", params=params).json()
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
     orders = filter_orders(orders, args)
-    orders = filter_orders_with_subscription(orders, args)
-    vendors, managers = [], []
+    managers = []
     wtmessages_list = {}
     t_refunds = time.time()
     orders = get_orders_with_messages(orders, wcapi)
@@ -163,8 +164,6 @@ def woocom_orders():
                 if "wallet" in item["name"].lower():
                     wallet_payment = (-1)*float(item["total"])
 
-        if vendor not in vendors:
-            vendors.append(vendor)
         if manager not in managers:
             managers.append(manager)
         if vendor in vendor_type.keys():
@@ -178,11 +177,10 @@ def woocom_orders():
         o["wallet_payment"] = wallet_payment
         o["total"] = float(o["total"]) + float(o["wallet_payment"])
         o["checkout_url"] = get_checkout_url(o)
-    list_created_via = list_created_via_with_filter(orders)
     if "status" in args:
         if args["status"][0] == "subscription":
             params["status"] = "subscription"
-    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=vendors, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via)
+    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"])
 
 
 def send_whatsapp_msg(args, mobile, name):

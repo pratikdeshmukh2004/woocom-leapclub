@@ -51,6 +51,7 @@
 </ul>
 <div  class="mt-3 ml-3 mr-3">
     <form autocomplete="off" class = "form-inline" role = "form">
+      <input style="display: none;" name="page" value="{{page}}">
       {% if nav_active != '' %}
         <input style="display: none;" name="status" value="{{nav_active}}">
       {% endif %}
@@ -84,13 +85,11 @@
       <select data-live-search="true" multiple title="Created Via" name="created_via" class="selectpicker mr-2">
         {% for v in list_created_via %}
         {% if v != ""%}
-          <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
+          {% if nav_active == "tbd-paid, tbd-unpaid" %}
+            {% if v != "subscription" %}
+              <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
         {%endif%}
-        {% endfor%}
-      </select>      <select data-live-search="true" multiple title="Manager" name="manager" class="selectpicker mr-2">
-        {% for m in managers %}
-        {% if m != ""%}
-          <option {% if "manager" in query %} {% if m in query["manager"] %} selected {% endif %} {% endif %}>{{m}}</option>
+        {%endif%}
         {%endif%}
         {% endfor%}
       </select>
@@ -287,6 +286,22 @@
     </tbody>
   </table>
 </div>
+<br /><br />
+<nav aria-label="Page navigation">
+  <ul class="pagination justify-content-center">
+    <li class="page-item {% if page == 1%} disabled {%endif%}">
+      <a class="page-link" href="{{url_for('woocom_orders', page=page-1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active)}}" tabindex="-1"
+        >Previous</a
+      >
+    </li>
+    <li class="page-item">
+      <a class="page-link">{{page}}</a>
+    </li>
+    <li class="page-item {% if orders | length != 50%} disabled {%endif%}">
+      <a class="page-link" href="{{url_for('woocom_orders', page=page+1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active)}}">Next</a>
+    </li>
+  </ul>
+</nav>
 <script>
   function copyToClipboard(id) {
    var tag = document.getElementById(""+id+"")
