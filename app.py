@@ -64,7 +64,7 @@ users.append(User(email=app.config["ADMIN_EMAIL"],
 
 @app.errorhandler(404)
 def invalid_route(e):
-    return redirect(url_for("orders"))
+    return redirect(url_for("woocom_orders"))
 
 
 @app.before_request
