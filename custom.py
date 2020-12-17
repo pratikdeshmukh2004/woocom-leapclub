@@ -3,7 +3,7 @@ import csv
 import time
 import datetime
 import concurrent.futures
-
+from customselectlist import list_created_via
 
 def format_delivery_date(d):
     d_s = d.split("/")
@@ -36,7 +36,10 @@ def filter_orders(orders, params):
             if item["key"] == "_wc_acof_3":
                 manager = item["value"]
         if "manager" in params:
-            if manager in params["manager"]:
+            if params["manager"][0] != "":
+                if manager in params["manager"]:
+                    c["manager"] = True
+            else:
                 c["manager"] = True
         else:
             c["manager"] = True
@@ -172,21 +175,39 @@ def get_totals(total, refunds):
         msg = msg+" = "+str(total)
     return str(total)
 
+def get_list_to_string(l):
+    list_s = ""
+    for i in l:
+        list_s += i
+        list_s += ", "
+    list_s = list_s[:-1]
+    return list_s
+
 
 def get_params(args):
-    params = {"per_page": 100, "page": 1}
+    params = {"per_page": 50}
+    if "page" in args:
+        params["page"] = int(args["page"][0])
+    else:
+        params["page"] = 1
     if "status" in args:
         if args["status"][0] == 'subscription':
             params["status"] = "tbd-paid, tbd-unpaid"
+            params["created_via"] = "subscription"
         else:
+            if args["status"][0] == "tbd-paid, tbd-unpaid":
+                l_c = list_created_via.copy()
+                l_c.remove("subscription")
+                params["created_via"] = get_list_to_string(l_c)
             params["status"] = args["status"][0]
     else:
+        l_c = list_created_via.copy()
+        l_c.remove("subscription")
+        params["created_via"] = get_list_to_string(l_c)
         params["status"] = "tbd-paid, tbd-unpaid"
     if "order_ids" in args:
-        id_text = ""
-        for id in args["order_ids"]:
-            id_text = id_text+str(id)+", "
-        params["include"] = id_text[:-2]
+        if args['order_ids'][0] != "":
+            params["include"] = get_list_to_string(args["order_ids"])
     if "name" in args:
         if args["name"][0] != "":
             params["search"] = args["name"][0]
@@ -194,17 +215,16 @@ def get_params(args):
         if args["phone_number"][0] != "":
             params["search"] = args["phone_number"][0]
     if "created_via" in args:
-        if args["created_via"][0] != "":
-            params["created_via"] = args["created_via"][0]
+        if args['created_via'][0] != "":
+            params["created_via"] = get_list_to_string(args["created_via"])
     if "vendor" in args:
-        id_text = ""
-        for id in args["vendor"]:
-            id_text = id_text+str(id)+","
-        params["vendor"] = id_text[:-1]
+        if args["vendor"][0] != "":
+            params["vendor"] = get_list_to_string(args["vendor"])
     if "delivery_date" in args:
         if args["delivery_date"][0] != "":
             params["delivery_date"] = args["delivery_date"][0].replace(
                 "/", "-")
+
     return params
 
 
