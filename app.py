@@ -128,8 +128,10 @@ def woocom_orders():
         args["created_via"] = params["created_via"]
     t_orders = time.time()
     orders = wcapi.get("order2", params=params).json()
+    print(len(orders), params)
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
     orders = filter_orders(orders, args)
+    print(len(orders))
     managers = []
     wtmessages_list = {}
     t_refunds = time.time()
@@ -431,6 +433,11 @@ def _format_mobile_number(number):
         "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     return mobile_number
 
+@app.route("/order")
+def order():
+    params =  {'per_page': 50, 'page': 1, 'created_via': 'admin, checkout', 'status': 'tbd-paid, tbd-unpaid'}
+    orders = wcapi.get("order2", params=params).json()
+    return {"o":orders}
 
 if __name__ == "__main__":
     # db.create_all()

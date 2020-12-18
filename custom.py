@@ -180,7 +180,7 @@ def get_list_to_string(l):
     for i in l:
         list_s += i
         list_s += ", "
-    list_s = list_s[:-1]
+    list_s = list_s[:-2]
     return list_s
 
 
