@@ -19,7 +19,7 @@ import time
 from datetime import datetime, timedelta
 from pytz import timezone
 from slack import WebClient
-from slack_bot import send_slack_message
+from slack_bot import send_slack_message, send_slack_message_calcelled
 
 app = Flask(__name__, instance_relative_config=True)
 datepicker(app)
@@ -187,7 +187,6 @@ def woocom_orders():
 def send_whatsapp_msg(args, mobile, name):
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
     if name in TemplatesBroadcast.keys():
-        print(args["vendor_type"])
         template_name = TemplatesBroadcast[name][args["vendor_type"]]["template"]
         broadcast_name = TemplatesBroadcast[name][args["vendor_type"]]["broadcast"]
     else:
@@ -218,7 +217,6 @@ def send_whatsapp_msg(args, mobile, name):
         "POST", url, headers=headers, data=json.dumps(payload))
 
     result = json.loads(response.text.encode('utf8'))
-    print(result)
     if result["result"] not in ["success", "PENDING"]:
         result["broadcast_name"] = broadcast_name
         result["template_name"] = template_name
@@ -230,7 +228,6 @@ def send_whatsapp(name):
     if not g.user:
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=True)
-    print(args, "WTMS")
     if len(args) > 0:
         if "status" in args:
             nav_active = args["status"]
@@ -292,7 +289,6 @@ def products():
     args["per_page"] = 50
     products = wcapi.get("products", params=args).json()
     total_categories = list_categories(wcapi)
-    print(len(total_categories))
     return render_template("products/index.html", user=g.user, products=products, params=args, total_categories=total_categories, page=int(page))
 
 
@@ -350,7 +346,11 @@ def list_product_categories_by_c():
 
 @app.route("/new_order", methods=["GET", "POST"])
 def new_order():
+    if request.method == "GET":
+        return "Plese Use Get Method..."
     o = request.get_json()
+    if o == None:
+        return "Please Enter Valid Detail...."
     customer_number = _format_mobile_number(o["billing"]["phone"])
     mobile_numbers = [customer_number]
     params = {}
@@ -399,7 +399,6 @@ def new_order():
     # Sending Whatsapp Template Message....
     if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
         for num in mobile_numbers:
-            print("sent to : "+num)
             if o["date_paid"] != None:
                 result = send_whatsapp_msg(params, num, "order_prepay")
             else:
@@ -417,7 +416,10 @@ def new_order():
     # End Whatsapp Template Message.....
     # Sending Slack Message....
     if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and vendor and (od > nd):
-        send_slack_message(client, wcapi, o)
+        s_msg = send_slack_message(client, wcapi, o)
+    
+    if (o["status"] == "cancelled"):
+        s_msg = send_slack_message_calcelled(client, wcapi, o)
     # End Slack Message....
     return {"Result": "Success No Error..."}
 
