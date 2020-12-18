@@ -36,11 +36,19 @@ TemplatesBroadcast = {
 
 
     },
-    "feedback_msg": {
-        'bakery': {"template": "feed_past", "broadcast": "feedback"},
-        'grocery': {"template": "feed_past", "broadcast": "feedback"},
-        'personal_care': {"template": "feed_past", "broadcast": "feedback"},
-        'dairy': {"template": "feed_past", "broadcast": "feedback"}
+    "feedback_prepay": {
+        'bakery': {"template": "feedback_prepaid", "broadcast": "feedback"},
+        'grocery': {"template": "feedback_prepaid", "broadcast": "feedback"},
+        'personal_care': {"template": "feedback_prepaid", "broadcast": "feedback"},
+        'dairy': {"template": "feedback_prepaid", "broadcast": "feedback"}
+
+    },
+
+     "feedback_postpay": {
+        'bakery': {"template": "feedback_postpaid", "broadcast": "feedback"},
+        'grocery': {"template": "feedback_postpaid", "broadcast": "feedback"},
+        'personal_care': {"template": "feedback_postpaid", "broadcast": "feedback"},
+        'dairy': {"template": "feedback_postpaid", "broadcast": "feedback"}
 
     },
     'prepay_msg': {
@@ -89,11 +97,20 @@ TemplatesBroadcast = {
         'grocery': {"template": "deliver_tomorrow_postpaid", "broadcast": "postpay"},
         'dairy': {"template": "deliver_tomorrow_postpaid", "broadcast": "postpay"}
     },
-    "cancel_msg": {
-        'bakery': {"template": "feed_past", "broadcast": "feedback"},
-        'grocery': {"template": "feed_past", "broadcast": "feedback"},
-        'personal_care': {"template": "feed_past", "broadcast": "feedback"},
-        'dairy': {"template": "feed_past", "broadcast": "feedback"}
+
+     "cancel_prepay": {
+        'bakery': {"template": "order_cancelled_prepaid_2", "broadcast": "order_cancelled"},
+        'grocery': {"template": "order_cancelled_prepaid_2", "broadcast": "order_cancelled"},
+        'personal_care': {"template": "order_cancelled_prepaid_2", "broadcast": "order_cancelled"},
+        'dairy': {"template": "order_cancelled_prepaid_2", "broadcast": "order_cancelled"}
+
+    },
+
+    "cancel_postpay": {
+        'bakery': {"template": "order_cancelled_postpaid", "broadcast": "order_cancelled"},
+        'grocery': {"template": "order_cancelled_postpaid", "broadcast": "order_cancelled"},
+        'personal_care': {"template": "order_cancelled_postpaid", "broadcast": "order_cancelled"},
+        'dairy': {"template": "order_cancelled_postpaid", "broadcast": "order_cancelled"}
 
     },
     "confirm_msg": {
