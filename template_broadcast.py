@@ -29,10 +29,10 @@ TemplatesBroadcast = {
 
     },
     "payment_remainder_msg": {
-        'bakery': {"template": "payment_reminder", "broadcast": "payment_reminder"},
-        'grocery': {"template": "payment_reminder", "broadcast": "payment_reminder"},
-        'personal_care': {"template": "payment_reminder", "broadcast": "payment_reminder"},
-        'dairy': {"template": "payment_reminder", "broadcast": "payment_reminder"},
+        'bakery': {"template": "payment_reminder_2", "broadcast": "payment_reminder"},
+        'grocery': {"template": "payment_reminder_2", "broadcast": "payment_reminder"},
+        'personal_care': {"template": "payment_reminder_2", "broadcast": "payment_reminder"},
+        'dairy': {"template": "payment_reminder_2", "broadcast": "payment_reminder"},
 
 
     },
@@ -97,10 +97,10 @@ TemplatesBroadcast = {
 
     },
     "confirm_msg": {
-        'bakery': {"template": "feed_past", "broadcast": "feedback"},
-        'grocery': {"template": "feed_past", "broadcast": "feedback"},
-        'personal_care': {"template": "feed_past", "broadcast": "feedback"},
-        'dairy': {"template": "feed_past", "broadcast": "feedback"}
+        'bakery': {"template": "pending_payment_3", "broadcast": "order_confirm"},
+        'grocery': {"template": "pending_payment_3", "broadcast": "order_confirm"},
+        'personal_care': {"template": "pending_payment_3", "broadcast": "order_confirm"},
+        'dairy': {"template": "pending_payment_3", "broadcast": "order_confirm"}
 
     }
 }
