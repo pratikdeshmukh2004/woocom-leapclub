@@ -399,31 +399,31 @@ def new_order():
     cd = datetime.now(tz=timezone('Asia/Kolkata')).replace(tzinfo=None)
     nd = (cd - timedelta(minutes=5))
     # Sending Whatsapp Template Message....
+    if request.headers["x-wc-webhook-topic"]=="order.updated":
+        if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
+            for num in mobile_numbers:
+                if o["date_paid"] != None:
+                    result = send_whatsapp_msg(params, num, "order_prepay")
+                else:
+                    result = send_whatsapp_msg(params, num, "order_postpay")
 
-    if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
-        for num in mobile_numbers:
-            if o["date_paid"] != None:
-                result = send_whatsapp_msg(params, num, "order_prepay")
+            if result["result"] in  ["success", "PENDING"]:
+                new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                    "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
             else:
-                result = send_whatsapp_msg(params, num, "order_postpay")
+                new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                    "broadcast_name"], status="failed", time_sent=datetime.utcnow())
+            db.session.add(new_wt)
+            db.session.commit()
 
-        if result["result"] in  ["success", "PENDING"]:
-            new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
-                                "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
-        else:
-            new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
-                                "broadcast_name"], status="failed", time_sent=datetime.utcnow())
-        db.session.add(new_wt)
-        db.session.commit()
+        # End Whatsapp Template Message.....
+        # Sending Slack Message....
+        if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and (od > nd):
+            s_msg = send_slack_message(client, wcapi, o)
 
-    # End Whatsapp Template Message.....
-    # Sending Slack Message....
-    if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and (od > nd):
-        s_msg = send_slack_message(client, wcapi, o)
-    
-    if (o["status"] == "cancelled"):
-        s_msg = send_slack_message_calcelled(client, wcapi, o)
-    # End Slack Message....
+        if (o["status"] == "cancelled"):
+            s_msg = send_slack_message_calcelled(client, wcapi, o)
+        # End Slack Message....
 
     if request.headers["x-wc-webhook-topic"]=="order.created":
         if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin"]):
