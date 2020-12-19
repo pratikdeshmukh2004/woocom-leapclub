@@ -51,7 +51,7 @@ def send_slack_message(client, wcapi, o):
         ]
     )
     t_response = client.chat_postMessage(
-        channel="flask-bot",
+        channel="orders-notifications",
         thread_ts=response["ts"],
         text=th_s_msg,
         reply_broadcast=False
@@ -96,7 +96,7 @@ def send_slack_message_calcelled(client, wcapi, o):
     )
     th_s_msg = "*Order Items*\n" +list_order_items(o["line_items"], order_refunds)
     response = client.chat_postMessage(
-        channel="flask-bot",
+        channel="orders-notifications",
         blocks=[
             {
                 "type": "section",
