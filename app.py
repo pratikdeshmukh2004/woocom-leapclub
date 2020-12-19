@@ -399,6 +399,7 @@ def new_order():
     cd = datetime.now(tz=timezone('Asia/Kolkata')).replace(tzinfo=None)
     nd = (cd - timedelta(minutes=5))
     # Sending Whatsapp Template Message....
+
     if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
         for num in mobile_numbers:
             if o["date_paid"] != None:
@@ -423,6 +424,12 @@ def new_order():
     if (o["status"] == "cancelled"):
         s_msg = send_slack_message_calcelled(client, wcapi, o)
     # End Slack Message....
+
+    if request.headers["x-wc-webhook-topic"]=="order.created":
+        if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin"]):
+            s_msg = send_slack_message(client, wcapi, o)
+
+
     return {"Result": "Success No Error..."}
 
 
@@ -442,3 +449,4 @@ def order():
 if __name__ == "__main__":
     # db.create_all()
     app.run(debug=True)
+
