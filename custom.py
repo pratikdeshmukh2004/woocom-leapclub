@@ -206,8 +206,8 @@ def get_params(args):
         params["created_via"] = get_list_to_string(l_c)
         params["status"] = "tbd-paid, tbd-unpaid"
     if "order_ids" in args:
-        if args['order_ids'][0] != "":
-            params["include"] = get_list_to_string(args["order_ids"])
+        if args["order_ids"][0] != "":
+            params["include"] = args["order_ids"][0]
     if "name" in args:
         if args["name"][0] != "":
             params["search"] = args["name"][0]

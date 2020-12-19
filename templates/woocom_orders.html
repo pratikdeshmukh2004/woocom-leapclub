@@ -55,11 +55,7 @@
       {% if nav_active != '' %}
         <input style="display: none;" name="status" value="{{nav_active}}">
       {% endif %}
-      <select data-live-search="true" multiple title="Order ID" name="order_ids" class="selectpicker mr-2">
-        {% for o in orders %}
-        <option {% if "order_ids" in query %} {% if o.id|string in query["order_ids"] %} selected {% endif %} {% endif %}>{{o.id}}</option>
-        {% endfor%}
-      </select>
+      <input class="form-control mr-2" type="name" placeholder="Order IDs" {% if "order_ids" in query %} {% if query["order_ids"][0] != "" %} value="{{query["order_ids"][0]}}" {% endif %} {% endif %} name="order_ids">
       <select title="Payment Status" name="payment_status" class="selectpicker mr-2">
         <option value="">Payment Status</option>
         <option {% if "payment_status" in query %} {% if query.payment_status[0] == "paid" %} selected {% endif %} {% endif %} value="paid">Paid</option>
