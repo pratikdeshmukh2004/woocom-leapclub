@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
@@ -259,16 +259,21 @@ def download_csv():
     if not g.user:
         return redirect(url_for('login'))
     data = request.form.to_dict(flat=False)
-    orders = wcapi.get("orders", params=get_params(data)).json()
-    csv_text = get_csv_from_orders(orders, wcapi)
-    filename = str(datetime.utcnow())+"-" + data["status"][0]+".csv"
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    orders = wcapi.get("orders", params=params).json()
+    if data["action"][0] == "order_sheet":
+        csv_text = get_csv_from_orders(orders, wcapi)
+        filename = str(datetime.utcnow())+"-" + data["status"][0]+"-Order-Sheet.csv"
+    else:
+        csv_text = get_csv_from_vendor_orders(orders, wcapi)
+        filename = str(datetime.utcnow())+"-" + data["status"][0]+"-Vendor-Order-Sheet.csv"
     response = make_response(csv_text)
     if "," in filename:
         filename = filename.replace(",", "-")
     cd = 'attachment; filename='+filename
     response.headers['Content-Disposition'] = cd
     response.mimetype = 'text/csv'
-
     return response
 
 
@@ -439,12 +444,6 @@ def _format_mobile_number(number):
     mobile_number = (
         "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     return mobile_number
-
-@app.route("/order")
-def order():
-    params =  {'per_page': 50, 'page': 1, 'created_via': 'admin, checkout', 'status': 'tbd-paid, tbd-unpaid'}
-    orders = wcapi.get("order2", params=params).json()
-    return {"o":orders}
 
 if __name__ == "__main__":
     # db.create_all()

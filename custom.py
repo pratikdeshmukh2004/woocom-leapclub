@@ -5,6 +5,7 @@ import datetime
 import concurrent.futures
 from customselectlist import list_created_via
 
+
 def format_delivery_date(d):
     d_s = d.split("/")
     f_s = d_s[0]+" "
@@ -157,6 +158,20 @@ def list_order_items_csv(order_items, refunds):
             )
     return msg
 
+def list_order_items_csv_without_refunds(order_items):
+    msg = ""
+    for order_item in order_items:
+            msg = (
+                msg
+                + order_item["name"]
+                + " x "
+                + str(order_item["quantity"])
+                + " = "
+                + str(order_item["total"])
+                + "\n\n"
+            )
+    return msg
+
 
 def list_only_refunds(order_refunds):
     msg = ""
@@ -174,6 +189,7 @@ def get_totals(total, refunds):
     if len(refunds) > 0:
         msg = msg+" = "+str(total)
     return str(total)
+
 
 def get_list_to_string(l):
     list_s = ""
@@ -310,6 +326,56 @@ def get_csv_from_orders(orders, wcapi):
             "Order Details": list_order_items_csv(o["line_items"], refunds),
             "Comments": "Payment Status: Paid To Leap",
             "Customer Note": o["customer_note"]
+        })
+        writer.writerow({})
+    f.close()
+    f = open("sample.csv", "r")
+    result = f.read()
+    os.remove("sample.csv")
+    return result
+
+
+def get_csv_from_vendor_orders(orders, wcapi):
+    f = open("sample.csv", "w+")
+    writer = csv.DictWriter(
+        f, fieldnames=["Date Created", "Delivery Date", "Order ID", "Customer Detail", "Total Order Amount", "Refund Amount", "Delivery Charge", "Order Items", "Payment Method"])
+    writer.writeheader()
+    for o in orders:
+        refund_amount = 0
+        for r in o["refunds"]:
+            print(r)
+            refund_amount = refund_amount + float(r["total"])
+        delivery_date = ""
+        for item in o["meta_data"]:
+            if item["key"] == "_delivery_date":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+        wallet_payment = 0
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if item["name"] == "Via wallet":
+                    wallet_payment = (-1)*float(item["total"])
+                    break
+        o["total"] = float(o["total"]) + float(wallet_payment)
+        refunds = []
+        if len(o["refunds"]) > 0:
+            refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+        writer.writerow({
+            "Date Created": o["date_created"],
+            "Delivery Date": delivery_date,
+            "Order ID": o["id"],
+            "Customer Detail":  "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+o["billing"]["phone"]
+            + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", " +
+            o["shipping"]["city"]+", "+o["shipping"]["state"] +
+            ", "+o["shipping"]["postcode"],
+            "Total Order Amount": o["total"],
+            "Refund Amount": refund_amount*-1,
+            "Delivery Charge": o["shipping_total"],
+            "Order Items": list_order_items_csv_without_refunds(o["line_items"]),
+            "Payment Method": o["payment_method_title"]
         })
         writer.writerow({})
     f.close()
