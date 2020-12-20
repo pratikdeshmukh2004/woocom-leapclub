@@ -15,6 +15,7 @@ import requests
 import csv
 import os
 import ast
+import concurrent.futures
 import time
 from datetime import datetime, timedelta
 from pytz import timezone
@@ -32,6 +33,22 @@ wcapi = API(
     consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY"],
     consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET"],
     version="wc/v3",
+    timeout=15
+)
+
+wcapis = API(
+    url=app.config["WOOCOMMERCE_API_URL"],
+    consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY"],
+    consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET"],
+    version="wc/v1",
+    timeout=15
+)
+
+wcapiw = API(
+    url=app.config["WOOCOMMERCE_API_URL"],
+    consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY_WALLET"],
+    consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET_WALLET"],
+    version="wp/v2",
     timeout=15
 )
 
@@ -530,6 +547,34 @@ def vendor_order_sheet():
         if args["status"][0] == "subscription":
             params["status"] = "subscription"
     return render_template("vendor-order-sheet/index.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"])
+
+def get_subscription_wallet_balance(subscriptions):
+    def _get_orders_with_wallet_balance(o):
+        balance = wcapiw.get("current_balance/"+str(o["customer_id"]))
+        o["wallet_balance"] = float(balance.text[1:-1])
+        return o
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(_get_orders_with_wallet_balance, subscriptions)
+    return list(result)
+
+@app.route("/subscriptions")
+def subscriptions():
+    if not g.user:
+        return redirect(url_for('login'))
+    args = request.args.to_dict(flat=True)
+    if "page" in args:
+        page = args["page"]
+    else:
+        page = 1
+    args["per_page"] = 50
+    t_orders = time.time()
+    subscriptions = wcapis.get("subscriptions", params=args).json()
+    print("Time To Fetch Total Subscriptions: "+str(time.time()-t_orders))
+    t_orders = time.time()
+    subscriptions = get_subscription_wallet_balance(subscriptions)
+    print("Time To Fetch Total Wallet Balance: "+str(time.time()-t_orders))
+    return render_template("subscriptions/index.html", user=g.user, subscriptions=subscriptions, page=page)
+
 
 if __name__ == "__main__":
     # db.create_all()

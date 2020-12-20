@@ -34,7 +34,7 @@
   </head>
   <body
     class="loading"
-    data-layout-config='{"leftSideBarTheme":"default","layoutBoxed":false, "leftSidebarCondensed":false, "leftSidebarScrollable":false,"darkMode":false, "showRightSidebarOnStart": true}'
+    data-layout-config='{"leftSideBarTheme":"default","layoutBoxed":false, "leftSidebarCondensed":true, "leftSidebarScrollable":false,"darkMode":false, "showRightSidebarOnStart": true}'
   >
     <div class="wrapper">
       <!-- ========== Left Sidebar Start ========== -->
@@ -44,6 +44,9 @@
           <span class="logo-lg font-weight-bold text-white" style="font-size: 20px;">
             Leap Club
           </span>
+          <span class="logo-sm">
+            <img style="border-radius: 50%;" src="{{url_for('static',filename='images/logo.jpeg')}}" alt="" height="40">
+        </span>
         </a>
 
         <!-- LOGO -->
@@ -51,6 +54,9 @@
           <span class="logo-lg font-weight-bold" style="font-size: 20px;">
             Leap Club
           </span>
+          <span class="logo-sm">
+            <img style="border-radius: 50%;" src="{{url_for('static',filename='images/logo.jpeg')}}" alt="" height="40">
+        </span>
         </a>
 
         <div class="h-100" id="left-side-menu-container" data-simplebar>
@@ -62,6 +68,12 @@
               <a href="{{url_for('woocom_orders')}}" class="side-nav-link">
                 <i class="uil-store-alt"></i>
                 <span> Orders </span>
+              </a>
+            </li>
+            <li class="side-nav-item">
+              <a href="{{url_for('subscriptions')}}" class="side-nav-link">
+                <i class="mdi mdi-shopping-outline"></i>
+                <span> Subscription </span>
               </a>
             </li>
 
