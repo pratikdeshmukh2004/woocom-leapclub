@@ -362,7 +362,7 @@ def get_csv_from_vendor_orders(orders, wcapi):
             + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", " +
             o["shipping"]["city"]+", "+o["shipping"]["state"] +
             ", "+o["shipping"]["postcode"],
-            "Total Order Amount": o["total"],
+            "Total Order Amount": get_totals(o["total"], refunds)+get_shipping_total_for_csv(o),
             "Refund Amount": refund_amount*-1,
             "Delivery Charge": o["shipping_total"],
             "Order Items": list_order_items_csv(o["line_items"], refunds)+list_order_refunds(refunds),
