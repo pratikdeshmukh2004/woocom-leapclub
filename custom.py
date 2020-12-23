@@ -158,21 +158,6 @@ def list_order_items_csv(order_items, refunds):
             )
     return msg
 
-def list_order_items_csv_without_refunds(order_items):
-    msg = ""
-    for order_item in order_items:
-            msg = (
-                msg
-                + order_item["name"]
-                + " x "
-                + str(order_item["quantity"])
-                + " = "
-                + str(order_item["total"])
-                + "\n\n"
-            )
-    return msg
-
-
 def list_only_refunds(order_refunds):
     msg = ""
     for r in order_refunds:
@@ -240,6 +225,12 @@ def get_params(args):
         if args["delivery_date"][0] != "":
             params["delivery_date"] = args["delivery_date"][0].replace(
                 "/", "-")
+    if "after" in args:
+        if args["after"][0] != "":
+            params["after"] = args["after"][0].replace("/", "-")+"T00:00:00"
+    if "before" in args:
+        if args["before"][0] != "":
+            params["before"] = args["before"][0].replace("/", "-")+"T00:00:00"
     return params
 
 
@@ -374,7 +365,7 @@ def get_csv_from_vendor_orders(orders, wcapi):
             "Total Order Amount": o["total"],
             "Refund Amount": refund_amount*-1,
             "Delivery Charge": o["shipping_total"],
-            "Order Items": list_order_items_csv_without_refunds(o["line_items"]),
+            "Order Items": list_order_items_csv(o["line_items"], refunds)+list_order_refunds(refunds),
             "Payment Method": o["payment_method_title"]
         })
         writer.writerow({})

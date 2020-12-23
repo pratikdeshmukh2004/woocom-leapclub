@@ -96,6 +96,8 @@
         {% endfor%}
       </select>
       <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker" class="form-control mr-2" {% if "delivery_date" in query %} {% if query["delivery_date"][0] != "" %} value="{{query["delivery_date"][0]}}" {% endif %} {% endif %}>
+      <input placeholder="Date From" type="text" name="after" id="datepicker1" class="form-control mr-2" {% if "after" in query %} {% if query["after"][0] != "" %} value="{{query["after"][0]}}" {% endif %} {% endif %}>
+      <input placeholder="Date To" type="text" name="before" id="datepicker2" class="form-control mr-2" {% if "before" in query %} {% if query["before"][0] != "" %} value="{{query["before"][0]}}" {% endif %} {% endif %}>
       <button class="btn btn-info ml-1"><i class="mdi mdi-18px mdi-filter-variant" aria-hidden="true"></i>
       </button>
     </form>
@@ -316,7 +318,7 @@
 <nav aria-label="Page navigation">
   <ul class="pagination justify-content-center">
     <li class="page-item {% if page == 1%} disabled {%endif%}">
-      <a class="page-link" href="{{url_for('woocom_orders', page=page-1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active)}}" tabindex="-1"
+      <a class="page-link" href="{{url_for('woocom_orders', page=page-1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active, after=query['after'], before=query['before'])}}" tabindex="-1"
         >Previous</a
       >
     </li>
@@ -324,7 +326,7 @@
       <a class="page-link">{{page}}</a>
     </li>
     <li class="page-item {% if orders | length != 50%} disabled {%endif%}">
-      <a class="page-link" href="{{url_for('woocom_orders', page=page+1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active)}}">Next</a>
+      <a class="page-link" href="{{url_for('woocom_orders', page=page+1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active, after=query['after'], before=query['before'])}}">Next</a>
     </li>
   </ul>
 </nav>
@@ -355,6 +357,7 @@
         scrollTop: $(".{{query["message_sent"][0]}}").offset().top,
     });
     {%endif%}
+  
  </script>
  
 {% endblock %}

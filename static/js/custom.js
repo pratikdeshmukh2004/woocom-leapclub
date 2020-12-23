@@ -56,6 +56,12 @@ $(document).ready(function () {
   $("#datepicker").datepicker({
     dateFormat: "yy/mm/dd",
   });
+  $("#datepicker1").datepicker({
+    dateFormat: "yy/mm/dd",
+  });
+  $("#datepicker2").datepicker({
+    dateFormat: "yy/mm/dd",
+  });
 });
 function makeGetRequest(path) {
   $.ajax({
