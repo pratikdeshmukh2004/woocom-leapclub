@@ -334,7 +334,6 @@ def get_csv_from_vendor_orders(orders, wcapi):
     for o in orders:
         refund_amount = 0
         for r in o["refunds"]:
-            print(r)
             refund_amount = refund_amount + float(r["total"])
         delivery_date = ""
         for item in o["meta_data"]:

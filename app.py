@@ -128,10 +128,8 @@ def woocom_orders():
         args["created_via"] = params["created_via"]
     t_orders = time.time()
     orders = wcapi.get("order2", params=params).json()
-    print(len(orders), params)
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
     orders = filter_orders(orders, args)
-    print(len(orders))
     managers = []
     wtmessages_list = {}
     t_refunds = time.time()
