@@ -450,7 +450,7 @@ def new_order():
         # End Slack Message....
 
     if request.headers["x-wc-webhook-topic"]=="order.created":
-        if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin"]):
+        if (o["created_via"] == "admin"):
             s_msg = send_slack_message(client, wcapi, o)
 
 
