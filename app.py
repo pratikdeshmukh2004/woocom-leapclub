@@ -276,6 +276,25 @@ def download_csv():
     response.mimetype = 'text/csv'
     return response
 
+@app.route("/download_vendor_order_csv", methods=["POST"])
+def download_vendor_order_csv():
+    if not g.user:
+        return redirect(url_for('login'))
+    data = request.form.to_dict(flat=False)
+    params = {"per_page": 100}
+    print(len(data['order_ids']))
+    params["include"] = get_list_to_string(data["order_ids"])
+    orders = list_orders_with_status(wcapi, params)
+    print(len(orders))
+    csv_text = get_csv_from_vendor_orders(orders, wcapi)
+    filename = str(datetime.utcnow())+"-Vendor-Order-Sheet.csv"
+    response = make_response(csv_text)
+    if "," in filename:
+        filename = filename.replace(",", "-")
+    cd = 'attachment; filename='+filename
+    response.headers['Content-Disposition'] = cd
+    response.mimetype = 'text/csv'
+    return response
 
 @app.route('/logout')
 def logout():
@@ -444,6 +463,73 @@ def _format_mobile_number(number):
     mobile_number = (
         "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     return mobile_number
+
+@app.route("/vendor_order_sheet")
+def vendor_order_sheet():
+    if not g.user:
+        return redirect(url_for('login'))
+    args = request.args.to_dict(flat=False)
+    params = get_params(args)
+    params["per_page"] = 100
+    if "status" in args:
+        params["status"] = get_list_to_string(args["status"])
+    t_orders = time.time()
+    if len(args)>0:
+        orders = list_orders_with_status(wcapi, params)
+    else:
+        orders=[]
+    print(len(orders), params)
+    print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
+    orders = filter_orders(orders, args)
+    managers = []
+    wtmessages_list = {}
+    for o in orders:
+        wallet_payment = 0
+        refunds = 0
+        for r in o["refunds"]:
+            refunds = refunds + float(r["total"])
+        o["total_refunds"] = refunds*-1
+        o["total"] = float(o["total"])
+        wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
+        wtmessages_list[o["id"]] = wt_messages
+        vendor, manager, delivery_date, order_note,  = "", "", "", ""
+        for item in o["meta_data"]:
+            if item["key"] == "wos_vendor_data":
+                vendor = item["value"]["vendor_name"]
+            elif item["key"] == "_wc_acof_6":
+                vendor = item["value"]
+            elif item["key"] == "_wc_acof_3":
+                manager = item["value"]
+            elif item["key"] == "_wc_acof_7":
+                order_note = item["value"]
+            elif item["key"] == "_delivery_date":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment = (-1)*float(item["total"])
+
+        if manager not in managers:
+            managers.append(manager)
+        if vendor in vendor_type.keys():
+            o["vendor_type"] = vendor_type[vendor]
+        else:
+            o["vendor_type"] = ""
+        o["vendor"] = vendor
+        o["delivery_date"] = delivery_date
+        o["order_note"] = order_note
+        o["manager"] = manager
+        o["wallet_payment"] = wallet_payment
+        o["total"] = float(o["total"]) + float(o["wallet_payment"])
+        o["checkout_url"] = get_checkout_url(o)
+    if "status" in args:
+        if args["status"][0] == "subscription":
+            params["status"] = "subscription"
+    return render_template("vendor-order-sheet/index.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"])
 
 if __name__ == "__main__":
     # db.create_all()

@@ -1,0 +1,118 @@
+{% extends "layout.html" %} {% block content %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand font-weight-bold" href="#">Orders</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{{url_for('woocom_orders')}}">
+              Orders</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{url_for('products')}}">
+              Products</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{url_for('logout')}}">
+              <i class="mdi mdi-logout" aria-hidden="true"></i>
+              Logout</a>
+          </li>
+        </ul>
+    </div>
+</div>
+</nav>
+<div class="mt-3 ml-2 d-flex">
+    <form autocomplete="off" class = "form-inline" role = "form">
+        <select data-live-search="true" multiple title="Vendor" name="vendor" class="selectpicker mr-2">
+          {% for v in vendors %}
+            <option {% if "vendor" in query %} {% if v in query["vendor"] %} selected {% endif %} {% endif %}>{{v}}</option>
+          {% endfor%}
+        </select>     
+        <select required data-live-search="true" multiple title="Status" name="status" class="selectpicker mr-2">
+              <option value="any" {% if "status" in query %} {% if "any" in query["status"] %} selected {% endif %} {% endif %}>All</option>
+              <option value="processing" {% if "status" in query %} {% if "processing" in query["status"] %} selected {% endif %} {% endif %}>Processing</option>
+              <option value="tbd-unpaid, tbd-paid" {% if "status" in query %} {% if "tbd-unpaid, tbd-paid" in query["status"] %} selected {% endif %} {% endif %}>To Be Delivered</option>
+              <option value="delivered-unpaid" {% if "status" in query %} {% if "delivered-unpaid" in query["status"] %} selected {% endif %} {% endif %}>Delivered Unpaid</option>
+              <option value="completed" {% if "status" in query %} {% if "completed" in query["status"] %} selected {% endif %} {% endif %}>Delivered Paid</option>
+              <option value="cancelled" {% if "status" in query %} {% if "cancelled" in query["status"] %} selected {% endif %} {% endif %}>Cancelled</option>
+              <option value="refunded" {% if "status" in query %} {% if "refunded" in query["status"] %} selected {% endif %} {% endif %}>Refunded</option>
+              <option value="pending, failed" {% if "status" in query %} {% if "pending, failed" in query["status"] %} selected {% endif %} {% endif %}>Failed</option>
+        </select>      
+        <input placeholder="Date From" type="text" name="after" id="datepicker1" class="form-control mr-2" {% if "after" in query %} {% if query["after"][0] != "" %} value="{{query["after"][0]}}" {% endif %} {% endif %}>
+        <input placeholder="Date To" type="text" name="before" id="datepicker2" class="form-control mr-2" {% if "before" in query %} {% if query["before"][0] != "" %} value="{{query["before"][0]}}" {% endif %} {% endif %}>
+        <button class="btn btn-info ml-1"><i class="mdi mdi-18px mdi-filter-variant" aria-hidden="true"></i>
+        </button>
+      </form>
+      <form autocomplete="off" action="{{url_for('download_vendor_order_csv')}}", method="POST" class = "form-inline ml-3" role = "form">
+        <select multiple data-actions-box="true" data-live-search="true" multiple required title="Order ID" name="order_ids" class="selectpicker mr-2">
+          {% for o in orders %}
+          <option value="{{o.id}}">{{o.id}} - {{ o.billing.first_name}} - 
+            {{o.vendor}}
+          </option>
+          {% endfor%}
+        </select>
+        <button title="Download Vendor Order Sheet" name="action" value="vendor_sheet" class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
+        </form>
+</div>
+<div style="overflow-x: auto;" class="ml-1 mr-1 pt-3">
+  <table class="table">
+    <thead>
+      <tr class="bg-info text-white">
+        <th scope="col">Order ID</th>
+        <th scope="col">Name (Phone_Number)</th>
+        <th scope="col">City</th>
+        <th scope="col">Status</th>
+        <th scope="col">Order Date</th>
+        <th scope="col">Delivery Date</th>
+        <th scope="col">Vendor</th>
+        <th scope="col">Payment Status (Payment_Type)</th>
+        <th scope="col">Amount (Refund)</th>
+        <th scope="col">Amount Payble</th>
+        <th scope="col">Whatsapp Messages</th>
+        <th scope="col">Manager</th>
+        <th scope="col">Created VIA</th>
+        <th scope="col">Checkout URL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      <tr>
+        <td scope="row">{{ o.id}}</td>
+        <td scope="row">{{ o.billing.first_name}} {{ o.billing.last_name}} ({{ o.billing.phone}})</td>
+        <td scope="row">{{ o.billing.city}}</td>
+        <td scope="row">{{ o.status}}</td>
+        <td scope="row">{{ o.date_created}}</td>
+        <td scope="row">{{ o.delivery_date}}</td>
+        <td scope="row">{{o.vendor}}</td>
+        {% if o.date_paid == None %}
+            <td scope="row">Unpaid ({{ o.payment_method}})</td>
+            {% else %}
+            <td scope="row">Paid ({{ o.payment_method}})</td>
+        {% endif %}
+        <td scope="row">{{ o.total}} ({{ o.total_refunds}})</td>
+        <td scope="row">{{ o.total-o.total_refunds}}</td>
+        <td class="wtmessage-{{o.id}}" scope="row">
+          <div style="max-height: 100px; overflow-y: scroll;">
+          {% for wt in wtmessages_list[o.id]%}
+            {% if wt.status == "success"%}
+              <span class="text-success">{{wt.template_name}}, </span>
+            {%else%}
+              <span class="text-danger">{{wt.template_name}}, </span>
+            {% endif%}
+          {% endfor %}
+          </div>
+        </td>
+        <td scope="row">{{o.manager}}</td>
+        <td scope="row">{{o.created_via}}</td>
+        <td scope="row">
+          <p style="cursor: pointer;" onclick="copyText('{{o.checkout_url}}')">click_to_copy</p>
+        </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

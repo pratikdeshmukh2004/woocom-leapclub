@@ -325,17 +325,19 @@ def get_csv_from_orders(orders, wcapi):
     os.remove("sample.csv")
     return result
 
+def get_total_from_line_items(items):
+    total = 0
+    for i in items:
+        total += float(i["total"])
+    return total
+
 
 def get_csv_from_vendor_orders(orders, wcapi):
     f = open("sample.csv", "w+")
     writer = csv.DictWriter(
-        f, fieldnames=["Date Created", "Delivery Date", "Order ID", "Customer Detail", "Total Order Amount", "Refund Amount", "Delivery Charge", "Order Items", "Payment Method"])
+        f, fieldnames=["Date Created", "Delivery Date", "Order ID", "Customer Detail", "Total Order Amount", "Refund Amount", "Delivery Charge", "Order Items", "Payment Method", "Status", "Item Total"])
     writer.writeheader()
     for o in orders:
-        refund_amount = 0
-        for r in o["refunds"]:
-            print(r)
-            refund_amount = refund_amount + float(r["total"])
         delivery_date = ""
         for item in o["meta_data"]:
             if item["key"] == "_delivery_date":
@@ -363,10 +365,12 @@ def get_csv_from_vendor_orders(orders, wcapi):
             o["shipping"]["city"]+", "+o["shipping"]["state"] +
             ", "+o["shipping"]["postcode"],
             "Total Order Amount": o["total"],
-            "Refund Amount": refund_amount*-1,
+            "Refund Amount": get_total_from_line_items(o["refunds"])*-1,
             "Delivery Charge": o["shipping_total"],
             "Order Items": list_order_items_csv(o["line_items"], refunds)+list_order_refunds(refunds),
-            "Payment Method": o["payment_method_title"]
+            "Payment Method": o["payment_method_title"],
+            "Status": o["status"],
+            "Item Total": get_total_from_line_items(o["line_items"])
         })
         writer.writerow({})
     f.close()
@@ -475,11 +479,13 @@ def list_orders_with_status(wcapi, params):
         params["page"] = p
         p_list.append(params.copy())
         p += 1
+    print(p_list)
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(get_order, p_list)
     orders = list(result)
     orders.insert(0, forder)
     o_list = []
+    print(orders)
     for o in orders:
         o_list.extend(o.json())
     return o_list
