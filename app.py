@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
@@ -281,10 +281,12 @@ def download_csv():
     orders = wcapi.get("orders", params=params).json()
     if data["action"][0] == "order_sheet":
         csv_text = get_csv_from_orders(orders, wcapi)
-        filename = str(datetime.utcnow())+"-" + data["status"][0]+"-Order-Sheet.csv"
+        filename = str(datetime.utcnow())+"-" + \
+            data["status"][0]+"-Order-Sheet.csv"
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
-        filename = str(datetime.utcnow())+"-" + data["status"][0]+"-Vendor-Order-Sheet.csv"
+        filename = str(datetime.utcnow())+"-" + \
+            data["status"][0]+"-Vendor-Order-Sheet.csv"
     response = make_response(csv_text)
     if "," in filename:
         filename = filename.replace(",", "-")
@@ -292,6 +294,7 @@ def download_csv():
     response.headers['Content-Disposition'] = cd
     response.mimetype = 'text/csv'
     return response
+
 
 @app.route("/download_vendor_order_csv", methods=["POST"])
 def download_vendor_order_csv():
@@ -312,6 +315,7 @@ def download_vendor_order_csv():
     response.headers['Content-Disposition'] = cd
     response.mimetype = 'text/csv'
     return response
+
 
 @app.route('/logout')
 def logout():
@@ -387,6 +391,45 @@ def list_product_categories_by_c():
     return response
 
 
+def update_wati_contact_attributs(o):
+    mobile_number = o["billing"]["phone"].strip(" ")
+    mobile_number = mobile_number[-10:]
+    mobile_number = (
+        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+    url = app.config["WATI_URL"] + \
+        "/api/v1/updateContactAttributes/" + mobile_number
+    vendor = ""
+    for item in o["meta_data"]:
+        if item["key"] == "wos_vendor_data":
+            vendor = item["value"]["vendor_name"]
+        elif item["key"] == "_wc_acof_6":
+            vendor = item["value"]
+    args = {}
+    args['last_order_date'] = o["date_created"]
+    args["last_order_amount"] = get_total_from_line_items(o["line_items"])
+    args["last_order_vendor"] = vendor
+    parameters_s = "["
+    for d in args:
+        parameters_s = parameters_s + \
+            '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
+    parameters_s = parameters_s[:-1]
+    parameters_s = parameters_s+"]"
+    payload = {"customParams": json.loads(parameters_s)}
+    print(payload)
+    headers = {
+        'Authorization': app.config["WATI_AUTHORIZATION"],
+        'Content-Type': 'application/json',
+    }
+
+    response = requests.request(
+        "POST", url, headers=headers, data=json.dumps(payload))
+
+    result = json.loads(response.text.encode('utf8'))
+    print(result)
+    if result["result"]:
+        return True
+
+
 @app.route("/new_order", methods=["GET", "POST"])
 def new_order():
     if request.method == "GET":
@@ -440,7 +483,7 @@ def new_order():
     cd = datetime.now(tz=timezone('Asia/Kolkata')).replace(tzinfo=None)
     nd = (cd - timedelta(minutes=5))
     # Sending Whatsapp Template Message....
-    if request.headers["x-wc-webhook-topic"]=="order.updated":
+    if request.headers["x-wc-webhook-topic"] == "order.updated":
         if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
             for num in mobile_numbers:
                 if o["date_paid"] != None:
@@ -448,7 +491,7 @@ def new_order():
                 else:
                     result = send_whatsapp_msg(params, num, "order_postpay")
 
-            if result["result"] in  ["success", "PENDING"]:
+            if result["result"] in ["success", "PENDING"]:
                 new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
                                     "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
             else:
@@ -461,15 +504,16 @@ def new_order():
         # Sending Slack Message....
         if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and (od > nd):
             s_msg = send_slack_message(client, wcapi, o)
+            update_wati_contact_attributs(o)
 
         if (o["status"] == "cancelled"):
             s_msg = send_slack_message_calcelled(client, wcapi, o)
         # End Slack Message....
 
-    if request.headers["x-wc-webhook-topic"]=="order.created":
+    if request.headers["x-wc-webhook-topic"] == "order.created":
         if (o["created_via"] == "admin"):
             s_msg = send_slack_message(client, wcapi, o)
-
+            update_wati_contact_attributs(o)
 
     return {"Result": "Success No Error..."}
 
@@ -481,6 +525,7 @@ def _format_mobile_number(number):
         "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     return mobile_number
 
+
 @app.route("/vendor_order_sheet")
 def vendor_order_sheet():
     if not g.user:
@@ -491,10 +536,10 @@ def vendor_order_sheet():
     if "status" in args:
         params["status"] = get_list_to_string(args["status"])
     t_orders = time.time()
-    if len(args)>0:
+    if len(args) > 0:
         orders = list_orders_with_status(wcapi, params)
     else:
-        orders=[]
+        orders = []
     print(len(orders), params)
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
     orders = filter_orders(orders, args)
@@ -579,4 +624,3 @@ def subscriptions():
 if __name__ == "__main__":
     # db.create_all()
     app.run(debug=True)
-
