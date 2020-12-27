@@ -409,10 +409,7 @@ def update_wati_contact_attributs(o):
     args["last_order_vendor"] = vendor
     day_name= ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat','Sun']
     week_day = datetime.strptime(o["date_created"], '%Y-%m-%dT%H:%M:%S').weekday()
-    if week_day  == 6:
-        args["weekly_reminder"] = "Sat"
-    else:
-        args["weekly_reminder"] = day_name[week_day]
+    args["weekly_reminder"] = day_name[week_day]
     parameters_s = "["
     for d in args:
         parameters_s = parameters_s + \
