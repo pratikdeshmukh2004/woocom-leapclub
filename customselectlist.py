@@ -3,7 +3,8 @@ list_vendor = [
     "DesiUtpadbyJaya", "Desi Utpad by Jaya",
     "micheartisanbakery", "Miche Artisan Bake",
     "Mr. Dairy","mrdairy",
-    "The Womens Company"
+    "The Womens Company",
+    "kyssafarms"
 ]
 
 list_created_via = [
