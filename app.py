@@ -6,7 +6,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
-from datetime import datetime
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
 import uuid
@@ -408,6 +407,12 @@ def update_wati_contact_attributs(o):
     args['last_order_date'] = o["date_created"]
     args["last_order_amount"] = get_total_from_line_items(o["line_items"])
     args["last_order_vendor"] = vendor
+    day_name= ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat','Sun']
+    week_day = datetime.strptime(o["date_created"], '%Y-%m-%dT%H:%M:%S').weekday()
+    if week_day  == 6:
+        args["weekly_reminder"] = "Sat"
+    else:
+        args["weekly_reminder"] = day_name[week_day]
     parameters_s = "["
     for d in args:
         parameters_s = parameters_s + \
@@ -512,7 +517,7 @@ def new_order():
 
     if request.headers["x-wc-webhook-topic"] == "order.created":
         if (o["created_via"] == "admin"):
-            s_msg = send_slack_message(client, wcapi, o)
+            # s_msg = send_slack_message(client, wcapi, o)
             update_wati_contact_attributs(o)
 
     return {"Result": "Success No Error..."}
