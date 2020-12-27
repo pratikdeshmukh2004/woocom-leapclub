@@ -517,7 +517,7 @@ def new_order():
 
     if request.headers["x-wc-webhook-topic"] == "order.created":
         if (o["created_via"] == "admin"):
-            # s_msg = send_slack_message(client, wcapi, o)
+            s_msg = send_slack_message(client, wcapi, o)
             update_wati_contact_attributs(o)
 
     return {"Result": "Success No Error..."}
