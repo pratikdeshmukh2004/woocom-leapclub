@@ -207,14 +207,18 @@
                </a>
             </div>
             {%else%}
-            <div class="mb-1" style="min-width: 139px">
+            <div class="mb-1" style="min-width: 141px">
               <a title="Delivery Today Message" class="btn btn-success btn-sm"  
               href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='today_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
               ">Today
               </a>
-            <a title="Delivery Tomorrow Message" class="btn btn-success btn-sm ml-1" 
+            <a title="Delivery Tomorrow Message" class="btn btn-success btn-sm" 
             href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='tomorrow_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
               ">Tom
+            </a>
+            <a title="Send Session Message" class="btn btn-warning btn-sm" 
+            href="{{url_for('send_session_message', order_id=o.id)}}
+              "><i title="Order Detail Message" class="mdi mdi-12px mdi-whatsapp"></i>
             </a>
             </div>
             <div style="min-width: 120px;">

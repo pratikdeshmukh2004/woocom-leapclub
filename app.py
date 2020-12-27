@@ -407,9 +407,10 @@ def update_wati_contact_attributs(o):
     args['last_order_date'] = o["date_created"]
     args["last_order_amount"] = get_total_from_line_items(o["line_items"])
     args["last_order_vendor"] = vendor
-    day_name= ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat','Sun']
-    week_day = datetime.strptime(o["date_created"], '%Y-%m-%dT%H:%M:%S').weekday()
-    if week_day  == 6:
+    day_name = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    week_day = datetime.strptime(
+        o["date_created"], '%Y-%m-%dT%H:%M:%S').weekday()
+    if week_day == 6:
         args["weekly_reminder"] = "Sat"
     else:
         args["weekly_reminder"] = day_name[week_day]
@@ -598,6 +599,7 @@ def vendor_order_sheet():
             params["status"] = "subscription"
     return render_template("vendor-order-sheet/index.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"])
 
+
 def get_subscription_wallet_balance(subscriptions):
     def _get_orders_with_wallet_balance(o):
         balance = wcapiw.get("current_balance/"+str(o["customer_id"]))
@@ -606,6 +608,7 @@ def get_subscription_wallet_balance(subscriptions):
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(_get_orders_with_wallet_balance, subscriptions)
     return list(result)
+
 
 @app.route("/subscriptions")
 def subscriptions():
@@ -625,6 +628,33 @@ def subscriptions():
     print("Time To Fetch Total Wallet Balance: "+str(time.time()-t_orders))
     return render_template("subscriptions/index.html", user=g.user, subscriptions=subscriptions, page=page)
 
+
+@app.route("/send_session_message/<string:order_id>")
+def send_session_message(order_id):
+    order = wcapi.get("orders/"+order_id).json()
+    mobile_number = order["billing"]["phone"]
+    order = get_orders_with_messages([order], wcapi)
+    mobile_number = mobile_number[-10:]
+    mobile_number = (
+        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+    url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
+        mobile_number + "?messageText="+order[0]["c_msg"]
+    headers = {
+        'Authorization': app.config["WATI_AUTHORIZATION"],
+        'Content-Type': 'application/json',
+    }
+    ctime = time.time()
+    response = requests.request(
+        "POST", url, headers=headers)
+    print("Time To Send Session Message - ", time.time()-ctime)
+    result = json.loads(response.text.encode('utf8'))
+    if result["result"] in ["success", "PENDING"]:
+        new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail", broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
+    else:
+        new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail", broadcast_name="order_detail", status="failed", time_sent=datetime.utcnow())
+    db.session.add(new_wt)
+    db.session.commit()
+    return redirect(url_for("woocom_orders", message_sent=order[0]["id"]))
 
 if __name__ == "__main__":
     # db.create_all()
