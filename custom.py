@@ -253,7 +253,7 @@ def get_orders_with_messages(orders, wcapi):
         order_refunds = []
         if len(o["refunds"]) > 0:
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
-        c_msg = "Here are the order details:\n\n" + \
+        c_msg = "Here are the order details:\n\n"+ "Order Id: "+ str(o["id"]) +"\n\n"+ \
             list_order_items(o["line_items"], order_refunds) + \
             "*Total Amount: " + \
             get_totals(o["total"], order_refunds) + \

@@ -405,6 +405,7 @@ def update_wati_contact_attributs(o):
             vendor = item["value"]
     args = {}
     args['last_order_date'] = o["date_created"]
+    args['city'] = o["shipping"]["city"]
     args["last_order_amount"] = get_total_from_line_items(o["line_items"])
     args["last_order_vendor"] = vendor
     day_name= ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat','Sun']
@@ -611,18 +612,41 @@ def subscriptions():
     if not g.user:
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=True)
+    if "order" in args:
+        if args["order"] == 'ASC':
+            order = 'DSC'
+        else:
+            order = 'ASC'
+    else:
+        order = 'ASC'
     if "page" in args:
         page = args["page"]
     else:
         page = 1
     args["per_page"] = 50
     t_orders = time.time()
-    subscriptions = wcapis.get("subscriptions", params=args).json()
+    subscriptions = wcapis.get("subscriptions", params=get_params_subscriptions(args)).json()
     print("Time To Fetch Total Subscriptions: "+str(time.time()-t_orders))
     t_orders = time.time()
     subscriptions = get_subscription_wallet_balance(subscriptions)
     print("Time To Fetch Total Wallet Balance: "+str(time.time()-t_orders))
-    return render_template("subscriptions/index.html", user=g.user, subscriptions=subscriptions, page=page)
+    subscriptions = sort_subscriptions(subscriptions, args, order)
+    return render_template("subscriptions/index.html", user=g.user, subscriptions=subscriptions, page=page, order=order)
+
+def get_params_subscriptions(args):
+    params = {"per_page": 50}
+    if "page" in args:
+        params["page"] = args["page"]
+    return params
+
+def sort_subscriptions(subscriptions, args, order):
+    if "sort" in args:
+        if order == "ASC":
+            return sorted(subscriptions, key = lambda i: i['wallet_balance'],reverse=True)
+        else:
+            return sorted(subscriptions, key = lambda i: i['wallet_balance'],reverse=False)
+    else:
+        return subscriptions
 
 
 @app.route("/send_session_message/<string:order_id>")
