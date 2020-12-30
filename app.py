@@ -16,6 +16,7 @@ import os
 import ast
 import concurrent.futures
 import time
+import razorpay
 from datetime import datetime, timedelta
 from pytz import timezone
 from slack import WebClient
@@ -23,10 +24,9 @@ from slack_bot import send_slack_message, send_slack_message_calcelled
 
 app = Flask(__name__, instance_relative_config=True)
 datepicker(app)
-
 app.config.from_pyfile("config.py")
-
 db = SQLAlchemy(app)
+
 wcapi = API(
     url=app.config["WOOCOMMERCE_API_URL"],
     consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY"],
@@ -55,13 +55,8 @@ client = WebClient(
     token=app.config["SLACK_APP_TOKEN"]
 )
 
-# wcapiw = API(
-#     url=app.config["WOOCOMMERCE_API_URL"],
-#     consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY_WALLET"],
-#     consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET_WALLET"],
-#     version="wp/v2",
-#     timeout=15
-# )
+razorpay_client = razorpay.Client(
+    auth=(app.config["RAZORPAY_ID"], app.config["RAZORPAY_SECRET"]))
 
 
 class User:
@@ -134,6 +129,25 @@ class wtmessages(db.Model):
     status = db.Column(db.String)
 
 
+class PaymentLinks(db.Model):
+    id = db.Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        unique=True,
+        nullable=False,
+    )
+    order_id = db.Column(db.Integer)
+    receipt = db.Column(db.String)
+    payment_link_url = db.Column(db.String)
+    contact = db.Column(db.String)
+    status = db.Column(db.String)
+    name = db.Column(db.String)
+    created_at = db.Column(db.String)
+    amount = db.Column(db.Float)
+
+
+
 @app.route("/orders")
 def woocom_orders():
     if not g.user:
@@ -150,6 +164,7 @@ def woocom_orders():
     print(len(orders))
     managers = []
     wtmessages_list = {}
+    payment_links = {}
     t_refunds = time.time()
     orders = get_orders_with_messages(orders, wcapi)
     print("Time To Fetch Total Refunds: "+str(time.time()-t_refunds))
@@ -161,7 +176,9 @@ def woocom_orders():
         o["total_refunds"] = refunds*-1
         o["total"] = float(o["total"])
         wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
+        payment_link = PaymentLinks.query.filter_by(order_id=o["id"]).all()
         wtmessages_list[o["id"]] = wt_messages
+        payment_links[o["id"]] = payment_link
         vendor, manager, delivery_date, order_note,  = "", "", "", ""
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
@@ -199,7 +216,7 @@ def woocom_orders():
     if "status" in args:
         if args["status"][0] == "subscription":
             params["status"] = "subscription"
-    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"])
+    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links)
 
 
 def send_whatsapp_msg(args, mobile, name):
@@ -407,8 +424,9 @@ def update_wati_contact_attributs(o):
     args['last_order_date'] = o["date_created"]
     args["last_order_amount"] = get_total_from_line_items(o["line_items"])
     args["last_order_vendor"] = vendor
-    day_name= ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat','Sun']
-    week_day = datetime.strptime(o["date_created"], '%Y-%m-%dT%H:%M:%S').weekday()
+    day_name = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    week_day = datetime.strptime(
+        o["date_created"], '%Y-%m-%dT%H:%M:%S').weekday()
     args["weekly_reminder"] = day_name[week_day]
     parameters_s = "["
     for d in args:
@@ -627,6 +645,8 @@ def subscriptions():
 
 @app.route("/send_session_message/<string:order_id>")
 def send_session_message(order_id):
+    if not g.user:
+        return redirect(url_for('login'))
     order = wcapi.get("orders/"+order_id).json()
     mobile_number = order["billing"]["phone"]
     order = get_orders_with_messages([order], wcapi)
@@ -645,12 +665,54 @@ def send_session_message(order_id):
     print("Time To Send Session Message - ", time.time()-ctime)
     result = json.loads(response.text.encode('utf8'))
     if result["result"] in ["success", "PENDING"]:
-        new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail", broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
+        new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail",
+                            broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
     else:
-        new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail", broadcast_name="order_detail", status="failed", time_sent=datetime.utcnow())
+        new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail",
+                            broadcast_name="order_detail", status="failed", time_sent=datetime.utcnow())
     db.session.add(new_wt)
     db.session.commit()
     return redirect(url_for("woocom_orders", message_sent=order[0]["id"]))
+
+
+@app.route("/gen_payment_link/<string:order_id>")
+def gen_payment_link(order_id):
+    if not g.user:
+        return redirect(url_for('login'))
+    o = wcapi.get("orders/"+order_id).json()
+    payment_links = PaymentLinks.query.filter_by(order_id=o["id"], status="success").all()
+    wallet_payment = 0
+    if len(o["fee_lines"]) > 0:
+        for item in o["fee_lines"]:
+            if "wallet" in item["name"].lower():
+                wallet_payment = (-1)*float(item["total"])
+    data = {
+        "amount": (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))*100,
+        "receipt": "Leap "+str(o["id"])+"-"+str(len(payment_links)+1),
+        "customer": {
+            "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
+            "contact": o["billing"]["phone"]
+        },
+        "type": "link",
+        "view_less": 1,
+        "currency": "INR",
+        "description": "Thank you for making a healthy and sustainable choice",
+        "reminder_enable": True,
+        "callback_url": "https://leapclub.in/",
+        "callback_method": "get"
+    }
+    try:
+        invoice = razorpay_client.invoice.create(data=data)
+        status = "success"
+        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
+        print(invoice)
+    except:
+        status = "failed"
+        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
+    db.session.add(new_payment_link)
+    db.session.commit()
+    return redirect(url_for("woocom_orders", message_sent=o["id"]))
+
 
 if __name__ == "__main__":
     # db.create_all()

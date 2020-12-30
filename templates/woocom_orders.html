@@ -140,6 +140,7 @@
         <th scope="col">Amount (Refund)</th>
         <th scope="col">Amount Payble</th>
         <th scope="col">Whatsapp Messages</th>
+        <th scope="col">Payment Links</th>
         <th scope="col">Manager</th>
         <th scope="col">Created VIA</th>
         <th scope="col">Checkout URL</th>
@@ -153,6 +154,9 @@
           <div style="min-width: 92px;">
             <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
             <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
+            <a class="btn btn-warning btn-sm" href="{{url_for('gen_payment_link', order_id=o.id)}}">
+                <i title="Hello Message" class="mdi mdi-18px mdi-link"></i>
+              </a>
           </div>
           {% endif %}
           <div class="mt-1">
@@ -312,6 +316,17 @@
               <span class="text-success">{{wt.template_name}}, </span>
             {%else%}
               <span class="text-danger">{{wt.template_name}}, </span>
+            {% endif%}
+          {% endfor %}
+          </div>
+        </td>
+        <td class="payment-{{o.id}}" scope="row">
+          <div style="max-height: 100px; overflow-y: scroll;">
+          {% for pl in payment_links[o.id]%}
+            {% if pl.status == "success"%}
+            <p  class="text-success" style="cursor: pointer;" onclick="copyText('{{pl.payment_link_url}}')">{{pl.payment_link_url}}, </p>
+            {%else%}
+              <span class="text-danger">{{pl.receipt}}, </span>
             {% endif%}
           {% endfor %}
           </div>

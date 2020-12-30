@@ -10,6 +10,13 @@ flask = "*"
 woocommerce = "*"
 requests = "*"
 slack-bot = "*"
+razorpay = "*"
+flask-sqlalchemy = "*"
+sshtunnel = "*"
+flask-datepicker = "*"
+uuid = "*"
+slack = "*"
+pytz = "*"
 
 [requires]
 python_version = "3.8"
