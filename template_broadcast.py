@@ -3,7 +3,8 @@ TemplatesBroadcast = {
         'bakery': {"template": "order_intro_2910", "broadcast": "order_ack"},
         'grocery': {"template": "order_intro_2910", "broadcast": "order_ack"},
         'personal_care': {"template": "order_intro_2910", "broadcast": "order_ack"},
-        'dairy': {"template": "order_intro_2910", "broadcast": "order_ack"}
+        'dairy': {"template": "order_intro_2910", "broadcast": "order_ack"},
+        'any': {"template": "order_intro_2910", "broadcast": "order_ack"}
 
     },
     'order_detail_msg': {

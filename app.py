@@ -227,7 +227,8 @@ def send_whatsapp_msg(args, mobile, name):
     else:
         return {"result": "error", "info": "Please Select Valid Button."}
     parameters_s = "["
-    args["name"] = args["c_name"]
+    if "c_name" in args:
+        args["name"] = args["c_name"]
     if "order_note" in args:
         if args["order_note"] == "":
             args["order_note"] = "No changes to the order"
@@ -679,6 +680,7 @@ def send_session_message(order_id):
 def gen_payment_link(order_id):
     if not g.user:
         return redirect(url_for('login'))
+    page = request.args.get('page', 0)
     o = wcapi.get("orders/"+order_id).json()
     payment_links = PaymentLinks.query.filter_by(order_id=o["id"], status="success").all()
     wallet_payment = 0
@@ -711,9 +713,21 @@ def gen_payment_link(order_id):
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
     db.session.add(new_payment_link)
     db.session.commit()
-    return redirect(url_for("woocom_orders", message_sent=o["id"]))
+    return redirect(url_for("woocom_orders", message_sent=o["id"], page=page))
 
-
+@app.route("/razorpay", methods=["GET", "POST"])
+def razorpay():
+    if request.method == "GET":
+        return "Plese Use POST Method..."
+    e = request.get_json()
+    print(e)
+    if len(e)>0:
+        if e["event"] == "payment.captured":
+            mobile = e['payload']['payment']['entity']['contact']
+            msg = send_whatsapp_msg({'vendor_type': "any"}, mobile, 'hello_msg')
+            return(msg)
+    else:
+        return "Please enter valid detail..."
 if __name__ == "__main__":
     # db.create_all()
     app.run(debug=True)
