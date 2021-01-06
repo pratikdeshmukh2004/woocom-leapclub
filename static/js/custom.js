@@ -103,12 +103,12 @@ function copyText(text) {
   input.parentNode.removeChild(input);
   if (status) {
     $.nok({
-      message: "Success, Checkout Url Copied!",
+      message: "Success, Url Copied!",
       type: "success",
     });
   } else {
     $.nok({
-      message: "Error, Checkout Url Not Copied!",
+      message: "Error, Url Not Copied!",
       type: "error",
     });
   }

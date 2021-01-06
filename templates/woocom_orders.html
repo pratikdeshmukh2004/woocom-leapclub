@@ -162,7 +162,7 @@
           <div class="mt-1">
           {% if nav_active == "processing"%}
           {% if o.vendor_type %}
-          <div style="min-width: 125px;">
+          <div style="min-width: 143px;">
               <a class="btn btn-success btn-sm" href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='hello_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=page)}}')
               ">
                 <i title="Hello Message" class="mdi mdi-18px mdi-whatsapp"></i>
@@ -211,7 +211,7 @@
                </a>
             </div>
             {%else%}
-            <div class="mb-1" style="min-width: 141px">
+            <div class="mb-1" style="min-width: 143px">
               <a title="Delivery Today Message" class="btn btn-success btn-sm"  
               href="{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='today_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
               ">Today
@@ -320,16 +320,14 @@
           {% endfor %}
           </div>
         </td>
-        <td class="payment-{{o.id}}" scope="row">
-          <div style="max-height: 100px; overflow-y: scroll;">
-          {% for pl in payment_links[o.id]%}
-            {% if pl.status == "success"%}
-            <p  class="text-success" style="cursor: pointer;" onclick="copyText('{{pl.payment_link_url}}')">{{pl.payment_link_url}}, </p>
-            {%else%}
-              <span class="text-danger">{{pl.receipt}}, </span>
+        <td scope="row">
+            {% if payment_links[o.id] != ''%}
+              {% if payment_links[o.id].status == "success"%}
+              <p  class="text-success" style="cursor: pointer;" onclick="copyText('{{payment_links[o.id].payment_link_url}}')">{{payment_links[o.id].receipt}} | {{payment_links[o.id].amount/100}}</p>
+              {%else%}
+                <span style="cursor: pointer;" class="text-danger">{{payment_links[o.id].receipt}} | {{payment_links[o.id].amount/100}}</span>
+              {% endif%}
             {% endif%}
-          {% endfor %}
-          </div>
         </td>
         <td scope="row">{{o.manager}}</td>
         <td scope="row">{{o.created_via}}</td>

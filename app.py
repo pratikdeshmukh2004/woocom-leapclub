@@ -177,8 +177,12 @@ def woocom_orders():
         o["total"] = float(o["total"])
         wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
         payment_link = PaymentLinks.query.filter_by(order_id=o["id"]).all()
-        wtmessages_list[o["id"]] = wt_messages
+        if len(payment_link)>0:
+            payment_link = payment_link[-1]
+        else:
+            payment_link = ''
         payment_links[o["id"]] = payment_link
+        wtmessages_list[o["id"]] = wt_messages
         vendor, manager, delivery_date, order_note,  = "", "", "", ""
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
@@ -699,15 +703,17 @@ def gen_payment_link(order_id):
         "view_less": 1,
         "currency": "INR",
         "description": "Thank you for making a healthy and sustainable choice",
-        "reminder_enable": True,
+        "reminder_enable": False,
         "callback_url": "https://leapclub.in/",
-        "callback_method": "get"
+        "callback_method": "get",
+        "sms_notify": False,
+        'email_notify': False
     }
     try:
         invoice = razorpay_client.invoice.create(data=data)
+        print(invoice)
         status = "success"
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
-        print(invoice)
     except:
         status = "failed"
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
