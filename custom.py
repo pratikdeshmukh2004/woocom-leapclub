@@ -4,6 +4,7 @@ import time
 import datetime
 import concurrent.futures
 from customselectlist import list_created_via
+from pytz import timezone
 
 
 def format_delivery_date(d):
@@ -489,3 +490,21 @@ def list_orders_with_status(wcapi, params):
     for o in orders:
         o_list.extend(o.json())
     return o_list
+
+def update_order_status(order_id, invoice_id, wcapi):
+    order = wcapi.get("orders/"+order_id).json()
+    data = {}
+    c_date = datetime.datetime.now(timezone('Asia/Kolkata'))
+    format = '%Y-%m-%dT%H:%M:%S'
+    data['payment_method'] = 'cod'
+    data['payment_method_title'] = 'Pay Online on Delivery'
+    data['transaction_id'] = invoice_id
+    data['date_paid'] = c_date.strftime(format)
+    data['date_paid_gmt'] = datetime.datetime.utcnow().strftime(format)
+    if order['status'] in ['tbd-unpaid', 'tbd-paid']:
+        data['status'] = 'tbd-paid'
+    elif order['status'] in ['delivered-unpaid', 'delivered-paid']:
+        data['status'] = 'completed'
+        data['date_completed'] = c_date.strftime(format)
+        data['date_completed_gmt'] = datetime.datetime.utcnow().strftime(format)
+    wcapi.put("orders/"+str(order_id), data).json()

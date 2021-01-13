@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status
 from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
@@ -745,17 +745,23 @@ def gen_payment_link(order_id):
     db.session.commit()
     return redirect(url_for("woocom_orders", message_sent=o["id"], page=page))
 
+
 @app.route("/razorpay", methods=["GET", "POST"])
 def razorpay():
     if request.method == "GET":
         return "Plese Use POST Method..."
     e = request.get_json()
-    print(e)
     if len(e)>0:
-        if e["event"] == "payment.captured":
+        if e["event"] == "invoice.paid":
             mobile = e['payload']['payment']['entity']['contact']
-            msg = send_whatsapp_msg({'vendor_type': "any"}, mobile, 'payment_received')
+            name = e['payload']['invoice']['entity']['customer_details']['name']
+            msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, mobile, 'hello_msg')
+            order_id = e['payload']['order']['entity']['receipt'][5:].split("-")[0]
+            invoice_id = e['payload']['invoice']['entity']['id']
+            update_order_status(order_id, invoice_id, wcapi)
             return(msg)
+        else:
+            return "Payment.Paid"
     else:
         return "Please enter valid detail..."
 if __name__ == "__main__":
