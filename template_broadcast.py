@@ -120,7 +120,11 @@ TemplatesBroadcast = {
         'personal_care': {"template": "pending_payment_3", "broadcast": "order_confirm"},
         'dairy': {"template": "pending_payment_3", "broadcast": "order_confirm"}
 
-    }
+    },
+    "payment_received": {
+        'any': {"template": "payment_received", "broadcast": "payment_received"}
+
+    },
 }
 
 vendor_type = {

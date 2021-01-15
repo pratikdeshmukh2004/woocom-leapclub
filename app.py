@@ -754,10 +754,9 @@ def razorpay():
     if len(e)>0:
         if e["event"] == "payment.captured":
             mobile = e['payload']['payment']['entity']['contact']
-            msg = send_whatsapp_msg({'vendor_type': "any"}, mobile, 'hello_msg')
+            msg = send_whatsapp_msg({'vendor_type': "any"}, mobile, 'payment_received')
             return(msg)
     else:
         return "Please enter valid detail..."
 if __name__ == "__main__":
-    # db.create_all()
     app.run(debug=True)
