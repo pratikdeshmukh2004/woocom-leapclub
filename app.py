@@ -710,7 +710,7 @@ def gen_payment_link(order_id):
         return redirect(url_for('login'))
     page = request.args.get('page', 0)
     o = wcapi.get("orders/"+order_id).json()
-    payment_links = PaymentLinks.query.filter_by(order_id=o["id"], status="success").all()
+    payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
     wallet_payment = 0
     if len(o["fee_lines"]) > 0:
         for item in o["fee_lines"]:
