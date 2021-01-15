@@ -754,7 +754,7 @@ def razorpay():
         if e["event"] == "invoice.paid":
             mobile = e['payload']['payment']['entity']['contact']
             name = e['payload']['invoice']['entity']['customer_details']['name']
-            msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, mobile, 'hello_msg')
+            msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
             order_id = e['payload']['order']['entity']['receipt'][5:].split("-")[0]
             invoice_id = e['payload']['invoice']['entity']['id']
             update_order_status(order_id, invoice_id, wcapi_write)
