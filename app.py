@@ -763,6 +763,8 @@ def razorpay():
             return "Payment.Paid"
     else:
         return "Please enter valid detail..."
+
+
 if __name__ == "__main__":
     db.create_all()
     app.run(debug=True)
