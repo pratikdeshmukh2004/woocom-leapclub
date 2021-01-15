@@ -35,6 +35,14 @@ wcapi = API(
     timeout=15
 )
 
+wcapi_write = API(
+    url=app.config["WOOCOMMERCE_API_URL"],
+    consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY_WRITE"],
+    consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET_WRITE"],
+    version="wc/v3",
+    timeout=15
+)
+
 wcapis = API(
     url=app.config["WOOCOMMERCE_API_URL"],
     consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY"],
@@ -749,7 +757,7 @@ def razorpay():
             msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, mobile, 'hello_msg')
             order_id = e['payload']['order']['entity']['receipt'][5:].split("-")[0]
             invoice_id = e['payload']['invoice']['entity']['id']
-            update_order_status(order_id, invoice_id, wcapi)
+            update_order_status(order_id, invoice_id, wcapi_write)
             return(msg)
         else:
             return "Payment.Paid"
