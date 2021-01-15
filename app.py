@@ -158,10 +158,8 @@ def woocom_orders():
         args["created_via"] = params["created_via"]
     t_orders = time.time()
     orders = wcapi.get("order2", params=params).json()
-    print(len(orders), params)
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
     orders = filter_orders(orders, args)
-    print(len(orders))
     managers = []
     wtmessages_list = {}
     payment_links = {}
@@ -257,9 +255,8 @@ def send_whatsapp_msg(args, mobile, name):
         "POST", url, headers=headers, data=json.dumps(payload))
 
     result = json.loads(response.text.encode('utf8'))
-    if result["result"] not in ["success", "PENDING"]:
-        result["broadcast_name"] = broadcast_name
-        result["template_name"] = template_name
+    result["broadcast_name"] = broadcast_name
+    result["template_name"] = template_name
     return result
 
 
@@ -278,7 +275,7 @@ def send_whatsapp(name):
         mobile_number = (
             "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
         result = send_whatsapp_msg(args, mobile_number, name)
-        if result["result"] in ["success", "PENDING"]:
+        if result["result"] in ["success", "PENDING", "SENT"]:
             new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
                                 "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
         else:
@@ -323,10 +320,8 @@ def download_vendor_order_csv():
         return redirect(url_for('login'))
     data = request.form.to_dict(flat=False)
     params = {"per_page": 100}
-    print(len(data['order_ids']))
     params["include"] = get_list_to_string(data["order_ids"])
     orders = list_orders_with_status(wcapi, params)
-    print(len(orders))
     csv_text = get_csv_from_vendor_orders(orders, wcapi)
     filename = str(datetime.utcnow())+"-Vendor-Order-Sheet.csv"
     response = make_response(csv_text)
@@ -441,7 +436,6 @@ def update_wati_contact_attributs(o):
     parameters_s = parameters_s[:-1]
     parameters_s = parameters_s+"]"
     payload = {"customParams": json.loads(parameters_s)}
-    print(payload)
     headers = {
         'Authorization': app.config["WATI_AUTHORIZATION"],
         'Content-Type': 'application/json',
@@ -451,7 +445,6 @@ def update_wati_contact_attributs(o):
         "POST", url, headers=headers, data=json.dumps(payload))
 
     result = json.loads(response.text.encode('utf8'))
-    print(result)
     if result["result"]:
         return True
 
@@ -517,7 +510,7 @@ def new_order():
                 else:
                     result = send_whatsapp_msg(params, num, "order_postpay")
 
-            if result["result"] in ["success", "PENDING"]:
+            if result["result"] in ["success", "PENDING", "SENT"]:
                 new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
                                     "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
             else:
@@ -566,7 +559,6 @@ def vendor_order_sheet():
         orders = list_orders_with_status(wcapi, params)
     else:
         orders = []
-    print(len(orders), params)
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
     orders = filter_orders(orders, args)
     managers = []
@@ -693,7 +685,7 @@ def send_session_message(order_id):
         "POST", url, headers=headers)
     print("Time To Send Session Message - ", time.time()-ctime)
     result = json.loads(response.text.encode('utf8'))
-    if result["result"] in ["success", "PENDING"]:
+    if result["result"] in ["success", "PENDING", "SENT"]:
         new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail",
                             broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
     else:
@@ -735,7 +727,6 @@ def gen_payment_link(order_id):
     }
     try:
         invoice = razorpay_client.invoice.create(data=data)
-        print(invoice)
         status = "success"
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
     except:
