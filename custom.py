@@ -492,9 +492,9 @@ def list_orders_with_status(wcapi, params):
     return o_list
 
 def update_order_status(order_id, invoice_id, wcapi):
-    order = wcapi.get("orders/"+order_id).json()
-    print(order)
-    if 'code' not in order.keys():
+    order = wcapi.get("orders/"+order_id)
+    if order.status_code == 200:
+        order = order.json()
         data = {}
         c_date = datetime.datetime.now(timezone('Asia/Kolkata'))
         utc_time = datetime.datetime.utcnow()

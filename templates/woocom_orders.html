@@ -113,7 +113,7 @@
       {% if nav_active != '' %}
         <input style="display: none;" name="status" value="{{nav_active}}">
       {% endif %}
-      <select data-live-search="true" multiple required title="Order ID" name="order_ids" class="selectpicker mr-2">
+      <select data-live-search="true" data-actions-box="true" multiple required title="Order ID" name="order_ids" class="selectpicker mr-2">
         {% for o in orders %}
         <option value="{{o.id}}">{{o.id}} - {{ o.billing.first_name}} - 
           {{o.vendor}}
