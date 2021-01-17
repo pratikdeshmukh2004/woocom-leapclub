@@ -491,24 +491,22 @@ def list_orders_with_status(wcapi, params):
         o_list.extend(o.json())
     return o_list
 
-def update_order_status(order_id, invoice_id, wcapi):
-    order = wcapi.get("orders/"+order_id)
-    if order.status_code == 200:
-        order = order.json()
-        data = {}
-        c_date = datetime.datetime.now(timezone('Asia/Kolkata'))
-        utc_time = datetime.datetime.utcnow()
-        format = '%Y-%m-%dT%H:%M:%S'
-        data['payment_method'] = 'cod'
-        data['payment_method_title'] = 'Pay Online on Delivery'
-        data['transaction_id'] = invoice_id
-        data['date_paid'] = c_date.strftime(format)
-        data['date_paid_gmt'] = utc_time.strftime(format)
-        if order['status'] in ['tbd-unpaid']:
-            data['status'] = 'tbd-paid'
-            wcapi.put("orders/"+str(order_id), data).json()
-        elif order['status'] in ['delivered-unpaid']:
-            data['status'] = 'completed'
-            data['date_completed'] = c_date.strftime(format)
-            data['date_completed_gmt'] = utc_time.strftime(format)
-            wcapi.put("orders/"+str(order_id), data).json()
+def update_order_status(order, invoice_id, wcapi):
+    order_id = order['id']
+    data = {}
+    c_date = datetime.datetime.now(timezone('Asia/Kolkata'))
+    utc_time = datetime.datetime.utcnow()
+    format = '%Y-%m-%dT%H:%M:%S'
+    data['payment_method'] = 'cod'
+    data['payment_method_title'] = 'Pay Online on Delivery'
+    data['transaction_id'] = invoice_id
+    data['date_paid'] = c_date.strftime(format)
+    data['date_paid_gmt'] = utc_time.strftime(format)
+    if order['status'] in ['tbd-unpaid']:
+        data['status'] = 'tbd-paid'
+        wcapi.put("orders/"+str(order_id), data).json()
+    elif order['status'] in ['delivered-unpaid']:
+        data['status'] = 'completed'
+        data['date_completed'] = c_date.strftime(format)
+        data['date_completed_gmt'] = utc_time.strftime(format)
+        wcapi.put("orders/"+str(order_id), data).json()

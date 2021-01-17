@@ -154,7 +154,7 @@
           <div style="min-width: 92px;">
             <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
             <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
-            <a class="btn btn-warning btn-sm" href="{{url_for('gen_payment_link', order_id=o.id, page=page)}}">
+            <a class="btn btn-warning btn-sm" href="{{url_for('gen_payment_link', order_id=o.id, page=page, status=nav_active)}}">
                 <i title="Hello Message" class="mdi mdi-18px mdi-link"></i>
               </a>
           </div>

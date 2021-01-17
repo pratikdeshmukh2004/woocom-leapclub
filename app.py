@@ -742,7 +742,7 @@ def gen_payment_link(order_id):
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
     db.session.add(new_payment_link)
     db.session.commit()
-    return redirect(url_for("woocom_orders", message_sent=o["id"], page=page))
+    return redirect(url_for("woocom_orders", message_sent=o["id"], page=page, status=request.args.get('status')))
 
 
 @app.route("/razorpay", methods=["GET", "POST"])
@@ -754,11 +754,15 @@ def razorpay():
         if e["event"] == "invoice.paid":
             mobile = e['payload']['payment']['entity']['contact']
             name = e['payload']['invoice']['entity']['customer_details']['name']
-            msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
             order_id = e['payload']['order']['entity']['receipt'][5:].split("-")[0]
             invoice_id = e['payload']['invoice']['entity']['id']
-            update_order_status(order_id, invoice_id, wcapi_write)
-            return(msg)
+            order = wcapi.get("orders/"+order_id)
+            if order.status_code == 200:
+                order = order.json()
+                update_order_status(order, invoice_id, wcapi_write)
+                if order['status'] in ['tbd-unpaid', 'delivered-unpaid']:
+                    msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
+            return("Done")
         else:
             return "Payment.Paid"
     else:
