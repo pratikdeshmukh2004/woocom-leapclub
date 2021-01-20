@@ -291,10 +291,8 @@ def send_whatsapp(name):
                                 "broadcast_name"], status="failed", time_sent=datetime.utcnow())
         db.session.add(new_wt)
         db.session.commit()
-        if nav_active != "any":
-            return redirect(url_for("woocom_orders", status=nav_active, message_sent=args["order_id"], page=args["page"][0]))
-        else:
-            return redirect(url_for("woocom_orders", message_sent=args["order_id"], page=args["page"][0]))
+        result['order_id'] = str(args['order_id'])
+        return result
 
 
 @app.route('/csv', methods=["POST"])
@@ -701,7 +699,9 @@ def send_session_message(order_id):
                             broadcast_name="order_detail", status="failed", time_sent=datetime.utcnow())
     db.session.add(new_wt)
     db.session.commit()
-    return redirect(url_for("woocom_orders", message_sent=order[0]["id"]))
+    result["template_name"] = 'order_detail'
+    result["parameteres"] = [{'name': 'order_id', 'value': str(order_id)}]
+    return result
 
 
 @app.route("/gen_payment_link/<string:order_id>")
@@ -736,13 +736,15 @@ def gen_payment_link(order_id):
     try:
         invoice = razorpay_client.invoice.create(data=data)
         status = "success"
+        short_url = invoice['short_url']
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
     except:
         status = "failed"
+        short_url = ""
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
     db.session.add(new_payment_link)
     db.session.commit()
-    return redirect(url_for("woocom_orders", message_sent=o["id"], page=page))
+    return {"result": status, 'payment':data, "short_url": short_url, "order_id": order_id}
 
 
 @app.route("/razorpay", methods=["GET", "POST"])
