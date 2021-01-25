@@ -4,7 +4,6 @@ from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
 from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status
-from flask_datepicker import datepicker
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -23,7 +22,6 @@ from slack import WebClient
 from slack_bot import send_slack_message, send_slack_message_calcelled
 
 app = Flask(__name__, instance_relative_config=True)
-datepicker(app)
 app.config.from_pyfile("config.py")
 db = SQLAlchemy(app)
 
@@ -291,10 +289,8 @@ def send_whatsapp(name):
                                 "broadcast_name"], status="failed", time_sent=datetime.utcnow())
         db.session.add(new_wt)
         db.session.commit()
-        if nav_active != "any":
-            return redirect(url_for("woocom_orders", status=nav_active, message_sent=args["order_id"], page=args["page"][0]))
-        else:
-            return redirect(url_for("woocom_orders", message_sent=args["order_id"], page=args["page"][0]))
+        result['order_id'] = str(args['order_id'])
+        return jsonify(result)
 
 
 @app.route('/csv', methods=["POST"])
@@ -701,7 +697,9 @@ def send_session_message(order_id):
                             broadcast_name="order_detail", status="failed", time_sent=datetime.utcnow())
     db.session.add(new_wt)
     db.session.commit()
-    return redirect(url_for("woocom_orders", message_sent=order[0]["id"]))
+    result["template_name"] = 'order_detail'
+    result["parameteres"] = [{'name': 'order_id', 'value': str(order_id)}]
+    return jsonify(result)
 
 
 @app.route("/gen_payment_link/<string:order_id>")
@@ -736,13 +734,15 @@ def gen_payment_link(order_id):
     try:
         invoice = razorpay_client.invoice.create(data=data)
         status = "success"
+        short_url = invoice['short_url']
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
     except:
         status = "failed"
+        short_url = ""
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
     db.session.add(new_payment_link)
     db.session.commit()
-    return redirect(url_for("woocom_orders", message_sent=o["id"], page=page, status=request.args.get('status')))
+    return jsonify({"result": status, 'payment':data, "short_url": short_url, "order_id": order_id})
 
 
 @app.route("/razorpay", methods=["GET", "POST"])
