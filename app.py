@@ -639,7 +639,7 @@ def subscriptions():
     else:
         order = 'ASC'
     if "page" in args:
-        page = args["page"]
+        page = int(args["page"])
     else:
         page = 1
     args["per_page"] = 50
