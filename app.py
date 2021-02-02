@@ -768,6 +768,22 @@ def razorpay():
     else:
         return "Please enter valid detail..."
 
+@app.route("/new_customer", methods=['POST', 'GET'])
+def new_customer():
+    if request.method == "GET":
+        return "Plese Use POST Method..."
+    e = request.get_json()
+    if e:
+        digits_phone = ""
+        name = e['first_name']
+        for i in e['meta_data']:
+            if i['key'] == 'digits_phone':
+                digits_phone = i['value']
+                break
+        digits_phone = '+919325837420'
+        msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, digits_phone, 'hello_msg')
+    return e
+
 if __name__ == "__main__":
     db.create_all()
     app.run(debug=True)
