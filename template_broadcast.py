@@ -125,6 +125,10 @@ TemplatesBroadcast = {
         'any': {"template": "payment_received", "broadcast": "payment_received"}
 
     },
+
+    "new-signup":{
+           'any': {"template": "thank_you_signing_up_2", "broadcast": "new-signup"}
+    }
 }
 
 vendor_type = {
