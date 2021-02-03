@@ -777,7 +777,7 @@ def new_customer():
         digits_phone = ""
         name = e['first_name']
         for i in e['meta_data']:
-            if i['key'] == 'digits_phone':
+            if i['key'] == 'digits_phone_no':
                 digits_phone = "+91" + i['value']
                 break
         msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, digits_phone, 'new-signup')
