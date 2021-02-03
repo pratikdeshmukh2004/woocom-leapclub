@@ -780,7 +780,6 @@ def new_customer():
             if i['key'] == 'digits_phone':
                 digits_phone = "+91" + i['value']
                 break
-        digits_phone = '+919517622867'
         msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, digits_phone, 'new-signup')
     return e
 
