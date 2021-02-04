@@ -122,7 +122,7 @@ TemplatesBroadcast = {
 
     },
     "payment_received": {
-        'any': {"template": "payment_received", "broadcast": "payment_received"}
+        'any': {"template": "payment_received_v2", "broadcast": "payment_received_v2"}
 
     },
 
