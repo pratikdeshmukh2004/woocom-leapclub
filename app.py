@@ -753,15 +753,25 @@ def razorpay():
     if len(e)>0:
         if e["event"] == "invoice.paid":
             mobile = e['payload']['payment']['entity']['contact']
-            name = e['payload']['invoice']['entity']['customer_details']['name']
             order_id = e['payload']['order']['entity']['receipt'][5:].split("-")[0]
             invoice_id = e['payload']['invoice']['entity']['id']
             order = wcapi.get("orders/"+order_id)
+            print(order, "ORDER.........................")
             if order.status_code == 200:
                 order = order.json()
+                name = order['billing']['first_name']
+                vendor_name = ""
+                vendor_t = 'any'
+                for item in order["meta_data"]:
+                    if item["key"] == "wos_vendor_data":
+                        vendor_name = item["value"]["vendor_name"]
+                    elif item["key"] == "_wc_acof_6":
+                        vendor_name = item["value"]
+                if vendor_name in vendor_type.keys():
+                    vendor_t = vendor_type[vendor_name]
                 update_order_status(order, invoice_id, wcapi_write)
                 if order['status'] in ['tbd-unpaid', 'delivered-unpaid']:
-                    msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
+                    msg = send_whatsapp_msg({'vendor_type': vendor_t, "c_name": name}, mobile, 'payment_received')
             return("Done")
         else:
             return "Payment.Paid"
@@ -774,13 +784,17 @@ def new_customer():
         return "Plese Use POST Method..."
     e = request.get_json()
     if e:
-        digits_phone = ""
-        name = e['first_name']
-        for i in e['meta_data']:
-            if i['key'] == 'digits_phone_no':
-                digits_phone = "+91" + i['value']
-                break
-        msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, digits_phone, 'new-signup')
+        print(e['meta_data'])
+        is_new = list(filter(lambda i: (i['key'] == 'wc_last_active'), e['meta_data']))
+        if len(is_new)>0:
+            digits_phone = ""
+            name = e['first_name']
+            for i in e['meta_data']:
+                if i['key'] == 'digits_phone_no':
+                    digits_phone = "+91" + i['value']
+                    break
+            # digits_phone = "919325837420"   
+            msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, digits_phone, 'new-signup')
     return e
 
 if __name__ == "__main__":
