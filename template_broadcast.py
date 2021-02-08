@@ -141,5 +141,6 @@ vendor_type = {
     'micheartisanbakery': 'bakery',
     'mrdairy': 'dairy',
     'Mr. Dairy': 'dairy',
-    'kyssafarms': 'grocery'
+    'kyssafarms': 'grocery',
+    'Kyssa Farms': 'grocery'
 }

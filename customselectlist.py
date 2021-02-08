@@ -4,7 +4,8 @@ list_vendor = [
     "micheartisanbakery", "Miche Artisan Bake",
     "Mr. Dairy","mrdairy",
     "The Womens Company",
-    "kyssafarms"
+    "kyssafarms",
+    "Kyssa Farms"
 ]
 
 list_created_via = [
