@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -304,7 +304,10 @@ def download_csv():
     if data["action"][0] == "order_sheet":
         csv_text = get_csv_from_orders(orders, wcapi)
         filename = str(datetime.utcnow())+"-" + \
-            data["status"][0]+"-Order-Sheet.csv"
+            data["status"][0]+"-Product-Sheet.csv"
+    elif data["action"][0] == "product_sheet":
+        csv_text = get_csv_from_products(orders, wcapi)
+        filename = str(datetime.utcnow())+"-" + "Product-Sheet.csv"
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
         filename = str(datetime.utcnow())+"-" + \
@@ -784,7 +787,9 @@ def new_customer():
         return "Plese Use POST Method..."
     e = request.get_json()
     if e:
-        print(e['meta_data'])
+        print(e['meta_data'], "Meta Data.....")
+        print(e, "JSON Data.....")
+        print(request.headers)
         is_new = list(filter(lambda i: (i['key'] == 'wc_last_active'), e['meta_data']))
         if len(is_new)>0:
             digits_phone = ""
@@ -793,7 +798,7 @@ def new_customer():
                 if i['key'] == 'digits_phone_no':
                     digits_phone = "+91" + i['value']
                     break
-            # digits_phone = "919325837420"   
+            digits_phone = "919325837420"   
             msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, digits_phone, 'new-signup')
     return e
 

@@ -510,3 +510,37 @@ def update_order_status(order, invoice_id, wcapi):
         data['date_completed'] = c_date.strftime(format)
         data['date_completed_gmt'] = utc_time.strftime(format)
         wcapi.put("orders/"+str(order_id), data).json()
+
+
+def get_csv_from_products(orders, wcapi):
+    line_items = list(map(lambda x: x['line_items'], orders)) 
+    line_items_o = []
+    for o in line_items:
+        line_items_o.extend((o))
+    product_list = []
+    is_include = []
+    for p in line_items_o:
+        product_id = p['product_id']
+        if product_id in is_include:
+            for i in product_list:
+                if i['Product ID'] == product_id:
+                    i['Quantity'] + p['quantity']
+        else:
+            is_include.append(product_id)
+            product_list.append({"Product ID": product_id, "Product Name": p['name'], "Quantity": p['quantity']})
+    f = open("sample.csv", "w+")
+    writer = csv.DictWriter(f, fieldnames=["Product ID", "Product Name", "Quantity"])
+    writer.writeheader()
+    for p in product_list:
+        p['Product Name']=p['Product Name'].replace("amp;", " ")
+        writer.writerow({
+                "Product ID": p['Product ID'],
+                "Product Name": p['Product Name'],
+                "Quantity": p['Quantity']
+            })
+        writer.writerow({})
+    f.close()
+    f = open("sample.csv", "r")
+    result = f.read()
+    os.remove("sample.csv")
+    return result

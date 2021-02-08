@@ -10,5 +10,6 @@ list_vendor = [
 list_created_via = [
     "admin",
     "checkout",
-    "subscription"
+    "subscription",
+    "Order clone"
 ]
