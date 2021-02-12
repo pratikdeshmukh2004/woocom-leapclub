@@ -19,7 +19,7 @@ import razorpay
 from datetime import datetime, timedelta
 from pytz import timezone
 from slack import WebClient
-from slack_bot import send_slack_message, send_slack_message_calcelled
+from slack_bot import send_slack_message, send_slack_message_calcelled, send_slack_for_product
 
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_pyfile("config.py")
@@ -787,9 +787,6 @@ def new_customer():
         return "Plese Use POST Method..."
     e = request.get_json()
     if e:
-        print(e['meta_data'], "Meta Data.....")
-        print(e, "JSON Data.....")
-        print(request.headers)
         is_new = list(filter(lambda i: (i['key'] == 'wc_last_active'), e['meta_data']))
         if len(is_new)>0:
             digits_phone = ""
@@ -801,6 +798,19 @@ def new_customer():
             # digits_phone = "919325837420"
             msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, digits_phone, 'new-signup')
     return e
+
+
+@app.route('/product_add_and_update', methods=['POST', 'GET'])
+def product_add_and_update():
+    if request.method == "GET":
+        return "Plese Use POST Method..."
+    e = request.get_json()
+    print(request.headers, "Headers.......")
+    print(e, "Product......")
+    if e:
+        send_slack_for_product(client, e)
+        return {"Result": "Success No Error..."}
+        
 
 if __name__ == "__main__":
     db.create_all()

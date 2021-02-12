@@ -22,6 +22,10 @@ def send_slack_message(client, wcapi, o):
         order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
     else:
         order_refunds = []
+    
+    taguser = ""
+    if o['created_via'] == "checkout" and vendor == "Mr. Dairy":
+        taguser = "\n<@U01FQP200FR>"
     s_msg = (
         "*Order ID: "+str(o["id"])
         + "*\nName: "+o["billing"]["first_name"] + " " +
@@ -36,10 +40,14 @@ def send_slack_message(client, wcapi, o):
         + "\nTotal Amount: " +
         get_totals(o["total"], order_refunds)
         + " | Delivery Charge: "+o["shipping_total"]
+        + "\nStatus: "+ o['status']
+        + " | Created_via: "+ o['created_via']
+        + "\nCustomer Notes: "+ o["customer_note"]
+        + taguser
     )
     th_s_msg = "*Order Items*\n" +list_order_items(o["line_items"], order_refunds)
     response = client.chat_postMessage(
-        channel="orders-notifications",
+        channel="flask-bot",
         blocks=[
             {
                 "type": "section",
@@ -51,7 +59,7 @@ def send_slack_message(client, wcapi, o):
         ]
     )
     t_response = client.chat_postMessage(
-        channel="orders-notifications",
+        channel="flask-bot",
         thread_ts=response["ts"],
         text=th_s_msg,
         reply_broadcast=False
@@ -112,5 +120,39 @@ def send_slack_message_calcelled(client, wcapi, o):
         thread_ts=response["ts"],
         text=th_s_msg,
         reply_broadcast=False
+    )
+    return response
+
+def send_slack_for_product(client, product):
+    categories = ""
+    tags = ""
+    for c in product['categories']:
+        categories+=c['name']
+        categories+=", "
+    for t in product['tags']:
+        tags+=c['name']
+        tags+=", "
+    categories = categories[:-2]
+    tags = tags[:-2]
+    s_msg = (
+        "*Product Name:* "+product['name']
+    + "\n*Product Categories:* "+categories
+    + "\n*Shipping Class:* "+product['shipping_class']
+    + "\n*Regular Price:* "+product['regular_price']
+    + "\n*Product Tags:* "+tags
+    + "\n*Stock Status:* "+product['stock_status']
+    + "\n*Vendor:* "+""
+    )
+    response = client.chat_postMessage(
+        channel="flask-bot",
+        blocks=[
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": s_msg
+                }
+            }
+        ]
     )
     return response
