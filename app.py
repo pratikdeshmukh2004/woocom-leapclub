@@ -19,7 +19,7 @@ import razorpay
 from datetime import datetime, timedelta
 from pytz import timezone
 from slack import WebClient
-from slack_bot import send_slack_message, send_slack_message_calcelled, send_slack_for_product
+from slack_bot import send_slack_message, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise
 
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_pyfile("config.py")
@@ -805,11 +805,15 @@ def product_add_and_update():
     if request.method == "GET":
         return "Plese Use POST Method..."
     e = request.get_json()
-    print(request.headers, "Headers.......")
-    print(e, "Product......")
+    topic =request.headers["x-wc-webhook-topic"]
     if e:
-        send_slack_for_product(client, e)
+        send_slack_for_product(client, e, topic)
         return {"Result": "Success No Error..."}
+
+@app.route("/vendor-wise-tbd")
+def vendor_wise_tbd():
+    send_slack_for_vendor_wise(client, wcapi)
+    return {"Result": "Success No Error..."}
         
 
 if __name__ == "__main__":
