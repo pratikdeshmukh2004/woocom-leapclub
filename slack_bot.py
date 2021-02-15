@@ -200,7 +200,7 @@ def send_slack_for_vendor_wise(client, wcapi):
     main_msg+=s_msg
     main_msg+="`Please update the status for delivery of all these orders`"
     response = client.chat_postMessage(
-        channel="delivery-update",
+        channel="flask-bot",
         blocks=[
             {
                 "type": "section",

@@ -810,11 +810,25 @@ def product_add_and_update():
         send_slack_for_product(client, e, topic)
         return {"Result": "Success No Error..."}
 
-@app.route("/vendor-wise-tbd")
+@app.route("/vendor_wise_tbd")
 def vendor_wise_tbd():
     send_slack_for_vendor_wise(client, wcapi)
     return {"Result": "Success No Error..."}
-        
+
+@app.route("/google_sheet", methods=['GET', 'POST'])
+def google_sheet():
+    if request.method == "POST":
+        data = request.form.to_dict(flat=False)
+        params = get_params(data)
+        params['per_page'] = 100
+        orders = list_orders_with_status(wcapi, params)
+        response = requests.post(app.config["GOOGLE_SHEET_URL"], json=orders) 
+        return redirect(url_for('google_sheet'))
+    else:
+        if not g.user:
+            return redirect(url_for('login'))
+        return render_template("google_sheet/index.html", user=g.user, vendors=list_vendor)
+
 
 if __name__ == "__main__":
     db.create_all()

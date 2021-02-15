@@ -1,0 +1,53 @@
+{% extends "layout.html" %} {% block content %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand font-weight-bold" href="#">Upload in Google Sheet</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{{url_for('woocom_orders')}}">
+              Orders</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{url_for('subscriptions')}}">
+              Subscriptions</a>
+            </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{url_for('products')}}">
+              Products</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{url_for('logout')}}">
+              <i class="mdi mdi-logout" aria-hidden="true"></i>
+              Logout</a>
+          </li>
+        </ul>
+    </div>
+</div>
+</nav>
+<div class="mt-3 ml-2 d-flex">
+    <form autocomplete="off" method='post', action="{{url_for('google_sheet')}}" class = "form-inline" role = "form">
+        <select data-live-search="true" multiple title="Vendor" name="vendor" class="selectpicker mr-2">
+          {% for v in vendors %}
+            <option {% if "vendor" in query %} {% if v in query["vendor"] %} selected {% endif %} {% endif %}>{{v}}</option>
+          {% endfor%}
+        </select>     
+        <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker1" class="form-control mr-2" >
+        <select required data-live-search="true" multiple title="Status" name="status" class="selectpicker mr-2">
+          <option value="any" >All</option>
+          <option value="processing" >Processing</option>
+          <option value="tbd-unpaid, tbd-paid" >To Be Delivered</option>
+          <option value="delivered-unpaid" >Delivered Unpaid</option>
+          <option value="completed" >Delivered Paid</option>
+          <option value="cancelled" >Cancelled</option>
+          <option value="refunded" >Refunded</option>
+          <option value="pending, failed" >Failed</option>
+    </select>      
+
+        <button class="btn btn-info ml-1">Upload</button>
+      </form>
+</div>
+{% endblock %}
