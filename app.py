@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv,get_totals, get_shipping_total_for_csv
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -306,7 +306,7 @@ def download_csv():
         filename = str(datetime.utcnow())+"-" + \
             data["status"][0]+"-Product-Sheet.csv"
     elif data["action"][0] == "product_sheet":
-        csv_text = get_csv_from_products(orders, wcapi)
+        csv_text = get_csv_from_products(orders, wcapi, 'csv')
         filename = str(datetime.utcnow())+"-" + "Product-Sheet.csv"
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
@@ -817,16 +817,28 @@ def vendor_wise_tbd():
 
 @app.route("/google_sheet", methods=['GET', 'POST'])
 def google_sheet():
+    if not g.user:
+        return redirect(url_for('login'))
     if request.method == "POST":
         data = request.form.to_dict(flat=False)
-        params = get_params(data)
-        params['per_page'] = 100
-        orders = list_orders_with_status(wcapi, params)
-        response = requests.post(app.config["GOOGLE_SHEET_URL"], json=orders) 
+        if data['action'][0] == "order_sheet":
+            params = get_params(data)
+            params['per_page'] = 100
+            orders = list_orders_with_status(wcapi, params)
+            for o in orders:
+                refunds = []
+                if len(o["refunds"]) > 0:
+                    refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+                o['line_items_text'] = list_order_items_csv(o["line_items"], refunds).replace("&amp;", "&")
+                o['total_text'] = get_totals(o["total"], refunds)+get_shipping_total_for_csv(o)
+            response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders) 
+        elif data['action'][0] == "product_sheet":
+            params = get_params(data)
+            params['per_page'] = 100
+            orders = list_orders_with_status(wcapi, params)
+            response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=product_sheet", json={"products":get_csv_from_products(orders, wcapi, 'google-sheet'), "sheet_name": data['vendor'][0]+"_"+params['delivery_date']}) 
         return redirect(url_for('google_sheet'))
     else:
-        if not g.user:
-            return redirect(url_for('login'))
         return render_template("google_sheet/index.html", user=g.user, vendors=list_vendor)
 
 
