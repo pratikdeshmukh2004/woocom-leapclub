@@ -60,7 +60,7 @@ def send_slack_message(client, wcapi, o):
         ]
     )
     t_response = client.chat_postMessage(
-        channel="flask-bot",
+        channel="order-notifications",
         thread_ts=response["ts"],
         text=th_s_msg,
         reply_broadcast=False
