@@ -1,6 +1,7 @@
 from custom import get_totals, get_shipping_total, list_order_items, list_orders_with_status
 from  datetime import  datetime, timedelta
 from customselectlist import list_created_via
+from slack_chennels import CHANNELS
 
 def send_slack_message(client, wcapi, o):
     vendor = ""
@@ -26,7 +27,7 @@ def send_slack_message(client, wcapi, o):
     
     taguser = ""
     if o['created_via'] == "checkout" and vendor == "Mr. Dairy":
-        taguser = "\n<@U01HP4Q58S2>"
+        taguser = "\n"+CHANNELS['TAG_USER_ID']
     s_msg = (
         "*Order ID: "+str(o["id"])
         + "*\nName: "+o["billing"]["first_name"] + " " +
@@ -45,10 +46,11 @@ def send_slack_message(client, wcapi, o):
         + " | Created_via: "+ o['created_via']
         + "\nCustomer Notes: "+ o["customer_note"]
         + taguser
+        + "\n`Please Egnore This Message....`"
     )
     th_s_msg = "*Order Items*\n" +list_order_items(o["line_items"], order_refunds)
     response = client.chat_postMessage(
-        channel="order-notifications",
+        channel=CHANNELS['ORDER_NOTIFICATIONS'],
         blocks=[
             {
                 "type": "section",
@@ -60,7 +62,7 @@ def send_slack_message(client, wcapi, o):
         ]
     )
     t_response = client.chat_postMessage(
-        channel="order-notifications",
+        channel=CHANNELS['ORDER_NOTIFICATIONS'],
         thread_ts=response["ts"],
         text=th_s_msg,
         reply_broadcast=False
@@ -102,10 +104,12 @@ def send_slack_message_calcelled(client, wcapi, o):
         + "\nTotal Amount: " +
         get_totals(o["total"], order_refunds)
         + " | Delivery Charge: "+o["shipping_total"]
+        + "\n`Please Egnore This Message....`"
+
     )
     th_s_msg = "*Order Items*\n" +list_order_items(o["line_items"], order_refunds)
     response = client.chat_postMessage(
-        channel="orders-notifications",
+        channel=CHANNELS['ORDER_NOTIFICATIONS'],
         blocks=[
             {
                 "type": "section",
@@ -117,7 +121,7 @@ def send_slack_message_calcelled(client, wcapi, o):
         ]
     )
     t_response = client.chat_postMessage(
-        channel="orders-notifications",
+        channel=CHANNELS['ORDER_NOTIFICATIONS'],
         thread_ts=response["ts"],
         text=th_s_msg,
         reply_broadcast=False
@@ -127,10 +131,6 @@ def send_slack_message_calcelled(client, wcapi, o):
 def send_slack_for_product(client, product, topic):
     categories = ""
     tags = ""
-    if topic == "product.created":
-        topic_text="*A new product is added!*\n"
-    else:
-        topic_text = "*A product is updated!*\n"
     for c in product['categories']:
         categories+=c['name']
         categories+=", "
@@ -140,17 +140,18 @@ def send_slack_for_product(client, product, topic):
     categories = categories[:-2]
     tags = tags[:-2]
     s_msg = (
-        topic_text
+        "*A product is Added/Updated!*\n"
     + "\n*Product Name:* "+product['name']
     + "\n*Product Categories:* "+categories
     + "\n*Shipping Class:* "+product['shipping_class']
     + "\n*Regular Price:* "+product['regular_price']
     + "\n*Product Tags:* "+tags
     + "\n*Stock Status:* "+product['stock_status']
-    + "\n*Vendor:* "+""
+    + "\n*Vendor:* "
+    + "\n`Please Egnore This Message....`"
     )
     response = client.chat_postMessage(
-        channel="product-notifications",
+        channel=CHANNELS['PRODUCT_NOTIFICATIONS'],
         blocks=[
             {
                 "type": "section",
@@ -199,8 +200,9 @@ def send_slack_for_vendor_wise(client, wcapi):
         s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")\n"
     main_msg+=s_msg
     main_msg+="`Please update the status for delivery of all these orders`"
+    + "\n`Please Egnore This Message....`"
     response = client.chat_postMessage(
-        channel="delivery-updates",
+        channel=CHANNELS['VENDOR_WISE'],
         blocks=[
             {
                 "type": "section",

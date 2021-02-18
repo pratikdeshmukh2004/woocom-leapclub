@@ -308,6 +308,15 @@ def download_csv():
     elif data["action"][0] == "product_sheet":
         csv_text = get_csv_from_products(orders, wcapi, 'csv')
         filename = str(datetime.utcnow())+"-" + "Product-Sheet.csv"
+    elif data["action"][0] == 'google_sheet':
+        for o in orders:
+            refunds = []
+            if len(o["refunds"]) > 0:
+                refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+            o['line_items_text'] = list_order_items_csv(o["line_items"], refunds).replace("&amp;", "&")
+            o['total_text'] = get_totals(o["total"], refunds)+get_shipping_total_for_csv(o)
+        response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders) 
+        return redirect(url_for('woocom_orders', status=data['status'][0]))
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
         filename = str(datetime.utcnow())+"-" + \

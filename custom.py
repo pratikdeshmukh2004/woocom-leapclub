@@ -510,6 +510,14 @@ def update_order_status(order, invoice_id, wcapi):
         wcapi.put("orders/"+str(order_id), data).json()
 
 
+def get_products_from_thread(product_ids, wcapi):
+    def get_product(id):
+        product = wcapi.get("products/"+str(id)).json()
+        return product
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(get_product, product_ids)
+    return list(result)
+
 def get_csv_from_products(orders, wcapi, format):
     line_items = list(map(lambda x: x['line_items'], orders)) 
     line_items_o = []
@@ -526,15 +534,25 @@ def get_csv_from_products(orders, wcapi, format):
         else:
             is_include.append(product_id)
             product_list.append({"Product ID": product_id, "Product Name": p['name'], "Quantity": p['quantity']})
+    products = get_products_from_thread(is_include, wcapi)
     f = open("sample.csv", "w+")
-    writer = csv.DictWriter(f, fieldnames=["Product ID", "Product Name", "Quantity"])
+    writer = csv.DictWriter(f, fieldnames=["Product ID", "Product Name", "Quantity", "Weight Existed"])
     writer.writeheader()
     for p in product_list:
         p['Product Name']=p['Product Name'].replace("amp;", " ")
+        weight = list(filter(lambda pi: (pi['id'] == p['Product ID']), products))[0]['weight']
+        is_weight = "NO"
+        total_quantity = p['Quantity']
+        if weight != "":
+            is_weight = "YES"
+            total_quantity = float(p['Quantity'])*float(weight)
+        p['Weight Existed'] = is_weight
+        p['Quantity'] = total_quantity
         writer.writerow({
                 "Product ID": p['Product ID'],
                 "Product Name": p['Product Name'],
-                "Quantity": p['Quantity']
+                "Quantity": total_quantity,
+                "Weight Existed": is_weight
             })
         writer.writerow({})
     f.close()
