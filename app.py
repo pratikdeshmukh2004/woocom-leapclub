@@ -19,7 +19,7 @@ import razorpay
 from datetime import datetime, timedelta
 from pytz import timezone
 from slack import WebClient
-from slack_bot import send_slack_message, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise
+from slack_bot import send_slack_message, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow
 
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_pyfile("config.py")
@@ -316,6 +316,23 @@ def download_csv():
             o['line_items_text'] = list_order_items_csv(o["line_items"], refunds).replace("&amp;", "&")
             o['total_text'] = get_totals(o["total"], refunds)+get_shipping_total_for_csv(o)
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders) 
+        return redirect(url_for('woocom_orders', status=data['status'][0]))
+    elif data['action'][0] == 'product_google_sheet':
+        vendor = ""
+        delivery_date = ""
+        o=orders[0]
+        for item in o["meta_data"]:
+            if item["key"] == "wos_vendor_data":
+                vendor = item["value"]["vendor_name"]
+            elif item["key"] == "_wc_acof_6":
+                vendor = item["value"]
+            elif item["key"] == "_delivery_date":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+        response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=product_sheet", json={"products":get_csv_from_products(orders, wcapi, 'google-sheet'), "sheet_name": vendor+"_"+delivery_date}) 
         return redirect(url_for('woocom_orders', status=data['status'][0]))
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
@@ -768,7 +785,6 @@ def razorpay():
             order_id = e['payload']['order']['entity']['receipt'][5:].split("-")[0]
             invoice_id = e['payload']['invoice']['entity']['id']
             order = wcapi.get("orders/"+order_id)
-            print(order, "ORDER.........................")
             if order.status_code == 200:
                 order = order.json()
                 name = order['billing']['first_name']
@@ -851,6 +867,78 @@ def google_sheet():
         return render_template("google_sheet/index.html", user=g.user, vendors=list_vendor)
 
 
+@app.route("/send_every_day/<int:id>")
+def send_every_day(id):
+    lastHourDateTime = datetime.now() - timedelta(hours = 72)
+    last_date = lastHourDateTime.strftime('%Y-%m-%dT%H:%M:%S')
+    tomorrow = datetime.now() + timedelta(days = 1)
+    tomorrow = tomorrow.strftime('%Y-%m-%d')
+    # all orders of processing and pending status
+    if id == 1:
+        params = {"per_page": 100}
+        params['after'] = last_date
+        params["status"] = 'processing, pending'
+        params['created_via'] = 'checkout, admin, Order clone'
+        orders = list_orders_with_status(wcapi, params)
+        send_every_day_at_9(orders, client, "*Please change status:*\n")
+    # orders without vendor
+    if id == 2:
+        params = {"per_page": 100}
+        params["status"] = 'any'
+        params['after'] = last_date
+        params['created_via'] = 'checkout, admin, Order clone'
+        orders = list_orders_with_status(wcapi, params)
+        without_vendors = []
+        for o in orders:
+            o['vendor'] = ""
+            for item in o["meta_data"]:
+                if item["key"] == "wos_vendor_data":
+                    o["vendor"] = item["value"]["vendor_name"]
+                elif item["key"] == "_wc_acof_6":
+                    o["vendor"] = item["value"]
+            if o['vendor'] == "":
+                without_vendors.append(o)
+        send_every_day_at_9(without_vendors, client, "*Orders with vendor information missing*\n")
+    # orders without delivery date
+    if id == 3:
+        params = {"per_page": 100}
+        params["status"] = 'any'
+        params['after'] = last_date
+        params['created_via'] = 'checkout, admin, Order clone'
+        orders = list_orders_with_status(wcapi, params)
+        without_date = []
+        for o in orders:
+            delivery_date = ""
+            for item in o["meta_data"]:
+                if item["key"] == "_delivery_date":
+                    if delivery_date == "":
+                        delivery_date = item["value"]
+                elif item["key"] == "_wc_acof_2_formatted":
+                    if delivery_date == "":
+                        delivery_date = item["value"]
+            if delivery_date == "":
+                without_date.append(o)
+        send_every_day_at_9(without_date, client, "*Orders with delivery date missing*\n")
+    # orders to be delivered tomorrow
+    if id == 4:
+        params = {"per_page": 100}
+        params["status"] = 'tbd-unpaid, tbd-paid'
+        params['created_via'] = 'checkout, admin, Order clone'
+        orders = list_orders_with_status(wcapi, params)
+        tbd_tomorrow = []
+        for o in orders:
+            delivery_date = ""
+            for item in o["meta_data"]:
+                if item["key"] == "_delivery_date":
+                    if delivery_date == "":
+                        delivery_date = item["value"]
+                elif item["key"] == "_wc_acof_2_formatted":
+                    if delivery_date == "":
+                        delivery_date = item["value"]
+            if delivery_date == tomorrow:
+                tbd_tomorrow.append(o)
+        vendor_wise_tbd_tomorrow(tbd_tomorrow, client)
+    return {"Result": "Success"}
 if __name__ == "__main__":
-    db.create_all()
+    db.create_all() 
     app.run(debug=True)

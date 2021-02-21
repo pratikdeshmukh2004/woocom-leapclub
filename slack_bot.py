@@ -46,7 +46,6 @@ def send_slack_message(client, wcapi, o):
         + " | Created_via: "+ o['created_via']
         + "\nCustomer Notes: "+ o["customer_note"]
         + taguser
-        + "\n`Please Egnore This Message....`"
     )
     th_s_msg = "*Order Items*\n" +list_order_items(o["line_items"], order_refunds)
     response = client.chat_postMessage(
@@ -104,7 +103,6 @@ def send_slack_message_calcelled(client, wcapi, o):
         + "\nTotal Amount: " +
         get_totals(o["total"], order_refunds)
         + " | Delivery Charge: "+o["shipping_total"]
-        + "\n`Please Egnore This Message....`"
 
     )
     th_s_msg = "*Order Items*\n" +list_order_items(o["line_items"], order_refunds)
@@ -148,7 +146,6 @@ def send_slack_for_product(client, product, topic):
     + "\n*Product Tags:* "+tags
     + "\n*Stock Status:* "+product['stock_status']
     + "\n*Vendor:* "
-    + "\n`Please Egnore This Message....`"
     )
     response = client.chat_postMessage(
         channel=CHANNELS['PRODUCT_NOTIFICATIONS'],
@@ -167,7 +164,8 @@ def send_slack_for_product(client, product, topic):
 def send_slack_for_vendor_wise(client, wcapi):
     params = {"per_page": 100}
     params["status"] = 'tbd-unpaid, tbd-paid'
-    params["delivery_date"] = str(datetime.utcnow().date())
+    params["delivery_date"] = str(datetime.now().date())
+    params['created_via'] = 'checkout, admin, Order clone'
     orders = list_orders_with_status(wcapi, params)
     params['delivery_date']=""
     params['created_via'] = 'subscription'
@@ -191,16 +189,21 @@ def send_slack_for_vendor_wise(client, wcapi):
         if v == "":
             s_msg = "*Here are the orders without any vendor assigned to them:*\n"
         for o in orders:
+            customer_note = ""
+            if o['customer_note']:
+                customer_note = " ["+o['customer_note']+"] "
             if o['vendor'].lower().replace(" ", "").replace(".", "") == v:
-                s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")\n"
+                s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")"+customer_note+"\n"
         main_msg+=s_msg
         main_msg+="\n"
     s_msg = "*Here are the Subscriptions for today:*\n"
     for o in subscriptions:
-        s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")\n"
+        customer_note = ""
+        if o['customer_note']:
+            customer_note = " ["+o['customer_note']+"] "
+        s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")"+customer_note+"\n"
     main_msg+=s_msg
     main_msg+="`Please update the status for delivery of all these orders`"
-    + "\n`Please Egnore This Message....`"
     response = client.chat_postMessage(
         channel=CHANNELS['VENDOR_WISE'],
         blocks=[
@@ -213,3 +216,71 @@ def send_slack_for_vendor_wise(client, wcapi):
             }
         ]
     )
+
+def send_every_day_at_9(orders, client, title):
+    s_msg = title
+    for o in orders:
+        o['vendor'] = ""
+        for item in o["meta_data"]:
+            if item["key"] == "wos_vendor_data":
+                o["vendor"] = item["value"]["vendor_name"]
+            elif item["key"] == "_wc_acof_6":
+                o["vendor"] = item["value"]
+        if o['vendor'] in ['mrdairy', 'Mr. Dairy']:
+            continue
+        customer_note = ""
+        if o['customer_note']:
+            customer_note = " ["+o['customer_note']+"] "
+        s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")"+customer_note+"\n"
+    response = client.chat_postMessage(
+        channel=CHANNELS['VENDOR_WISE'],
+        blocks=[
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": s_msg
+                }
+            }
+        ]
+    )
+
+def vendor_wise_tbd_tomorrow(orders, client):
+    for o in orders:
+        for item in o["meta_data"]:
+            if item["key"] == "wos_vendor_data":
+                o["vendor"] = item["value"]["vendor_name"]
+            elif item["key"] == "_wc_acof_6":
+                o["vendor"] = item["value"]
+        if 'vendor' not in o.keys():
+            o['vendor'] = ""
+    vendor_list = []
+    for o in orders:
+        if o['vendor'].lower().replace(" ", "").replace(".", "") not in vendor_list:
+            vendor_list.append(o['vendor'].lower().replace(" ", "").replace(".", ""))
+    main_msg = ""
+    for v in vendor_list:
+        s_msg = "*Here are all the "+v+" orders to be delivered tomorrow:*\n"
+        if v == "":
+            continue
+        for o in orders:
+            customer_note = ""
+            if o['customer_note']:
+                customer_note = " ["+o['customer_note']+"] "
+            if o['vendor'].lower().replace(" ", "").replace(".", "") == v:
+                s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")"+customer_note+"\n"
+        main_msg+=s_msg
+        main_msg+="\n"
+    response = client.chat_postMessage(
+        channel=CHANNELS['VENDOR_WISE'],
+        blocks=[
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": main_msg
+                }
+            }
+        ]
+    )
+
