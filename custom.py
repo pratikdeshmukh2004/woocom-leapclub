@@ -489,6 +489,30 @@ def list_orders_with_status(wcapi, params):
         o_list.extend(o.json())
     return o_list
 
+def list_orders_with_status_N2(wcapi, params):
+    def get_order(params):
+        order = wcapi.get("orders", params=params)
+        return order
+    page = 1
+    ctime = time.time()
+    forder = wcapi.get("orders", params=params)
+    total_pages = int(forder.headers["X-WP-TotalPages"])
+    p_list = []
+    p = 2
+    while p < total_pages+1:
+        params["page"] = p
+        p_list.append(params.copy())
+        p += 1
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(get_order, p_list)
+    orders = list(result)
+    orders.insert(0, forder)
+    o_list = []
+    for o in orders:
+        o_list.extend(o.json())
+    return o_list
+
+
 def update_order_status(order, invoice_id, wcapi):
     order_id = order['id']
     data = {}

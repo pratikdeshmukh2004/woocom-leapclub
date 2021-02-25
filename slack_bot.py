@@ -1,9 +1,26 @@
-from custom import get_totals, get_shipping_total, list_order_items, list_orders_with_status
+from custom import get_totals, get_shipping_total, list_order_items, list_orders_with_status, list_orders_with_status_N2
 from  datetime import  datetime, timedelta
 from customselectlist import list_created_via
 from slack_chennels import CHANNELS
 
+def get_total_from_params(wcapi, params):
+    orders = list_orders_with_status_N2(wcapi, params)
+    total_o = 0             
+    for o in orders:
+        total_o += float(o['total'])
+    return total_o
+
+
 def send_slack_message(client, wcapi, o):
+    params = {'per_page': 100}
+    params['status'] = "processing, tbd-unpaid, tbd-paid, delivered-unpaid, completed"
+    params['customer'] = int(o['customer_id'])
+    c_date = datetime.today().date().replace(day=1)
+    params['after'] = c_date.strftime("%Y-%m-%dT%H:%M:%S")
+    total_o = get_total_from_params(wcapi, params)
+    params['status'] = "tbd-unpaid,delivered-unpaid"
+    del params['after']
+    total_unpaid = get_total_from_params(wcapi, params)
     vendor = ""
     delivery_date = ""
     payment_status = "Paid"
@@ -12,7 +29,7 @@ def send_slack_message(client, wcapi, o):
     for item in o["meta_data"]:
         if item["key"] == "wos_vendor_data":
             vendor = item["value"]["vendor_name"]
-        elif item["key"] == "_wc_acof_6":
+        elif item["key"] == "_wc_acof_6" and item['value'] != "":
             vendor = item["value"]
         elif item["key"] == "_delivery_date":
             if delivery_date == "":
@@ -45,6 +62,8 @@ def send_slack_message(client, wcapi, o):
         + "\nStatus: "+ o['status']
         + " | Created_via: "+ o['created_via']
         + "\nCustomer Notes: "+ o["customer_note"]
+        + "\nMonthly Total: "+ str(total_o)
+        + " | Total Unpaid Amount: "+ str(total_unpaid)
         + taguser
     )
     th_s_msg = "*Order Items*\n" +list_order_items(o["line_items"], order_refunds)
@@ -68,6 +87,82 @@ def send_slack_message(client, wcapi, o):
     )
     return response
 
+def send_slack_message_dairy(client, wcapi, o):
+    params = {'per_page': 100}
+    params['status'] = "processing, tbd-unpaid, tbd-paid, delivered-unpaid, completed"
+    params['customer'] = int(o['customer_id'])
+    c_date = datetime.today().date().replace(day=1)
+    params['after'] = c_date.strftime("%Y-%m-%dT%H:%M:%S")
+    total_o = get_total_from_params(wcapi, params)
+    params['status'] = "tbd-unpaid,delivered-unpaid"
+    del params['after']
+    total_unpaid = get_total_from_params(wcapi, params)
+    vendor = ""
+    delivery_date = ""
+    payment_status = "Paid"
+    if o["date_paid"] == None:
+        payment_status = "Unpaid"
+    for item in o["meta_data"]:
+        if item["key"] == "wos_vendor_data":
+            vendor = item["value"]["vendor_name"]
+        elif item["key"] == "_wc_acof_6" and item['value'] != "":
+            vendor = item["value"]
+        elif item["key"] == "_delivery_date":
+            if delivery_date == "":
+                delivery_date = item["value"]
+        elif item["key"] == "_wc_acof_2_formatted":
+            if delivery_date == "":
+                delivery_date = item["value"]
+    if len(o["refunds"]) > 0:
+        order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+    else:
+        order_refunds = []
+    
+    taguser = ""
+    if o['created_via'] == "checkout" and vendor == "Mr. Dairy":
+        taguser = "\n"+CHANNELS['TAG_USER_ID']
+    s_msg = (
+        "*Order ID: "+str(o["id"])
+        + "*\nName: "+o["billing"]["first_name"] + " " +
+        o["billing"]["last_name"] + " | Mobile: "+o["billing"]["phone"]
+        + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"] +
+        ", "+o["shipping"]["state"]+", " +
+        o["shipping"]["postcode"] + ", "+o["billing"]["address_2"]
+        + "\nPayment Status: " +
+        payment_status +
+        " | Payment Method: "+o["payment_method_title"]
+        + "\nDelivery Date: "+delivery_date+" | Vendor: "+vendor
+        + "\nTotal Amount: " +
+        get_totals(o["total"], order_refunds)
+        + " | Delivery Charge: "+o["shipping_total"]
+        + "\nStatus: "+ o['status']
+        + " | Created_via: "+ o['created_via']
+        + "\nCustomer Notes: "+ o["customer_note"]
+        + "\nMonthly Total: "+ str(total_o)
+        + " | Total Unpaid Amount: "+ str(total_unpaid)
+        + taguser
+    )
+    th_s_msg = "*Order Items*\n" +list_order_items(o["line_items"], order_refunds)
+    response = client.chat_postMessage(
+        channel=CHANNELS['DAIRY_NOTIFICATIONS'],
+        blocks=[
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": s_msg
+                }
+            }
+        ]
+    )
+    t_response = client.chat_postMessage(
+        channel=CHANNELS['DAIRY_NOTIFICATIONS'],
+        thread_ts=response["ts"],
+        text=th_s_msg,
+        reply_broadcast=False
+    )
+    return response
+
 def send_slack_message_calcelled(client, wcapi, o):
     vendor = ""
     delivery_date = ""
@@ -77,7 +172,7 @@ def send_slack_message_calcelled(client, wcapi, o):
     for item in o["meta_data"]:
         if item["key"] == "wos_vendor_data":
             vendor = item["value"]["vendor_name"]
-        elif item["key"] == "_wc_acof_6":
+        elif item["key"] == "_wc_acof_6" and item['value'] != "":
             vendor = item["value"]
         elif item["key"] == "_delivery_date":
             if delivery_date == "":
@@ -125,6 +220,69 @@ def send_slack_message_calcelled(client, wcapi, o):
         reply_broadcast=False
     )
     return response
+
+def send_slack_message_calcelled_dairy(client, wcapi, o):
+    vendor = ""
+    delivery_date = ""
+    payment_status = "Paid"
+    if o["date_paid"] == None:
+        payment_status = "Unpaid"
+    for item in o["meta_data"]:
+        if item["key"] == "wos_vendor_data":
+            vendor = item["value"]["vendor_name"]
+        elif item["key"] == "_wc_acof_6" and item['value'] != "":
+            vendor = item["value"]
+        elif item["key"] == "_delivery_date":
+            if delivery_date == "":
+                delivery_date = item["value"]
+        elif item["key"] == "_wc_acof_2_formatted":
+            if delivery_date == "":
+                delivery_date = item["value"]
+    if len(o["refunds"]) > 0:
+        order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+    else:
+        order_refunds = []
+    total_r=0
+    for r in order_refunds:
+        total_r += float(r['amount'])
+    s_msg = (
+        "*Order ID: "+str(o["id"])
+        + " HAS BEEN CANCELLED*\nName: "+o["billing"]["first_name"] + " " +
+        o["billing"]["last_name"] + " | Mobile: "+o["billing"]["phone"]
+        + " | Payment Method: "+o["payment_method_title"]
+        + "\nDelivery Date: "+delivery_date+" | Vendor: "+vendor
+        + "\nTotal Amount: " +
+        get_totals(o["total"], order_refunds)
+        + " | Delivery Charge: "+o["shipping_total"]
+        +"\n*Total Refund: "+str(total_r)+"*"
+        + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"] +
+        ", "+o["shipping"]["state"]+", " +
+        o["shipping"]["postcode"] + ", "+o["billing"]["address_2"]
+        + "\nPayment Status: " +
+        payment_status
+
+    )
+    th_s_msg = "*Order Items*\n" +list_order_items(o["line_items"], order_refunds)
+    response = client.chat_postMessage(
+        channel=CHANNELS['DAIRY_NOTIFICATIONS'],
+        blocks=[
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": s_msg
+                }
+            }
+        ]
+    )
+    t_response = client.chat_postMessage(
+        channel=CHANNELS['ORDER_NOTIFICATIONS'],
+        thread_ts=response["ts"],
+        text=th_s_msg,
+        reply_broadcast=False
+    )
+    return response
+
 
 def send_slack_for_product(client, product, topic):
     categories = ""
@@ -175,7 +333,7 @@ def send_slack_for_vendor_wise(client, wcapi):
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
                 o["vendor"] = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6":
+            elif item["key"] == "_wc_acof_6" and item['value'] != "":
                 o["vendor"] = item["value"]
         if 'vendor' not in o.keys():
             o['vendor'] = ""
@@ -224,7 +382,7 @@ def send_every_day_at_9(orders, client, title):
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
                 o["vendor"] = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6":
+            elif item["key"] == "_wc_acof_6" and item['value'] != "":
                 o["vendor"] = item["value"]
         if o['vendor'] in ['mrdairy', 'Mr. Dairy']:
             continue
@@ -250,7 +408,7 @@ def vendor_wise_tbd_tomorrow(orders, client):
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
                 o["vendor"] = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6":
+            elif item["key"] == "_wc_acof_6" and item['value'] != "":
                 o["vendor"] = item["value"]
         if 'vendor' not in o.keys():
             o['vendor'] = ""
