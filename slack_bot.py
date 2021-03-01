@@ -291,7 +291,7 @@ def send_slack_for_product(client, product, topic):
         categories+=c['name']
         categories+=", "
     for t in product['tags']:
-        tags+=c['name']
+        tags+=t['name']
         tags+=", "
     categories = categories[:-2]
     tags = tags[:-2]

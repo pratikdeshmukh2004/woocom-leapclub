@@ -851,7 +851,7 @@ def razorpay():
                     vendor_t = vendor_type[vendor_name]
                 update_order_status(order, invoice_id, wcapi_write)
                 if order['status'] in ['tbd-unpaid', 'delivered-unpaid']:
-                    msg = send_whatsapp_msg({'vendor_type': vendor_t, "c_name": name}, mobile, 'payment_received')
+                    msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
             return("Done")
         else:
             return "Payment.Paid"
@@ -887,8 +887,8 @@ def product_add_and_update():
         send_slack_for_product(client, e, topic)
         return {"Result": "Success No Error..."}
 
-# @crontab.job(minute="00", hour="9")
-@app.route('/vendor_wise')
+@crontab.job(minute="00", hour="9")
+# @app.route('/vendor_wise')
 def vendor_wise_tbd():
     send_slack_for_vendor_wise(client, wcapi)
     return {"Result": "Success No Error..."}
