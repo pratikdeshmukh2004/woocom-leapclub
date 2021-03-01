@@ -2,135 +2,183 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
   <div class="container">
     <a class="navbar-brand font-weight-bold" href="#">Orders</a>
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+      aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <ul class="navbar-nav ml-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="{{url_for('vendor_order_sheet')}}">
-              Vendor-Sheet</a>
-          </li>
-          <li class="nav-item">
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="{{url_for('vendor_order_sheet')}}">
+            Vendor-Sheet</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" href="{{url_for('subscriptions')}}">
             Subscriptions</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{url_for('products')}}">
-              Products</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{url_for('google_sheet')}}">
-              Upload GS</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{url_for('logout')}}">
-              <i class="mdi mdi-logout" aria-hidden="true"></i>
-              Logout</a>
-          </li>
-        </ul>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{url_for('products')}}">
+            Products</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{url_for('google_sheet')}}">
+            Upload GS</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{url_for('logout')}}">
+            <i class="mdi mdi-logout" aria-hidden="true"></i>
+            Logout</a>
+        </li>
+      </ul>
     </div>
-</div>
+  </div>
 </nav>
 <ul class="nav nav-tabs mt-2 ml-1">
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'failed, pending' %} active {%endif%}" href="{{url_for('woocom_orders', status='failed, pending')}}">Failed</a>
+    <a class="nav-link {% if nav_active == 'failed, pending' %} active {%endif%}"
+      href="{{url_for('woocom_orders', status='failed, pending')}}">Failed</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'processing' %} active {%endif%}" href="{{url_for('woocom_orders', status='processing')}}">Processing</a>
+    <a class="nav-link {% if nav_active == 'processing' %} active {%endif%}"
+      href="{{url_for('woocom_orders', status='processing')}}">Processing</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'tbd-paid, tbd-unpaid' %} active {%endif%}" href="{{url_for('woocom_orders', status='tbd-paid, tbd-unpaid')}}">To Be Delivered</a>
+    <a class="nav-link {% if nav_active == 'tbd-paid, tbd-unpaid' %} active {%endif%}"
+      href="{{url_for('woocom_orders', status='tbd-paid, tbd-unpaid')}}">To Be Delivered</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'subscription' %} active {%endif%}" href="{{url_for('woocom_orders', status='subscription')}}">Subscription</a>
+    <a class="nav-link {% if nav_active == 'subscription' %} active {%endif%}"
+      href="{{url_for('woocom_orders', status='subscription')}}">Subscription</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'delivered-unpaid' %} active {%endif%}" href="{{url_for('woocom_orders', status='delivered-unpaid')}}">Delivered Unpaid</a>
+    <a class="nav-link {% if nav_active == 'delivered-unpaid' %} active {%endif%}"
+      href="{{url_for('woocom_orders', status='delivered-unpaid')}}">Delivered Unpaid</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'completed' %} active {%endif%}" href="{{url_for('woocom_orders', status='completed')}}">Delivered Paid</a>
+    <a class="nav-link {% if nav_active == 'completed' %} active {%endif%}"
+      href="{{url_for('woocom_orders', status='completed')}}">Delivered Paid</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'refunded' %} active {%endif%}" href="{{url_for('woocom_orders', status='refunded')}}">Refunded</a>
+    <a class="nav-link {% if nav_active == 'refunded' %} active {%endif%}"
+      href="{{url_for('woocom_orders', status='refunded')}}">Refunded</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'cancelled' %} active {%endif%}" href="{{url_for('woocom_orders', status='cancelled')}}">Cancelled</a>
+    <a class="nav-link {% if nav_active == 'cancelled' %} active {%endif%}"
+      href="{{url_for('woocom_orders', status='cancelled')}}">Cancelled</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link {% if nav_active == 'any' %} active {%endif%}" href="{{url_for('woocom_orders', status='any')}}">All</a>
+    <a class="nav-link {% if nav_active == 'any' %} active {%endif%}"
+      href="{{url_for('woocom_orders', status='any')}}">All</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if nav_active == 'dairy' %} active {%endif%}"
+      href="{{url_for('woocom_orders', status='dairy')}}">Dairy</a>
   </li>
 </ul>
-<div  class="mt-3 ml-3 mr-3">
-    <form autocomplete="off" class = "form-inline" role = "form">
-      <input style="display: none;" name="page" value="{{page}}">
-      {% if nav_active != '' %}
-        <input style="display: none;" name="status" value="{{nav_active}}">
-      {% endif %}
-      <input class="form-control mr-2" type="name" placeholder="Order IDs" {% if "order_ids" in query %} {% if query["order_ids"][0] != "" %} value="{{query["order_ids"][0]}}" {% endif %} {% endif %} name="order_ids">
-      <select title="Payment Status" name="payment_status" class="selectpicker mr-2">
-        <option value="">Payment Status</option>
-        <option {% if "payment_status" in query %} {% if query.payment_status[0] == "paid" %} selected {% endif %} {% endif %} value="paid">Paid</option>
-        <option {% if "payment_status" in query %} {% if query.payment_status[0] == "unpaid" %} selected {% endif %} {% endif %} value="unpaid">Unpaid</option>
-      </select>
-      <input class="form-control mr-2" type="phone" placeholder="Phone Number" {% if "phone_number" in query %} {% if query["phone_number"][0] != "" %} value="{{query["phone_number"][0]}}" {% endif %} {% endif %} name="phone_number">
-      <input class="form-control mr-2" type="name" placeholder="Name" {% if "name" in query %} {% if query["name"][0] != "" %} value="{{query["name"][0]}}" {% endif %} {% endif %} name="name">
-      <select data-live-search="true" multiple title="Vendor" name="vendor" class="selectpicker mr-2">
-        {% for v in vendors %}
-        {% if v != ""%}
-          <option {% if "vendor" in query %} {% if v in query["vendor"] %} selected {% endif %} {% endif %}>{{v}}</option>
-        {% else %}
-          <option {% if "vendor" in query %} {% if v in query["vendor"] %} selected {% endif %} {% endif %} value="">Null</option>
-        {%endif%}
-        {% endfor%}
-      </select>      <select data-live-search="true" multiple title="Manager" name="manager" class="selectpicker mr-2">
-        {% for m in managers %}
-        {% if m != ""%}
-          <option {% if "manager" in query %} {% if m in query["manager"] %} selected {% endif %} {% endif %}>{{m}}</option>
-        {%endif%}
-        {% endfor%}
-      </select>
-      <select data-live-search="true" multiple title="Created Via" name="created_via" class="selectpicker mr-2">
-        {% for v in list_created_via %}
-        {% if v != ""%}
-          {% if nav_active == "tbd-paid, tbd-unpaid" %}
-            {% if v != "subscription" %}
-              <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
-            {%endif%}
-          {% elif nav_active == "subscription" %}
-              {% if v == "subscription"%}
-              <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
-              {%endif%}
-          {% else %}
-          <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}</option>
-        {%endif%}
-        {%endif%}
-        {% endfor%}
-      </select>
-      <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker" class="form-control mr-2" {% if "delivery_date" in query %} {% if query["delivery_date"][0] != "" %} value="{{query["delivery_date"][0]}}" {% endif %} {% endif %}>
-      <input placeholder="Date From" type="text" name="after" id="datepicker1" class="form-control mr-2" {% if "after" in query %} {% if query["after"][0] != "" %} value="{{query["after"][0]}}" {% endif %} {% endif %}>
-      <input placeholder="Date To" type="text" name="before" id="datepicker2" class="form-control mr-2" {% if "before" in query %} {% if query["before"][0] != "" %} value="{{query["before"][0]}}" {% endif %} {% endif %}>
-      <button class="btn btn-info ml-1"><i class="mdi mdi-18px mdi-filter-variant" aria-hidden="true"></i>
-      </button>
-    </form>
-    <form autocomplete="off" action="{{url_for('download_csv')}}", method="POST" class = "form-inline mt-2" role = "form">
-      {% if nav_active != '' %}
-        <input style="display: none;" name="status" value="{{nav_active}}">
-      {% endif %}
-      <select data-live-search="true" data-actions-box="true" multiple required title="Order ID" name="order_ids" class="selectpicker mr-2">
-        {% for o in orders %}
-        <option value="{{o.id}}">{{o.id}} - {{ o.billing.first_name}} - 
-          {{o.vendor}}
-        </option>
-        {% endfor%}
-      </select>
-      <input name='status' value='{{nav_active}}' style='display: none'>
-      <button title="Download Order Sheet" name="action" value="order_sheet" class="btn btn-info"><i class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
-      <button title="Download Vendor Order Sheet" name="action" value="vendor_sheet" class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
-      <button title="Download Products Sheet" name="action" value="product_sheet" class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
-      <button title="Order-Sheet To Google Sheet" name="action" value="google_sheet" class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
-      <button title="Product-Sheet To Google Sheet" name="action" value="product_google_sheet" class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
-      </form>
+<div class="mt-3 ml-3 mr-3">
+  <form autocomplete="off" class="form-inline" role="form">
+    <input style="display: none;" name="page" value="{{page}}">
+    {% if nav_active != '' %}
+    <input style="display: none;" name="status" value="{{nav_active}}">
+    {% endif %}
+    <input class="form-control mr-2" type="name" placeholder="Order IDs" {% if "order_ids" in query %} {% if
+      query["order_ids"][0] !="" %} value="{{query[" order_ids"][0]}}" {% endif %} {% endif %} name="order_ids">
+    <select title="Payment Status" name="payment_status" class="selectpicker mr-2">
+      <option value="">Payment Status</option>
+      <option {% if "payment_status" in query %} {% if query.payment_status[0]=="paid" %} selected {% endif %} {% endif
+        %} value="paid">Paid</option>
+      <option {% if "payment_status" in query %} {% if query.payment_status[0]=="unpaid" %} selected {% endif %} {%
+        endif %} value="unpaid">Unpaid</option>
+    </select>
+    <input class="form-control mr-2" type="phone" placeholder="Phone Number" {% if "phone_number" in query %} {% if
+      query["phone_number"][0] !="" %} value="{{query[" phone_number"][0]}}" {% endif %} {% endif %}
+      name="phone_number">
+    <input class="form-control mr-2" type="name" placeholder="Name" {% if "name" in query %} {% if query["name"][0] !=""
+      %} value="{{query[" name"][0]}}" {% endif %} {% endif %} name="name">
+    <select data-live-search="true" multiple title="Vendor" name="vendor" class="selectpicker mr-2">
+      {% for v in vendors %}
+      {% if v != ""%}
+      <option {% if "vendor" in query %} {% if v in query["vendor"] %} selected {% endif %} {% endif %}>{{v}}</option>
+      {% else %}
+      <option {% if "vendor" in query %} {% if v in query["vendor"] %} selected {% endif %} {% endif %} value="">Null
+      </option>
+      {%endif%}
+      {% endfor%}
+    </select> <select data-live-search="true" multiple title="Manager" name="manager" class="selectpicker mr-2">
+      {% for m in managers %}
+      {% if m != ""%}
+      <option {% if "manager" in query %} {% if m in query["manager"] %} selected {% endif %} {% endif %}>{{m}}</option>
+      {%endif%}
+      {% endfor%}
+    </select>
+    <select data-live-search="true" multiple title="Created Via" name="created_via" class="selectpicker mr-2">
+      {% for v in list_created_via %}
+      {% if v != ""%}
+      {% if nav_active == "tbd-paid, tbd-unpaid" %}
+      {% if v != "subscription" %}
+      <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}
+      </option>
+      {%endif%}
+      {% elif nav_active == "subscription" %}
+      {% if v == "subscription"%}
+      <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}
+      </option>
+      {%endif%}
+      {% else %}
+      <option {% if "created_via" in query %} {% if v in query["created_via"] %} selected {% endif %} {% endif %}>{{v}}
+      </option>
+      {%endif%}
+      {%endif%}
+      {% endfor%}
+    </select>
+    <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker" class="form-control mr-2" {%if "delivery_date" in query %} {% if query["delivery_date"][0] !="" %} value="{{query["delivery_date"][0]}}" {%endif %} {% endif %}>
+    <input placeholder="Date From" type="text" name="after" id="datepicker1" class="form-control mr-2" {% if "after" in
+      query %} {% if query["after"][0] !="" %} value="{{query[" after"][0]}}" {% endif %} {% endif %}>
+    <input placeholder="Date To" type="text" name="before" id="datepicker2" class="form-control mr-2" {% if "before" in
+      query %} {% if query["before"][0] !="" %} value="{{query[" before"][0]}}" {% endif %} {% endif %}>
+      <select data-live-search="true" multiple title="Status" name="status_f" class="selectpicker mr-2">
+        <option value="any" {% if "status_f" in query %} {% if "any" in query["status_f"] %} selected {% endif %} {% endif %}>All</option>
+        <option value="processing" {% if "status_f" in query %} {% if "processing" in query["status_f"] %} selected {% endif %} {% endif %}>Processing</option>
+        <option value="tbd-unpaid, tbd-paid" {% if "status_f" in query %} {% if "tbd-unpaid, tbd-paid" in query["status_f"] %} selected {% endif %} {% endif %}>To Be Delivered</option>
+        <option value="delivered-unpaid" {% if "status_f" in query %} {% if "delivered-unpaid" in query["status_f"] %} selected {% endif %} {% endif %}>Delivered Unpaid</option>
+        <option value="completed" {% if "status_f" in query %} {% if "completed" in query["status_f"] %} selected {% endif %} {% endif %}>Delivered Paid</option>
+        <option value="cancelled" {% if "status_f" in query %} {% if "cancelled" in query["status_f"] %} selected {% endif %} {% endif %}>Cancelled</option>
+        <option value="refunded" {% if "status_f" in query %} {% if "refunded" in query["status_f"] %} selected {% endif %} {% endif %}>Refunded</option>
+        <option value="pending, failed" {% if "status_f" in query %} {% if "pending, failed" in query["status_f"] %} selected {% endif %} {% endif %}>Failed</option>
+  </select>   
+    <button class="btn btn-info ml-1"><i class="mdi mdi-18px mdi-filter-variant" aria-hidden="true"></i>
+    </button>
+  </form>
+  <div style="display: flex;">
+  <form autocomplete="off" action="{{url_for('download_csv')}}" , method="POST" class="form-inline mt-2" role="form">
+    {% if nav_active != '' %}
+    <input style="display: none;" name="status" value="{{nav_active}}">
+    {% endif %}
+    <select id="select_inps" data-live-search="true" data-actions-box="true" multiple required title="Order ID"
+      name="order_ids" class="selectpicker mr-2">
+      {% for o in orders %}
+      <option value="{{o.id}}">{{o.id}} - {{ o.billing.first_name}} -
+        {{o.vendor}}
+      </option>
+      {% endfor%}
+    </select>
+    <input name='status' value='{{nav_active}}' style='display: none'>
+    <button title="Download Order Sheet" name="action" value="order_sheet" class="btn btn-info"><i
+        class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
+    <button title="Download Vendor Order Sheet" name="action" value="vendor_sheet" class="btn btn-info ml-2"><i
+        class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
+    <button title="Download Products Sheet" name="action" value="product_sheet" class="btn btn-info ml-2"><i
+        class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
+    <button type='button' title="Order-Sheet To Google Sheet" onclick="sendToGoogleSheet('google_sheet', '{{nav_active}}')" class="btn btn-info ml-2"><i
+        class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
+    <button onclick="sendToGoogleSheet('product_google_sheet', '{{nav_active}}')" type="button" title="Product-Sheet To Google Sheet"
+      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
+  </form>
+  <div class='ml-auto mt-1'>
+  <h5>Total Amount Payble: {{t_p}}</h5>
+  <h5>bakery: {{vendor_payble.bakery}}; grocery: {{vendor_payble.grocery}}; personal_care: {{vendor_payble.personal_care}}; dairy: {{vendor_payble.dairy}}; without_vendor: {{vendor_payble['']}}</h5>
+    </div>
+</div>
 </div>
 <div style="overflow-x: auto;" class="ml-1 mr-1 pt-3">
   <table class="table">
@@ -157,21 +205,28 @@
     <tbody>
       {% for o in orders %}
       <tr>
-        <td class="{{o.id}}"scope="row">
+        <td class="{{o.id}}" scope="row">
           {% if o.vendor_type %}
           <div style="min-width: 162px;">
-            <a target='blank' href="https://leapclub.in/wp-admin/post.php?post={{o.id}}&action=edit"><i title="Edit Order" class="mdi mdi-18px mdi-pencil-outline btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i></a>
-            <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')" class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning"style="cursor: pointer;" aria-hidden="true"></i>
-            <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')" class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning ml-1"style="cursor: pointer;" aria-hidden="true"></i>
-            <button class="btn btn-warning btn-sm" onclick="CheckOutRequest('{{url_for('gen_payment_link', order_id=o.id, page=page)}}')">
-                <i title="Hello Message" class="mdi mdi-18px mdi-link"></i>
+            <a target='blank' href="https://leapclub.in/wp-admin/post.php?post={{o.id}}&action=edit"><i
+                title="Edit Order" class="mdi mdi-18px mdi-pencil-outline btn-sm btn btn-warning"
+                style="cursor: pointer;" aria-hidden="true"></i></a>
+            <i title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')"
+              class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning" style="cursor: pointer;"
+              aria-hidden="true"></i>
+            <i title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')"
+              class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning ml-1" style="cursor: pointer;"
+              aria-hidden="true"></i>
+            <button class="btn btn-warning btn-sm"
+              onclick="CheckOutRequest('{{url_for('gen_payment_link', order_id=o.id, page=page)}}')">
+              <i title="Hello Message" class="mdi mdi-18px mdi-link"></i>
             </button>
           </div>
           {% endif %}
           <div class="mt-1">
-          {% if nav_active == "processing"%}
-          {% if o.vendor_type %}
-          <div style="min-width: 143px;">
+            {% if nav_active == "processing"%}
+            {% if o.vendor_type %}
+            <div style="min-width: 143px;">
               <button class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='hello_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=page)}}')
               ">
                 <i title="Hello Message" class="mdi mdi-18px mdi-whatsapp"></i>
@@ -183,125 +238,111 @@
               {% if o.date_paid == None %}
               <button class="btn btn-success btn-sm ml-1" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='postpay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=page)}}')
               ">
-              <i title="Postpay Message" class="mdi mdi-18px mdi-whatsapp"></i>
+                <i title="Postpay Message" class="mdi mdi-18px mdi-whatsapp"></i>
               </button>
-            {% else %}
-            <button class="btn btn-success btn-sm ml-1" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='prepay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=page)}}')
+              {% else %}
+              <button class="btn btn-success btn-sm ml-1" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='prepay_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=page)}}')
             ">
-            <i title="Prepay Message" class="mdi mdi-18px mdi-whatsapp"></i>
-            </button>
-          </button>
-          </div>
-          {% endif %}
-          {%endif%}
-          {% endif %}
-          {% if nav_active == "tbd-paid, tbd-unpaid" or nav_active == "subscription"%}
-          {% if o.vendor_type and o.delivery_date and o.payment_method %}
-          {% if o.date_paid != None %}
-           <div class="mb-1" style="min-width: 139px">
-              <button title="Delivery Today Message" class="btn btn-success btn-sm"  
-              onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='today_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+                <i title="Prepay Message" class="mdi mdi-18px mdi-whatsapp"></i>
+              </button>
+              </button>
+            </div>
+            {% endif %}
+            {%endif%}
+            {% endif %}
+            {% if nav_active == "tbd-paid, tbd-unpaid" or nav_active == "subscription"%}
+            {% if o.vendor_type and o.delivery_date and o.payment_method %}
+            {% if o.date_paid != None %}
+            <div class="mb-1" style="min-width: 139px">
+              <button title="Delivery Today Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='today_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
               ">Today
               </button>
-            <button title="Delivery Tomorrow Message" class="btn btn-success btn-sm ml-1" 
-            onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='tomorrow_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+              <button title="Delivery Tomorrow Message" class="btn btn-success btn-sm ml-1" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='tomorrow_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
               ">Tom
-            </button>
+              </button>
             </div>
             <div style="min-width: 120px;">
-                <button title="Order Detail Message" class="btn btn-success btn-sm" 
-                onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+              <button title="Order Detail Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                   ">Order
-                </button>
-                <button title="Feedback Prepay Message" class="btn btn-success btn-sm"
-               onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+              </button>
+              <button title="Feedback Prepay Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                ">
                 Feedback
-                </button>
+              </button>
             </div>
             {%else%}
             <div class="mb-1" style="min-width: 143px">
-              <button title="Delivery Today Message" class="btn btn-success btn-sm"  
-              onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='today_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+              <button title="Delivery Today Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='today_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
               ">Today
               </button>
-            <button title="Delivery Tomorrow Message" class="btn btn-success btn-sm" 
-            onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='tomorrow_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+              <button title="Delivery Tomorrow Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='tomorrow_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
               ">Tom
-            </button>
-            <button title="Send Session Message" class="btn btn-warning btn-sm" 
-            onclick="SendWhatsappMessages('{{url_for('send_session_message', order_id=o.id)}}')
+              </button>
+              <button title="Send Session Message" class="btn btn-warning btn-sm" onclick="SendWhatsappMessages('{{url_for('send_session_message', order_id=o.id)}}')
               "><i title="Order Detail Message" class="mdi mdi-12px mdi-whatsapp"></i>
-            </button>
+              </button>
             </div>
             <div style="min-width: 120px;">
-                <button title="Order Detail Message" class="btn btn-success btn-sm" 
-                onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+              <button title="Order Detail Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                   ">Order
-                </button>
-                <button title="Feedback Postpay Message" class="btn btn-success btn-sm"
-               onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+              </button>
+              <button title="Feedback Postpay Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                ">
                 Feedback
-                </button>
+              </button>
             </div>
             {%endif%}
-          {%endif%}
-          {% endif %}
-          {% if nav_active == "delivered-unpaid"%}
-          {% if o.vendor_type %}
-              <div style="min-width: 162px;">
-               <button title="Feedback Postpay Message" class="btn btn-success btn-sm"
-               onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+            {%endif%}
+            {% endif %}
+            {% if nav_active == "delivered-unpaid"%}
+            {% if o.vendor_type %}
+            <div style="min-width: 162px;">
+              <button title="Feedback Postpay Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                ">
                 Feedback
-               </button>
-               <button class="btn btn-success btn-sm ml-1" 
-               onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='payment_remainder_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+              </button>
+              <button class="btn btn-success btn-sm ml-1" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='payment_remainder_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                ">
                 Payment
-               </button>
-              </div>
-              {%endif%}
-          {% endif %}
-          {% if nav_active == "completed"%}
-          {% if o.vendor_type %}
-              <button title="Feedback Prepay Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=page)}}')
-              ">
-                <i title="Follow up" class="mdi mdi-18px mdi-whatsapp" aria-hidden="true"></i>Follow up
               </button>
+            </div>
+            {%endif%}
+            {% endif %}
+            {% if nav_active == "completed"%}
+            {% if o.vendor_type %}
+            <button title="Feedback Prepay Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=page)}}')
+              ">
+              <i title="Follow up" class="mdi mdi-18px mdi-whatsapp" aria-hidden="true"></i>Follow up
+            </button>
 
-              {%endif%}
-          {% endif %}
-          {% if nav_active == "cancelled" %}
-          {% if o.vendor_type %}
-          {% if o.date_paid == None%}
-          <button title="Calncelled Postpay Order Message" class="btn btn-success btn-sm" 
-            onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='cancel_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+            {%endif%}
+            {% endif %}
+            {% if nav_active == "cancelled" %}
+            {% if o.vendor_type %}
+            {% if o.date_paid == None%}
+            <button title="Calncelled Postpay Order Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='cancel_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
             ">Cancel
-          </button>
-          {%else%}
-          <button title="Calncelled Prepay Order Message" class="btn btn-success btn-sm" 
-            onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='cancel_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+            </button>
+            {%else%}
+            <button title="Calncelled Prepay Order Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='cancel_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
             ">Cancel
-          </button>
-          {% endif %}
-          {% endif %}
-          {% endif %}
-          {% if nav_active == "failed, pending" %}
-          {% if o.vendor_type %}
-          <button title="Confirm Order Message" class="btn btn-success btn-sm" 
-            onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='confirm_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+            </button>
+            {% endif %}
+            {% endif %}
+            {% endif %}
+            {% if nav_active == "failed, pending" %}
+            {% if o.vendor_type %}
+            <button title="Confirm Order Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='confirm_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
             ">Confirm
-          </button>
-          {% endif %}
-          {% endif %}
-          <p style="display: none;" id="c_msg_{{o.id}}">
-            {{o.c_msg}}
-          </p>
-          <p style="display: none;" id="s_msg_{{o.id}}">
-            {{o.s_msg}}
-          </p>
+            </button>
+            {% endif %}
+            {% endif %}
+            <p style="display: none;" id="c_msg_{{o.id}}">
+              {{o.c_msg}}
+            </p>
+            <p style="display: none;" id="s_msg_{{o.id}}">
+              {{o.s_msg}}
+            </p>
           </div>
         </td>
         <td scope="row">{{ o.id}}</td>
@@ -312,40 +353,43 @@
         <td scope="row">{{ o.delivery_date}}</td>
         <td scope="row">{{o.vendor}}</td>
         {% if o.date_paid == None %}
-            <td scope="row">Unpaid ({{ o.payment_method}})</td>
-            {% else %}
-            <td scope="row">Paid ({{ o.payment_method}})</td>
+        <td scope="row">Unpaid ({{ o.payment_method}})</td>
+        {% else %}
+        <td scope="row">Paid ({{ o.payment_method}})</td>
         {% endif %}
         <td scope="row">{{ o.total}} ({{ o.total_refunds}})</td>
         <td scope="row">{{ o.total-o.total_refunds}}</td>
         <td scope="row">
           <div class="wtmessage-{{o.id}}" style="max-height: 100px; overflow-y: scroll;">
-          {% for wt in wtmessages_list[o.id]%}
+            {% for wt in wtmessages_list[o.id]%}
             {% if wt.status == "success"%}
-              <span class="text-success">{{wt.template_name}}, </span>
+            <span class="text-success">{{wt.template_name}}, </span>
             {%else%}
-              <span class="text-danger">{{wt.template_name}}, </span>
+            <span class="text-danger">{{wt.template_name}}, </span>
             {% endif%}
-          {% endfor %}
+            {% endfor %}
           </div>
         </td>
         <td scope="row">
-            {% if payment_links[o.id] != ''%}
-              {% if payment_links[o.id].status == "success"%}
-              <span  id='payment-{{o.id}}' class="text-success" style="cursor: pointer;" onclick="copyText('{{payment_links[o.id].payment_link_url}}')">{{payment_links[o.id].receipt}} | {{payment_links[o.id].amount/100}}</span>
-              {%else%}
-              <span id='payment-{{o.id}}' style="cursor: pointer;" class="text-danger">{{payment_links[o.id].receipt}} | {{payment_links[o.id].amount/100}}</span>
-              {% endif%}
-            {%else%}
-              <span  id='payment-{{o.id}}' class="text-success" style="cursor: pointer;" onclick=""></span>
-            {% endif%}
+          {% if payment_links[o.id] != ''%}
+          {% if payment_links[o.id].status == "success"%}
+          <span id='payment-{{o.id}}' class="text-success" style="cursor: pointer;"
+            onclick="copyText('{{payment_links[o.id].payment_link_url}}')">{{payment_links[o.id].receipt}} |
+            {{payment_links[o.id].amount/100}}</span>
+          {%else%}
+          <span id='payment-{{o.id}}' style="cursor: pointer;" class="text-danger">{{payment_links[o.id].receipt}} |
+            {{payment_links[o.id].amount/100}}</span>
+          {% endif%}
+          {%else%}
+          <span id='payment-{{o.id}}' class="text-success" style="cursor: pointer;" onclick=""></span>
+          {% endif%}
         </td>
         <td scope="row">{{o.manager}}</td>
         <td scope="row">{{o.created_via}}</td>
         <td scope="row">
           <p style="cursor: pointer;" onclick="copyText('{{o.checkout_url}}')">click_to_copy</p>
         </td>
-        </tr>
+      </tr>
       {% endfor %}
     </tbody>
   </table>
@@ -354,46 +398,80 @@
 <nav aria-label="Page navigation">
   <ul class="pagination justify-content-center">
     <li class="page-item {% if page == 1%} disabled {%endif%}">
-      <a class="page-link" href="{{url_for('woocom_orders', page=page-1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active, after=query['after'], before=query['before'])}}" tabindex="-1"
-        >Previous</a
-      >
+      <a class="page-link"
+        href="{{url_for('woocom_orders', page=page-1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active, after=query['after'], before=query['before'])}}"
+        tabindex="-1">Previous</a>
     </li>
     <li class="page-item">
       <a class="page-link">{{page}}</a>
     </li>
     <li class="page-item {% if orders | length != 50%} disabled {%endif%}">
-      <a class="page-link" href="{{url_for('woocom_orders', page=page+1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active, after=query['after'], before=query['before'])}}">Next</a>
+      <a class="page-link"
+        href="{{url_for('woocom_orders', page=page+1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active, after=query['after'], before=query['before'])}}">Next</a>
     </li>
   </ul>
 </nav>
 <script>
   function copyToClipboard(id) {
-   var tag = document.getElementById(""+id+"")
-   var text = tag.innerHTML.trim()
-   text = text.replace("&amp;", "&")
-   var input = document.body.appendChild(document.createElement("textarea"));
-   input.value = text;
-   input.select();
-   var status = document.execCommand("copy");
-   input.parentNode.removeChild(input);
-   if (status) {
+    var tag = document.getElementById("" + id + "")
+    var text = tag.innerHTML.trim()
+    text = text.replace("&amp;", "&")
+    var input = document.body.appendChild(document.createElement("textarea"));
+    input.value = text;
+    input.select();
+    var status = document.execCommand("copy");
+    input.parentNode.removeChild(input);
+    if (status) {
+      $.nok({
+        message: "Success, Message Copied!",
+        type: "success",
+      });
+    } else {
+      $.nok({
+        message: "Error, Message Not Copied!",
+        type: "error",
+      });
+    }
+  }
+
+  function sendToGoogleSheet(act, status) {
+    var inp_select = $('#select_inps')
+    var inp_select_v = inp_select.val()
     $.nok({
-      message: "Success, Message Copied!",
+      message: "Processing Your Request Please Wait!",
       type: "success",
     });
-   }else{
-    $.nok({
-      message: "Error, Message Not Copied!",
-      type: "error",
+    $.ajax({
+      type: "POST",
+      crossDomain: true,
+      dataType: "json",
+      url: "/csv",
+      data: { 'order_ids': inp_select_v, 'action': [act], 'status': status },
+      success: function (res) {
+        console.log(res);
+        if (res.result == 'success') {
+          $.nok({
+            message: "Success, Message Sent!",
+            type: "success",
+          });
+          inp_select.val("")
+        } else {
+          $.nok({
+            message: "Error, Message Not Sent!",
+            type: "error",
+          });
+          inp_select.val("")
+        }
+      },
+      error: function (res) {
+        $.nok({
+          message: "API Error, Message Not Sent!",
+          type: "error",
+        });
+      },
     });
-   }
- }
- {% if "message_sent" in query%}
- $("html, body").animate({
-        scrollTop: $(".{{query["message_sent"][0]}}").offset().top,
-    });
-    {%endif%}
-  
- </script>
- 
+  }
+
+</script>
+
 {% endblock %}

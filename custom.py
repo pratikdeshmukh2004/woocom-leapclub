@@ -193,9 +193,14 @@ def get_params(args):
     else:
         params["page"] = 1
     if "status" in args:
-        if args["status"][0] == 'subscription':
+        if 'status_f' in args:
+            params['status'] = get_list_to_string(args['status_f'])
+        elif args["status"][0] == 'subscription':
             params["status"] = "tbd-paid, tbd-unpaid"
             params["created_via"] = "subscription"
+        elif args['status'][0] == "dairy":
+            params["status"] = "processing, tbd-unpaid, tbd-paid"
+            params['vendor'] = 'mrdairy, Mr. Dairy'
         else:
             if args["status"][0] == "tbd-paid, tbd-unpaid":
                 l_c = list_created_via.copy()

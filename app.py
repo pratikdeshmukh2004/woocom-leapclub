@@ -157,6 +157,28 @@ class PaymentLinks(db.Model):
     created_at = db.Column(db.String)
     amount = db.Column(db.Float)
 
+def get_dairy_condition(o,d):
+    delivery_d = datetime.strptime(d, "%Y-%m-%d")
+    yesterday = delivery_d - timedelta(days = 1)
+    yesterday = yesterday.strftime('%Y-%m-%dT')
+    delivery_date = ""
+    for item in o["meta_data"]:
+        if item["key"] == "_delivery_date":
+            if delivery_date == "":
+                delivery_date = item["value"]
+        elif item["key"] == "_wc_acof_2_formatted":
+            if delivery_date == "":
+                delivery_date = item["value"]
+    if o['created_via'] == "subscription":
+        if yesterday in o['date_created']:
+            return True
+        else:
+            return False
+    else:
+        if delivery_date == d:
+            return True
+        else:
+            return False
 
 
 @app.route("/orders")
@@ -168,7 +190,17 @@ def woocom_orders():
     if "created_via" in params:
         args["created_via"] = params["created_via"]
     t_orders = time.time()
-    orders = wcapi.get("order2", params=params).json()
+    if 'status' in args:
+        if args['status'][0] == 'dairy' and 'delivery_date' in params:
+            delivery = params['delivery_date']
+            del params['delivery_date']
+            orders=list_orders_with_status(wcapi, params)
+            orders = list(filter(lambda o: get_dairy_condition(o, delivery), orders))
+        else:
+            orders = wcapi.get("order2", params=params).json()
+    else:
+        orders = wcapi.get("order2", params=params).json()
+
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
     orders = filter_orders(orders, args)
     managers = []
@@ -177,6 +209,8 @@ def woocom_orders():
     t_refunds = time.time()
     orders = get_orders_with_messages(orders, wcapi)
     print("Time To Fetch Total Refunds: "+str(time.time()-t_refunds))
+    total_payble = 0
+    vendor_payble = {'dairy':0, 'bakery':0,"grocery":0,"personal_care":0, '': 0}
     for o in orders:
         wallet_payment = 0
         refunds = 0
@@ -226,10 +260,17 @@ def woocom_orders():
         o["wallet_payment"] = wallet_payment
         o["total"] = float(o["total"]) + float(o["wallet_payment"])
         o["checkout_url"] = get_checkout_url(o)
+        total_payble+=(o['total']-o['total_refunds'])
+        vendor_payble[o['vendor_type']] +=(o['total']-o['total_refunds'])
+    if 'status_f' in args:
+        params['status'] = args['status'][0]
     if "status" in args:
         if args["status"][0] == "subscription":
             params["status"] = "subscription"
-    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links)
+        elif args['status'][0] == 'dairy':
+            params['status'] = 'dairy'
+            params['page'] = 1
+    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble)
 
 
 def send_whatsapp_msg(args, mobile, name):
@@ -303,6 +344,8 @@ def download_csv():
     if not g.user:
         return redirect(url_for('login'))
     data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    data['action'] = data['action[]']
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
     orders = wcapi.get("orders", params=params).json()
@@ -321,7 +364,7 @@ def download_csv():
             o['line_items_text'] = list_order_items_csv(o["line_items"], refunds).replace("&amp;", "&")
             o['total_text'] = get_totals(o["total"], refunds)+get_shipping_total_for_csv(o)
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders) 
-        return redirect(url_for('woocom_orders', status=data['status'][0]))
+        return {'result': 'success'}
     elif data['action'][0] == 'product_google_sheet':
         vendor = ""
         delivery_date = ""
@@ -338,7 +381,7 @@ def download_csv():
                 if delivery_date == "":
                     delivery_date = item["value"]
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=product_sheet", json={"products":get_csv_from_products(orders, wcapi, 'google-sheet'), "sheet_name": vendor+"_"+delivery_date}) 
-        return redirect(url_for('woocom_orders', status=data['status'][0]))
+        return {'result': 'success'}
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
         filename = str(datetime.utcnow())+"-" + \
@@ -566,7 +609,6 @@ def new_order():
             update_wati_contact_attributs(o)
 
         if (o["status"] == "cancelled"):
-            print(vendor, "VENDOR")
             if vendor in ["Mr. Dairy","mrdairy"]:
                 s_msg = send_slack_message_calcelled_dairy(client, wcapi, o)
             s_msg = send_slack_message_calcelled(client, wcapi, o)
@@ -845,7 +887,8 @@ def product_add_and_update():
         send_slack_for_product(client, e, topic)
         return {"Result": "Success No Error..."}
 
-@crontab.job(minute="00", hour="9")
+# @crontab.job(minute="00", hour="9")
+@app.route('/vendor_wise')
 def vendor_wise_tbd():
     send_slack_for_vendor_wise(client, wcapi)
     return {"Result": "Success No Error..."}
