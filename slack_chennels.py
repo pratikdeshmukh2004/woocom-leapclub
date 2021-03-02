@@ -13,5 +13,5 @@ CHANNELS = {
 #     "PRODUCT_NOTIFICATIONS": "flask-bot",
 #     "VENDOR_WISE": "flask-bot",
 #     "TAG_USER_ID": "",
-#     "DAIRY_NOTIFICATIONS": "dairy-updates"
+#     "DAIRY_NOTIFICATIONS": "flask-bot"
 # }

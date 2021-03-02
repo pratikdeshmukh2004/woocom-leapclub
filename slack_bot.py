@@ -291,7 +291,7 @@ def send_slack_for_product(client, product, topic):
         categories+=c['name']
         categories+=", "
     for t in product['tags']:
-        tags+=c['name']
+        tags+=t['name']
         tags+=", "
     categories = categories[:-2]
     tags = tags[:-2]
@@ -351,7 +351,11 @@ def send_slack_for_vendor_wise(client, wcapi):
             if o['customer_note']:
                 customer_note = " ["+o['customer_note']+"] "
             if o['vendor'].lower().replace(" ", "").replace(".", "") == v:
-                s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")"+customer_note+"\n"
+                orders_ofc = wcapi.get("orders", params={'customer': o['customer_id'], 'per_page': 2, 'status':'processing, tbd-unpaid, tbd-paid, delivered-unpaid, completed'}).json()
+                newc = ""
+                if len(orders_ofc) ==1:
+                    newc = " `New Customer`"
+                s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")"+customer_note+newc+"\n"
         main_msg+=s_msg
         main_msg+="\n"
     s_msg = "*Here are the Subscriptions for today:*\n"
@@ -359,7 +363,11 @@ def send_slack_for_vendor_wise(client, wcapi):
         customer_note = ""
         if o['customer_note']:
             customer_note = " ["+o['customer_note']+"] "
-        s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")"+customer_note+"\n"
+        orders_ofc = wcapi.get("orders", params={'customer': o['customer_id'], 'per_page': 2, 'status':'processing, tbd-unpaid, tbd-paid, delivered-unpaid, completed'}).json()
+        newc = ""
+        if len(orders_ofc) ==1:
+            newc = " `New Customer`"
+        s_msg+=str(o['id'])+" - "+o['billing']['first_name']+" "+o['billing']['last_name']+" (Rs. "+o['total']+")"+customer_note+newc+"\n"
     main_msg+=s_msg
     main_msg+="`Please update the status for delivery of all these orders`"
     response = client.chat_postMessage(
