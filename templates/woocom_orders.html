@@ -136,6 +136,7 @@
       query %} {% if query["after"][0] !="" %} value="{{query["after"][0]}}" {% endif %} {% endif %}>
     <input placeholder="Date To" type="text" name="before" id="datepicker2" class="form-control mr-2" {% if "before" in
       query %} {% if query["before"][0] !="" %} value="{{query["before"][0]}}" {% endif %} {% endif %}>
+    {%if nav_active == 'any'%}
       <select data-live-search="true" multiple title="Status" name="status_f" class="selectpicker mr-2">
         <option value="any" {% if "status_f" in query %} {% if "any" in query["status_f"] %} selected {% endif %} {% endif %}>All</option>
         <option value="processing" {% if "status_f" in query %} {% if "processing" in query["status_f"] %} selected {% endif %} {% endif %}>Processing</option>
@@ -145,7 +146,8 @@
         <option value="cancelled" {% if "status_f" in query %} {% if "cancelled" in query["status_f"] %} selected {% endif %} {% endif %}>Cancelled</option>
         <option value="refunded" {% if "status_f" in query %} {% if "refunded" in query["status_f"] %} selected {% endif %} {% endif %}>Refunded</option>
         <option value="pending, failed" {% if "status_f" in query %} {% if "pending, failed" in query["status_f"] %} selected {% endif %} {% endif %}>Failed</option>
-  </select>   
+  </select>  
+  {%endif%} 
     <button class="btn btn-info ml-1"><i class="mdi mdi-18px mdi-filter-variant" aria-hidden="true"></i>
     </button>
   </form>
@@ -174,10 +176,11 @@
     <button onclick="sendToGoogleSheet('product_google_sheet', '{{nav_active}}')" type="button" title="Product-Sheet To Google Sheet"
       class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
   </form>
+  {%if nav_active == 'any'%}
   <div class='ml-auto mt-1'>
-  <h5>Total Amount Payble: {{t_p}}</h5>
-  <h5>bakery: {{vendor_payble.bakery}}; grocery: {{vendor_payble.grocery}}; personal_care: {{vendor_payble.personal_care}}; dairy: {{vendor_payble.dairy}}; without_vendor: {{vendor_payble['']}}</h5>
+  <p>Total Amount Payble: {{t_p}}<br/>bakery: {{vendor_payble.bakery}}; grocery: {{vendor_payble.grocery}}; personal_care: {{vendor_payble.personal_care}}; dairy: {{vendor_payble.dairy}}; without_vendor: {{vendor_payble['']}}</p>
     </div>
+  {%endif%}
 </div>
 </div>
 <div style="overflow-x: auto;" class="ml-1 mr-1 pt-3">
