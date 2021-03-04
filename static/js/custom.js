@@ -163,3 +163,63 @@ function SendWhatsappMessages(path) {
     },
   });
 }
+
+function copyToClipboard(id) {
+  var tag = document.getElementById("" + id + "")
+  var text = tag.innerHTML.trim()
+  text = text.replace("&amp;", "&")
+  var input = document.body.appendChild(document.createElement("textarea"));
+  input.value = text;
+  input.select();
+  var status = document.execCommand("copy");
+  input.parentNode.removeChild(input);
+  if (status) {
+    $.nok({
+      message: "Success, Message Copied!",
+      type: "success",
+    });
+  } else {
+    $.nok({
+      message: "Error, Message Not Copied!",
+      type: "error",
+    });
+  }
+}
+
+function sendToGoogleSheet(act, status) {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/csv",
+    data: { 'order_ids': inp_select_v, 'action': [act], 'status': status },
+    success: function (res) {
+      console.log(res);
+      if (res.result == 'success') {
+        $.nok({
+          message: "Success, Sheet Created!",
+          type: "success",
+        });
+        inp_select.val("")
+      } else {
+        $.nok({
+          message: "Error, Sheet Not Created!",
+          type: "error",
+        });
+        inp_select.val("")
+      }
+    },
+    error: function (res) {
+      $.nok({
+        message: "API Error, Please Ask To Admin!",
+        type: "error",
+      });
+    },
+  });
+}

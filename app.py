@@ -194,8 +194,16 @@ def woocom_orders():
         if args['status'][0] == 'dairy' and 'delivery_date' in params:
             delivery = params['delivery_date']
             del params['delivery_date']
-            orders=list_orders_with_status(wcapi, params)
+            orders=list_orders_with_status(wcapi, params.copy())
+            del params['vendor']
+            params['created_via'] = "subscription"
+            orders.extend(list_orders_with_status(wcapi, params.copy()))
             orders = list(filter(lambda o: get_dairy_condition(o, delivery), orders))
+        elif args['status'][0] == 'dairy':
+            orders=list_orders_with_status(wcapi, params.copy())
+            del params['vendor']
+            params['created_via'] = "subscription"
+            orders.extend(list_orders_with_status(wcapi, params.copy()))
         else:
             orders = wcapi.get("order2", params=params).json()
     else:
@@ -344,8 +352,9 @@ def download_csv():
     if not g.user:
         return redirect(url_for('login'))
     data = request.form.to_dict(flat=False)
-    data['order_ids'] = data['order_ids[]']
-    data['action'] = data['action[]']
+    if ['action[]'][0] in data:
+        data['order_ids'] = data['order_ids[]']
+        data['action'] = data['action[]']
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
     orders = wcapi.get("orders", params=params).json()
@@ -887,7 +896,7 @@ def product_add_and_update():
         send_slack_for_product(client, e, topic)
         return {"Result": "Success No Error..."}
 
-@crontab.job(minute="00", hour="9")
+@crontab.job(minute="30", hour="3")
 # @app.route('/vendor_wise')
 def vendor_wise_tbd():
     send_slack_for_vendor_wise(client, wcapi)
@@ -919,7 +928,8 @@ def google_sheet():
     else:
         return render_template("google_sheet/index.html", user=g.user, vendors=list_vendor)
 
-@crontab.job(minute="00", hour="21")
+@crontab.job(minute="30", hour="15")
+# @app.route('/every_day_9')
 def send_every_day():
     lastHourDateTime = datetime.now() - timedelta(hours = 72)
     last_date = lastHourDateTime.strftime('%Y-%m-%dT%H:%M:%S')

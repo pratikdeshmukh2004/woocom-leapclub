@@ -201,6 +201,7 @@ def get_params(args):
         elif args['status'][0] == "dairy":
             params["status"] = "processing, tbd-unpaid, tbd-paid"
             params['vendor'] = 'mrdairy, Mr. Dairy'
+            params['created_via'] = 'admin, checkout, Order clone'
         else:
             if args["status"][0] == "tbd-paid, tbd-unpaid":
                 l_c = list_created_via.copy()
