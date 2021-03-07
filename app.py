@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv,get_totals, get_shipping_total_for_csv
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv,get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -194,8 +194,16 @@ def woocom_orders():
         if args['status'][0] == 'dairy' and 'delivery_date' in params:
             delivery = params['delivery_date']
             del params['delivery_date']
-            orders=list_orders_with_status(wcapi, params)
+            orders=list_orders_with_status(wcapi, params.copy())
+            del params['vendor']
+            params['created_via'] = "subscription"
+            orders.extend(list_orders_with_status(wcapi, params.copy()))
             orders = list(filter(lambda o: get_dairy_condition(o, delivery), orders))
+        elif args['status'][0] == 'dairy':
+            orders=list_orders_with_status(wcapi, params.copy())
+            del params['vendor']
+            params['created_via'] = "subscription"
+            orders.extend(list_orders_with_status(wcapi, params.copy()))
         else:
             orders = wcapi.get("order2", params=params).json()
     else:
@@ -344,8 +352,9 @@ def download_csv():
     if not g.user:
         return redirect(url_for('login'))
     data = request.form.to_dict(flat=False)
-    data['order_ids'] = data['order_ids[]']
-    data['action'] = data['action[]']
+    if ['action[]'][0] in data:
+        data['order_ids'] = data['order_ids[]']
+        data['action'] = data['action[]']
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
     orders = wcapi.get("orders", params=params).json()
@@ -887,7 +896,7 @@ def product_add_and_update():
         send_slack_for_product(client, e, topic)
         return {"Result": "Success No Error..."}
 
-@crontab.job(minute="00", hour="9")
+@crontab.job(minute="30", hour="3")
 # @app.route('/vendor_wise')
 def vendor_wise_tbd():
     send_slack_for_vendor_wise(client, wcapi)
@@ -919,7 +928,8 @@ def google_sheet():
     else:
         return render_template("google_sheet/index.html", user=g.user, vendors=list_vendor)
 
-@crontab.job(minute="00", hour="21")
+@crontab.job(minute="30", hour="15")
+# @app.route('/every_day_9')
 def send_every_day():
     lastHourDateTime = datetime.now() - timedelta(hours = 72)
     last_date = lastHourDateTime.strftime('%Y-%m-%dT%H:%M:%S')
@@ -987,6 +997,36 @@ def send_every_day():
             tbd_tomorrow.append(o)
     vendor_wise_tbd_tomorrow(tbd_tomorrow, client)
     return {"Result": "Success"}
+
+@app.route("/order_details", methods=["POST"])
+def order_details():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    orders = wcapi.get("orders", params=params).json()
+    orders = get_orders_with_messages_without(orders, wcapi)
+    main_text = ""
+    for o in orders:
+        main_text+=o['c_msg']
+        main_text+="-----------------------------------------\n\n"
+    return {"result": main_text}
+
+@app.route("/customer_details", methods=["POST"])
+def customer_details():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    orders = wcapi.get("orders", params=params).json()
+    orders = get_orders_with_customer_detail(orders)
+    main_text = ""
+    for o in orders:
+        main_text+=o['c_msg']
+        main_text+="\n-----------------------------------------\n\n"
+    return {"result": main_text}
+
+
 if __name__ == "__main__":
     db.create_all() 
     app.run(debug=True)
