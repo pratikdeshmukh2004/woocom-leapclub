@@ -175,6 +175,10 @@
         class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
     <button onclick="sendToGoogleSheet('product_google_sheet', '{{nav_active}}')" type="button" title="Product-Sheet To Google Sheet"
       class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
+    <button onclick="copyOrderDetail('{{nav_active}}')" type="button" title="Copy Order Details"
+    class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
+    <button onclick="copyCustomerDetail('{{nav_active}}')" type="button" title="Copy Customer Detail"
+    class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
   </form>
   {%if nav_active == 'any'%}
   <div class='ml-auto mt-1'>

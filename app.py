@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv,get_totals, get_shipping_total_for_csv
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv,get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -997,6 +997,36 @@ def send_every_day():
             tbd_tomorrow.append(o)
     vendor_wise_tbd_tomorrow(tbd_tomorrow, client)
     return {"Result": "Success"}
+
+@app.route("/order_details", methods=["POST"])
+def order_details():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    orders = wcapi.get("orders", params=params).json()
+    orders = get_orders_with_messages_without(orders, wcapi)
+    main_text = ""
+    for o in orders:
+        main_text+=o['c_msg']
+        main_text+="-----------------------------------------\n\n"
+    return {"result": main_text}
+
+@app.route("/customer_details", methods=["POST"])
+def customer_details():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    orders = wcapi.get("orders", params=params).json()
+    orders = get_orders_with_customer_detail(orders)
+    main_text = ""
+    for o in orders:
+        main_text+=o['c_msg']
+        main_text+="\n-----------------------------------------\n\n"
+    return {"result": main_text}
+
+
 if __name__ == "__main__":
     db.create_all() 
     app.run(debug=True)

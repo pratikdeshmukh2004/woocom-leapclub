@@ -159,6 +159,7 @@ def list_order_items_csv(order_items, refunds):
             )
     return msg
 
+
 def list_only_refunds(order_refunds):
     msg = ""
     for r in order_refunds:
@@ -257,10 +258,26 @@ def get_shipping_total_for_csv(o):
 
 def get_orders_with_messages(orders, wcapi):
     def _get_orders_with_messages(o):
+        delivery_date = ""
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        for item in o["meta_data"]:
+            if item["key"] == "_delivery_date":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+        if delivery_date:
+            try:
+                dt = datetime.datetime.strptime(delivery_date, '%Y-%m-%d')
+                delivery_date = months[dt.month-1]+" " + str(dt.day)
+            except:
+                delivery_date=""
         order_refunds = []
         if len(o["refunds"]) > 0:
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
-        c_msg = "Here are the order details:\n\n"+ "Order Id: "+ str(o["id"]) +"\n\n"+ \
+        c_msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
             list_order_items(o["line_items"], order_refunds) + \
             "*Total Amount: " + \
             get_totals(o["total"], order_refunds) + \
@@ -282,6 +299,39 @@ def get_orders_with_messages(orders, wcapi):
                      + "\nCustomer Note: "+o["customer_note"])
         o["c_msg"] = c_msg
         o["s_msg"] = s_msg
+        return o
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(_get_orders_with_messages, orders)
+    return list(result)
+
+
+def get_orders_with_messages_without(orders, wcapi):
+    def _get_orders_with_messages(o):
+        delivery_date = ""
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        for item in o["meta_data"]:
+            if item["key"] == "_delivery_date":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+        if delivery_date:
+            dt = datetime.datetime.strptime(delivery_date, '%Y-%m-%d')
+            delivery_date = months[dt.month-1]+" " + str(dt.day)
+        order_refunds = []
+        if len(o["refunds"]) > 0:
+            order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+        c_msg = "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
+            list_order_items(o["line_items"], order_refunds) + \
+            "*Total Amount: " + \
+            get_totals(o["total"], order_refunds) + \
+            get_shipping_total(o)+"*\n\n"
+        c_msg = c_msg + \
+            list_order_refunds(order_refunds) + \
+            list_only_refunds(order_refunds)
+        o["c_msg"] = c_msg
         return o
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(_get_orders_with_messages, orders)
@@ -331,6 +381,7 @@ def get_csv_from_orders(orders, wcapi):
     result = f.read()
     os.remove("sample.csv")
     return result
+
 
 def get_total_from_line_items(items):
     total = 0
@@ -495,6 +546,7 @@ def list_orders_with_status(wcapi, params):
         o_list.extend(o.json())
     return o_list
 
+
 def list_orders_with_status_N2(wcapi, params):
     def get_order(params):
         order = wcapi.get("orders", params=params)
@@ -548,8 +600,9 @@ def get_products_from_thread(product_ids, wcapi):
         result = executor.map(get_product, product_ids)
     return list(result)
 
+
 def get_csv_from_products(orders, wcapi, format):
-    line_items = list(map(lambda x: x['line_items'], orders)) 
+    line_items = list(map(lambda x: x['line_items'], orders))
     line_items_o = []
     for o in line_items:
         line_items_o.extend((o))
@@ -563,14 +616,17 @@ def get_csv_from_products(orders, wcapi, format):
                     i['Quantity'] += p['quantity']
         else:
             is_include.append(product_id)
-            product_list.append({"Product ID": product_id, "Product Name": p['name'], "Quantity": p['quantity']})
+            product_list.append(
+                {"Product ID": product_id, "Product Name": p['name'], "Quantity": p['quantity']})
     products = get_products_from_thread(is_include, wcapi)
     f = open("sample.csv", "w+")
-    writer = csv.DictWriter(f, fieldnames=["Product ID", "Product Name", "Quantity", "Weight Existed"])
+    writer = csv.DictWriter(
+        f, fieldnames=["Product ID", "Product Name", "Quantity", "Weight Existed"])
     writer.writeheader()
     for p in product_list:
-        p['Product Name']=p['Product Name'].replace("amp;", " ")
-        weight = list(filter(lambda pi: (pi['id'] == p['Product ID']), products))[0]['weight']
+        p['Product Name'] = p['Product Name'].replace("amp;", " ")
+        weight = list(filter(lambda pi: (pi['id'] == p['Product ID']), products))[
+            0]['weight']
         is_weight = "NO"
         total_quantity = p['Quantity']
         if weight != "":
@@ -579,11 +635,11 @@ def get_csv_from_products(orders, wcapi, format):
         p['Weight Existed'] = is_weight
         p['Quantity'] = total_quantity
         writer.writerow({
-                "Product ID": p['Product ID'],
-                "Product Name": p['Product Name'],
-                "Quantity": total_quantity,
-                "Weight Existed": is_weight
-            })
+            "Product ID": p['Product ID'],
+            "Product Name": p['Product Name'],
+            "Quantity": total_quantity,
+            "Weight Existed": is_weight
+        })
         writer.writerow({})
     f.close()
     f = open("sample.csv", "r")
@@ -593,3 +649,13 @@ def get_csv_from_products(orders, wcapi, format):
         return result
     else:
         return product_list
+
+
+def get_orders_with_customer_detail(orders):
+    for o in orders:
+        msg = str(o['id'])+" ("+o['billing']['first_name']+")\n"+o['billing']['phone']+"\n"+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"] + \
+            ", "+o["shipping"]["city"]+", "+o["shipping"]["state"] + ", " + \
+            o["shipping"]["postcode"]+"\n\nTotal Amount: " + \
+            str(o['total'])+"\n\nCustomer Note: "+o['customer_note']
+        o['c_msg'] = msg
+    return orders

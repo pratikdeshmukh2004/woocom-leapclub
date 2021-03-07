@@ -223,3 +223,85 @@ function sendToGoogleSheet(act, status) {
     },
   });
 }
+
+function copyOrderDetail(status) {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/order_details",
+    data: { 'order_ids': inp_select_v, 'status': status },
+    success: function (res) {
+      text = res.result.replace("&amp;", "&")
+      var input = document.body.appendChild(document.createElement("textarea"));
+      input.value = text;
+      input.select();
+      var status = document.execCommand("copy");
+      input.parentNode.removeChild(input);
+      if (status) {
+        $.nok({
+          message: "Success, Message Copied!",
+          type: "success",
+        });
+      } else {
+        $.nok({
+          message: "Error, Message Not Copied!",
+          type: "error",
+        });
+  }
+    },
+    error: function (err) {
+      $.nok({
+        message: "API Error, Please Ask To Admin!",
+        type: "error",
+      });
+    },
+  });
+}
+
+function copyCustomerDetail(status) {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/customer_details",
+    data: { 'order_ids': inp_select_v, 'status': status },
+    success: function (res) {
+      text = res.result.replace("&amp;", "&")
+      var input = document.body.appendChild(document.createElement("textarea"));
+      input.value = text;
+      input.select();
+      var status = document.execCommand("copy");
+      input.parentNode.removeChild(input);
+      if (status) {
+        $.nok({
+          message: "Success, Message Copied!",
+          type: "success",
+        });
+      } else {
+        $.nok({
+          message: "Error, Message Not Copied!",
+          type: "error",
+        });
+  }
+    },
+    error: function (err) {
+      $.nok({
+        message: "API Error, Please Ask To Admin!",
+        type: "error",
+      });
+    },
+  });
+}
