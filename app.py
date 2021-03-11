@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv,get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv,get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -845,22 +845,25 @@ def razorpay():
             mobile = e['payload']['payment']['entity']['contact']
             order_id = e['payload']['order']['entity']['receipt'][5:].split("-")[0]
             invoice_id = e['payload']['invoice']['entity']['id']
-            order = wcapi.get("orders/"+order_id)
-            if order.status_code == 200:
-                order = order.json()
+            orders = wcapi.get("orders", params={"include": order_id})
+            if orders.status_code == 200:
+                orders = orders.json()
+                order = orders[0]
                 name = order['billing']['first_name']
-                vendor_name = ""
-                vendor_t = 'any'
-                for item in order["meta_data"]:
-                    if item["key"] == "wos_vendor_data":
-                        vendor_name = item["value"]["vendor_name"]
-                    elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                        vendor_name = item["value"]
-                if vendor_name in vendor_type.keys():
-                    vendor_t = vendor_type[vendor_name]
-                update_order_status(order, invoice_id, wcapi_write)
                 if order['status'] in ['tbd-unpaid', 'delivered-unpaid']:
                     msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
+                for order in orders:
+                    name = order['billing']['first_name']
+                    vendor_name = ""
+                    vendor_t = 'any'
+                    for item in order["meta_data"]:
+                        if item["key"] == "wos_vendor_data":
+                            vendor_name = item["value"]["vendor_name"]
+                        elif item["key"] == "_wc_acof_6" and item['value'] != "":
+                            vendor_name = item["value"]
+                    if vendor_name in vendor_type.keys():
+                        vendor_t = vendor_type[vendor_name]
+                    update_order_status(order, invoice_id, wcapi_write)
             return("Done")
         else:
             return "Payment.Paid"
@@ -1007,9 +1010,13 @@ def order_details():
     orders = wcapi.get("orders", params=params).json()
     orders = get_orders_with_messages_without(orders, wcapi)
     main_text = ""
+    total = 0
+    for o in orders:
+        total+=float(o['total_amount'])
     for o in orders:
         main_text+=o['c_msg']
         main_text+="-----------------------------------------\n\n"
+    main_text+=("*Total Amount: "+str(total)+"*\n\n")
     return {"result": main_text}
 
 @app.route("/customer_details", methods=["POST"])
@@ -1025,6 +1032,79 @@ def customer_details():
         main_text+=o['c_msg']
         main_text+="\n-----------------------------------------\n\n"
     return {"result": main_text}
+
+@app.route("/supplier_messages", methods=["POST"])
+def supplier_messages():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    orders = wcapi.get("orders", params=params).json()
+    orders = get_orders_with_supplier(orders, wcapi)
+    main_text = ""
+    for o in orders:
+        main_text+=o['s_msg']
+        main_text+="\n-----------------------------------------\n\n"
+    return {"result": main_text}
+
+@app.route("/multiple_links", methods=["POST"])
+def multiple_links():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    del params['status']
+    orders = wcapi.get("orders", params=params).json()
+    reciept = "Leap "+get_list_to_string(list(map(lambda o: str(o['id']), orders)))
+    payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+    if len(payment_links)>0:
+        counter = 1
+        while True:
+            reciept = "Leap "+get_list_to_string(list(map(lambda o: str(o['id']), orders)))+"-"+str(counter)
+            payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+            if len(payment_links)==0:
+                break
+            counter+=1
+    customer_ids = []
+    total_amount = 0
+    for o in orders:
+        customer_ids.append(o['customer_id'])
+        wallet_payment = 0
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment = (-1)*float(item["total"])
+        total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+    if len(list(set(customer_ids))) != 1:
+        return {"result": "error"}
+    data1 = {
+        "amount": total_amount*100,
+        "receipt": reciept,
+        "customer": {
+            "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
+            "contact": o["billing"]["phone"]
+        },
+        "type": "link",
+        "view_less": 1,
+        "currency": "INR",
+        "description": "Thank you for making a healthy and sustainable choice",
+        "reminder_enable": False,
+        "callback_url": "https://leapclub.in/",
+        "callback_method": "get",
+        "sms_notify": False,
+        'email_notify': False
+    }
+    try:
+        invoice = razorpay_client.invoice.create(data=data1)
+        status = "success"
+        short_url = invoice['short_url']
+        for i in data['order_ids']:
+            new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]["phone"], name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
+            db.session.add(new_payment_link)
+            db.session.commit()
+        return {"result": "success", 'order_ids': data['order_ids'], 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept}
+    except:
+        return {"result": "error"}
 
 
 if __name__ == "__main__":
