@@ -614,10 +614,11 @@ def get_csv_from_products(orders, wcapi, format):
             for i in product_list:
                 if i['Product ID'] == product_id:
                     i['Quantity'] += p['quantity']
+                    i['orders'] +=1
         else:
             is_include.append(product_id)
             product_list.append(
-                {"Product ID": product_id, "Product Name": p['name'], "Quantity": p['quantity']})
+                {"Product ID": product_id, "Product Name": p['name'], "Quantity": p['quantity'], 'orders': 1})
     products = get_products_from_thread(is_include, wcapi)
     f = open("sample.csv", "w+")
     writer = csv.DictWriter(
