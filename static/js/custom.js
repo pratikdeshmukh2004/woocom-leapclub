@@ -385,3 +385,42 @@ function genMultipleLinks() {
     }
   })
 }
+
+
+function sendWMessages() {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  console.log(inp_select_v);
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/send_whatsapp_messages",
+    data: { 'order_ids': inp_select_v },
+    success: function (res) {
+      if (res.result == 'success'){
+        for (var r of res.results){
+          if (["success", "PENDING", "SENT"].includes(res.result)) {
+            updateSpan(r.order_id, r.template_name, 'text-success')
+          }else{
+            updateSpan(r.order_id, r.template_name, 'text-danger')
+          }
+        }
+        $.nok({
+          message: "Success, Message Sent!",
+          type: "success",
+        });
+      }
+      else{
+        $.nok({
+          message: "Error, Messages not sent!",
+          type: "error",
+        });
+      }
+    }
+  })
+}
