@@ -788,7 +788,6 @@ def send_session_message(order_id):
         "POST", url, headers=headers)
     print("Time To Send Session Message - ", time.time()-ctime)
     result = json.loads(response.text.encode('utf8'))
-    print(result)
     if result["result"] in ["success", "PENDING", "SENT"]:
         new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail",
                             broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
