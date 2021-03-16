@@ -62,6 +62,7 @@ $(document).ready(function () {
   $("#datepicker2").datepicker({
     dateFormat: "yy/mm/dd",
   });
+  $('[data-toggle="tooltip"]').tooltip()
 });
 function copyText(text) {
   var input = document.body.appendChild(document.createElement("textarea"));
@@ -124,7 +125,7 @@ function CheckOutRequest(url) {
 function updateSpan(order_id, template_name, color) {
   row = $(".wtmessage-" + order_id);
   span = $(
-    '<span class="'+color+'">' + template_name + ", </span>"
+    '<span class="' + color + '">' + template_name + ", </span>"
   );
   row.append(span);
 }
@@ -254,7 +255,7 @@ function copyOrderDetail(status) {
           message: "Error, Message Not Copied!",
           type: "error",
         });
-  }
+      }
     },
     error: function (err) {
       $.nok({
@@ -295,7 +296,7 @@ function copyCustomerDetail(status) {
           message: "Error, Message Not Copied!",
           type: "error",
         });
-  }
+      }
     },
     error: function (err) {
       $.nok({
@@ -304,4 +305,122 @@ function copyCustomerDetail(status) {
       });
     },
   });
+}
+
+function copySupplierMessage(status) {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/supplier_messages",
+    data: { 'order_ids': inp_select_v, 'status': status },
+    success: function (res) {
+      text = res.result.replace("&amp;", "&")
+      var input = document.body.appendChild(document.createElement("textarea"));
+      input.value = text;
+      input.select();
+      var status = document.execCommand("copy");
+      input.parentNode.removeChild(input);
+      if (status) {
+        $.nok({
+          message: "Success, Message Copied!",
+          type: "success",
+        });
+      } else {
+        $.nok({
+          message: "Error, Message Not Copied!",
+          type: "error",
+        });
+      }
+    },
+    error: function (err) {
+      $.nok({
+        message: "API Error, Please Ask To Admin!",
+        type: "error",
+      });
+    },
+  });
+}
+
+
+function genMultipleLinks() {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/multiple_links",
+    data: { 'order_ids': inp_select_v },
+    success: function (res) {
+      if (res.result == 'success'){
+        for (var id of res.order_ids){
+          var tag = $('#payment-' + id.toString())
+          console.log(typeof (res.amount));
+          tag.text(res.receipt + " | " + (res.amount / 100).toString())
+          tag.attr('onclick', "copyText('" + res.short_url + "')")
+          tag.attr('class', 'text-success')
+        }
+        $.nok({
+          message: "Success, Payment Links Generated!",
+          type: "success",
+        });
+      }
+      else{
+        $.nok({
+          message: "Error, Payment Links Not Generated Please Check Order ID!",
+          type: "error",
+        });
+      }
+    }
+  })
+}
+
+
+function sendWMessages() {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  console.log(inp_select_v);
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/send_whatsapp_messages",
+    data: { 'order_ids': inp_select_v },
+    success: function (res) {
+      if (res.result == 'success'){
+        for (var r of res.results){
+          if (["success", "PENDING", "SENT"].includes(res.result)) {
+            updateSpan(r.order_id, r.template_name, 'text-success')
+          }else{
+            updateSpan(r.order_id, r.template_name, 'text-danger')
+          }
+        }
+        $.nok({
+          message: "Success, Message Sent!",
+          type: "success",
+        });
+      }
+      else{
+        $.nok({
+          message: "Error, Messages not sent!",
+          type: "error",
+        });
+      }
+    }
+  })
 }

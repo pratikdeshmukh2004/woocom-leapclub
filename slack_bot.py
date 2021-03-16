@@ -515,15 +515,16 @@ def vendor_wise_tbd_tomorrow(orders, client):
                     " (Rs. "+o['total']+")"+customer_note+"\n"
         main_msg += s_msg
         main_msg += "\n"
-    response = client.chat_postMessage(
-        channel=CHANNELS['VENDOR_WISE'],
-        blocks=[
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": main_msg
+    if len(main_msg)>0:
+        response = client.chat_postMessage(
+            channel=CHANNELS['VENDOR_WISE'],
+            blocks=[
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": main_msg
+                    }
                 }
-            }
-        ]
-    )
+            ]
+        )

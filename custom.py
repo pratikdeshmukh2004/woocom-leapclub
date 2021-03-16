@@ -332,6 +332,7 @@ def get_orders_with_messages_without(orders, wcapi):
             list_order_refunds(order_refunds) + \
             list_only_refunds(order_refunds)
         o["c_msg"] = c_msg
+        o['total_amount'] = get_totals(o["total"], order_refunds)
         return o
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(_get_orders_with_messages, orders)
@@ -584,12 +585,13 @@ def update_order_status(order, invoice_id, wcapi):
     data['date_paid_gmt'] = utc_time.strftime(format)
     if order['status'] in ['tbd-unpaid']:
         data['status'] = 'tbd-paid'
-        wcapi.put("orders/"+str(order_id), data).json()
+        u_order = wcapi.put("orders/"+str(order_id), data).json()
+
     elif order['status'] in ['delivered-unpaid']:
         data['status'] = 'completed'
         data['date_completed'] = c_date.strftime(format)
         data['date_completed_gmt'] = utc_time.strftime(format)
-        wcapi.put("orders/"+str(order_id), data).json()
+        u_order = wcapi.put("orders/"+str(order_id), data).json()
 
 
 def get_products_from_thread(product_ids, wcapi):
@@ -659,4 +661,25 @@ def get_orders_with_customer_detail(orders):
             o["shipping"]["postcode"]+"\n\nTotal Amount: " + \
             str(o['total'])+"\n\nCustomer Note: "+o['customer_note']
         o['c_msg'] = msg
+    return orders
+
+def get_orders_with_supplier(orders, wcapi):
+    for o in orders:
+        if len(o["refunds"]) > 0:
+            order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+        else:
+            order_refunds = []
+        s_msg = ("Order ID: "+str(o["id"])
+                 + "\n\nName: "+o["billing"]["first_name"] +
+                 " "+o["billing"]["last_name"]
+                 + "\nMobile: "+o["billing"]["phone"]
+                 + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
+                 ", "+o["billing"]["address_2"]
+                     + "\n\nTotal Amount: " +
+                 get_totals(o["total"], order_refunds)
+                     + get_shipping_total(o)
+                     + "\n\n"+list_order_items(o["line_items"], order_refunds)
+                     + "Payment Status: Paid To LeapClub."
+                     + "\nCustomer Note: "+o["customer_note"])
+        o["s_msg"] = s_msg
     return orders

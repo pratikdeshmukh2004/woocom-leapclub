@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv,get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv, get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -21,7 +21,6 @@ from pytz import timezone
 from slack import WebClient
 from slack_bot import send_slack_message, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
 from flask_crontab import Crontab
-
 
 
 app = Flask(__name__, instance_relative_config=True)
@@ -157,9 +156,10 @@ class PaymentLinks(db.Model):
     created_at = db.Column(db.String)
     amount = db.Column(db.Float)
 
-def get_dairy_condition(o,d):
+
+def get_dairy_condition(o, d):
     delivery_d = datetime.strptime(d, "%Y-%m-%d")
-    yesterday = delivery_d - timedelta(days = 1)
+    yesterday = delivery_d - timedelta(days=1)
     yesterday = yesterday.strftime('%Y-%m-%dT')
     delivery_date = ""
     for item in o["meta_data"]:
@@ -194,13 +194,14 @@ def woocom_orders():
         if args['status'][0] == 'dairy' and 'delivery_date' in params:
             delivery = params['delivery_date']
             del params['delivery_date']
-            orders=list_orders_with_status(wcapi, params.copy())
+            orders = list_orders_with_status(wcapi, params.copy())
             del params['vendor']
             params['created_via'] = "subscription"
             orders.extend(list_orders_with_status(wcapi, params.copy()))
-            orders = list(filter(lambda o: get_dairy_condition(o, delivery), orders))
+            orders = list(
+                filter(lambda o: get_dairy_condition(o, delivery), orders))
         elif args['status'][0] == 'dairy':
-            orders=list_orders_with_status(wcapi, params.copy())
+            orders = list_orders_with_status(wcapi, params.copy())
             del params['vendor']
             params['created_via'] = "subscription"
             orders.extend(list_orders_with_status(wcapi, params.copy()))
@@ -218,7 +219,8 @@ def woocom_orders():
     orders = get_orders_with_messages(orders, wcapi)
     print("Time To Fetch Total Refunds: "+str(time.time()-t_refunds))
     total_payble = 0
-    vendor_payble = {'dairy':0, 'bakery':0,"grocery":0,"personal_care":0, '': 0}
+    vendor_payble = {'dairy': 0, 'bakery': 0,
+                     "grocery": 0, "personal_care": 0, '': 0}
     for o in orders:
         wallet_payment = 0
         refunds = 0
@@ -228,7 +230,7 @@ def woocom_orders():
         o["total"] = float(o["total"])
         wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
         payment_link = PaymentLinks.query.filter_by(order_id=o["id"]).all()
-        if len(payment_link)>0:
+        if len(payment_link) > 0:
             payment_link = payment_link[-1]
         else:
             payment_link = ''
@@ -268,8 +270,8 @@ def woocom_orders():
         o["wallet_payment"] = wallet_payment
         o["total"] = float(o["total"]) + float(o["wallet_payment"])
         o["checkout_url"] = get_checkout_url(o)
-        total_payble+=(o['total']-o['total_refunds'])
-        vendor_payble[o['vendor_type']] +=(o['total']-o['total_refunds'])
+        total_payble += (o['total']-o['total_refunds'])
+        vendor_payble[o['vendor_type']] += (o['total']-o['total_refunds'])
     if 'status_f' in args:
         params['status'] = args['status'][0]
     if "status" in args:
@@ -370,14 +372,17 @@ def download_csv():
             refunds = []
             if len(o["refunds"]) > 0:
                 refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
-            o['line_items_text'] = list_order_items_csv(o["line_items"], refunds).replace("&amp;", "&")
-            o['total_text'] = get_totals(o["total"], refunds)+get_shipping_total_for_csv(o)
-        response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders) 
+            o['line_items_text'] = list_order_items_csv(
+                o["line_items"], refunds).replace("&amp;", "&")
+            o['total_text'] = get_totals(
+                o["total"], refunds)+get_shipping_total_for_csv(o)
+        response = requests.post(
+            app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders)
         return {'result': 'success'}
     elif data['action'][0] == 'product_google_sheet':
         vendor = ""
         delivery_date = ""
-        o=orders[0]
+        o = orders[0]
         for item in o["meta_data"]:
             if item["key"] == "wos_vendor_data":
                 vendor = item["value"]["vendor_name"]
@@ -389,7 +394,8 @@ def download_csv():
             elif item["key"] == "_wc_acof_2_formatted":
                 if delivery_date == "":
                     delivery_date = item["value"]
-        response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=product_sheet", json={"products":get_csv_from_products(orders, wcapi, 'google-sheet'), "sheet_name": vendor+"_"+delivery_date}) 
+        response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=product_sheet", json={
+                                 "products": get_csv_from_products(orders, wcapi, 'google-sheet'), "sheet_name": vendor+"_"+delivery_date})
         return {'result': 'success'}
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
@@ -612,13 +618,13 @@ def new_order():
         # End Whatsapp Template Message.....
         # Sending Slack Message....
         if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and (od > nd):
-            if vendor in ["Mr. Dairy","mrdairy"]:
+            if vendor in ["Mr. Dairy", "mrdairy"]:
                 send_slack_message_dairy(client, wcapi, o)
             s_msg = send_slack_message(client, wcapi, o)
             update_wati_contact_attributs(o)
 
         if (o["status"] == "cancelled"):
-            if vendor in ["Mr. Dairy","mrdairy"]:
+            if vendor in ["Mr. Dairy", "mrdairy"]:
                 s_msg = send_slack_message_calcelled_dairy(client, wcapi, o)
             s_msg = send_slack_message_calcelled(client, wcapi, o)
         # End Slack Message....
@@ -734,7 +740,8 @@ def subscriptions():
         page = 1
     args["per_page"] = 50
     t_orders = time.time()
-    subscriptions = wcapis.get("subscriptions", params=get_params_subscriptions(args)).json()
+    subscriptions = wcapis.get(
+        "subscriptions", params=get_params_subscriptions(args)).json()
     print("Time To Fetch Total Subscriptions: "+str(time.time()-t_orders))
     t_orders = time.time()
     subscriptions = get_subscription_wallet_balance(subscriptions)
@@ -742,18 +749,20 @@ def subscriptions():
     subscriptions = sort_subscriptions(subscriptions, args, order)
     return render_template("subscriptions/index.html", user=g.user, subscriptions=subscriptions, page=page, order=order)
 
+
 def get_params_subscriptions(args):
     params = {"per_page": 50}
     if "page" in args:
         params["page"] = args["page"]
     return params
 
+
 def sort_subscriptions(subscriptions, args, order):
     if "sort" in args:
         if order == "ASC":
-            return sorted(subscriptions, key = lambda i: i['wallet_balance'],reverse=True)
+            return sorted(subscriptions, key=lambda i: i['wallet_balance'], reverse=True)
         else:
-            return sorted(subscriptions, key = lambda i: i['wallet_balance'],reverse=False)
+            return sorted(subscriptions, key=lambda i: i['wallet_balance'], reverse=False)
     else:
         return subscriptions
 
@@ -825,14 +834,16 @@ def gen_payment_link(order_id):
         invoice = razorpay_client.invoice.create(data=data)
         status = "success"
         short_url = invoice['short_url']
-        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
+        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]
+                                        ["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
     except:
         status = "failed"
         short_url = ""
-        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
+        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]
+                                        ["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
     db.session.add(new_payment_link)
     db.session.commit()
-    return jsonify({"result": status, 'payment':data, "short_url": short_url, "order_id": order_id})
+    return jsonify({"result": status, 'payment': data, "short_url": short_url, "order_id": order_id})
 
 
 @app.route("/razorpay", methods=["GET", "POST"])
@@ -840,32 +851,38 @@ def razorpay():
     if request.method == "GET":
         return "Plese Use POST Method..."
     e = request.get_json()
-    if len(e)>0:
+    if len(e) > 0:
         if e["event"] == "invoice.paid":
             mobile = e['payload']['payment']['entity']['contact']
-            order_id = e['payload']['order']['entity']['receipt'][5:].split("-")[0]
+            order_id = e['payload']['order']['entity']['receipt'][5:].split(
+                "-")[0]
             invoice_id = e['payload']['invoice']['entity']['id']
-            order = wcapi.get("orders/"+order_id)
-            if order.status_code == 200:
-                order = order.json()
+            orders = wcapi.get("orders", params={"include": order_id})
+            if orders.status_code == 200:
+                orders = orders.json()
+                order = orders[0]
                 name = order['billing']['first_name']
-                vendor_name = ""
-                vendor_t = 'any'
-                for item in order["meta_data"]:
-                    if item["key"] == "wos_vendor_data":
-                        vendor_name = item["value"]["vendor_name"]
-                    elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                        vendor_name = item["value"]
-                if vendor_name in vendor_type.keys():
-                    vendor_t = vendor_type[vendor_name]
-                update_order_status(order, invoice_id, wcapi_write)
                 if order['status'] in ['tbd-unpaid', 'delivered-unpaid']:
-                    msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
+                    msg = send_whatsapp_msg(
+                        {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
+                for order in orders:
+                    name = order['billing']['first_name']
+                    vendor_name = ""
+                    vendor_t = 'any'
+                    for item in order["meta_data"]:
+                        if item["key"] == "wos_vendor_data":
+                            vendor_name = item["value"]["vendor_name"]
+                        elif item["key"] == "_wc_acof_6" and item['value'] != "":
+                            vendor_name = item["value"]
+                    if vendor_name in vendor_type.keys():
+                        vendor_t = vendor_type[vendor_name]
+                    update_order_status(order, invoice_id, wcapi_write)
             return("Done")
         else:
             return "Payment.Paid"
     else:
         return "Please enter valid detail..."
+
 
 @app.route("/new_customer", methods=['POST', 'GET'])
 def new_customer():
@@ -873,8 +890,9 @@ def new_customer():
         return "Plese Use POST Method..."
     e = request.get_json()
     if e:
-        is_new = list(filter(lambda i: (i['key'] == 'wc_last_active'), e['meta_data']))
-        if len(is_new)>0:
+        is_new = list(
+            filter(lambda i: (i['key'] == 'wc_last_active'), e['meta_data']))
+        if len(is_new) > 0:
             digits_phone = ""
             name = e['first_name']
             for i in e['meta_data']:
@@ -882,7 +900,8 @@ def new_customer():
                     digits_phone = "+91" + i['value']
                     break
             # digits_phone = "919325837420"
-            msg = send_whatsapp_msg({'vendor_type': "any", "c_name": name}, digits_phone, 'new-signup')
+            msg = send_whatsapp_msg(
+                {'vendor_type': "any", "c_name": name}, digits_phone, 'new-signup')
     return e
 
 
@@ -891,16 +910,18 @@ def product_add_and_update():
     if request.method == "GET":
         return "Plese Use POST Method..."
     e = request.get_json()
-    topic =request.headers["x-wc-webhook-topic"]
+    topic = request.headers["x-wc-webhook-topic"]
     if e:
         send_slack_for_product(client, e, topic)
         return {"Result": "Success No Error..."}
+
 
 @crontab.job(minute="30", hour="3")
 # @app.route('/vendor_wise')
 def vendor_wise_tbd():
     send_slack_for_vendor_wise(client, wcapi)
     return {"Result": "Success No Error..."}
+
 
 @app.route("/google_sheet", methods=['GET', 'POST'])
 def google_sheet():
@@ -915,25 +936,32 @@ def google_sheet():
             for o in orders:
                 refunds = []
                 if len(o["refunds"]) > 0:
-                    refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
-                o['line_items_text'] = list_order_items_csv(o["line_items"], refunds).replace("&amp;", "&")
-                o['total_text'] = get_totals(o["total"], refunds)+get_shipping_total_for_csv(o)
-            response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders) 
+                    refunds = wcapi.get(
+                        "orders/"+str(o["id"])+"/refunds").json()
+                o['line_items_text'] = list_order_items_csv(
+                    o["line_items"], refunds).replace("&amp;", "&")
+                o['total_text'] = get_totals(
+                    o["total"], refunds)+get_shipping_total_for_csv(o)
+            response = requests.post(
+                app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders)
         elif data['action'][0] == "product_sheet":
             params = get_params(data)
             params['per_page'] = 100
             orders = list_orders_with_status(wcapi, params)
-            response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=product_sheet", json={"products":get_csv_from_products(orders, wcapi, 'google-sheet'), "sheet_name": data['vendor'][0]+"_"+params['delivery_date']}) 
+            response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=product_sheet", json={"products": get_csv_from_products(
+                orders, wcapi, 'google-sheet'), "sheet_name": data['vendor'][0]+"_"+params['delivery_date']})
         return redirect(url_for('google_sheet'))
     else:
         return render_template("google_sheet/index.html", user=g.user, vendors=list_vendor)
 
-@crontab.job(minute="30", hour="15")
-# @app.route('/every_day_9')
+# @crontab.job(minute="30", hour="15")
+
+
+@app.route('/every_day_9')
 def send_every_day():
-    lastHourDateTime = datetime.now() - timedelta(hours = 72)
+    lastHourDateTime = datetime.now() - timedelta(hours=72)
     last_date = lastHourDateTime.strftime('%Y-%m-%dT%H:%M:%S')
-    tomorrow = datetime.now() + timedelta(days = 1)
+    tomorrow = datetime.now() + timedelta(days=1)
     tomorrow = tomorrow.strftime('%Y-%m-%d')
 # all orders of processing and pending status
     params = {"per_page": 100}
@@ -958,7 +986,8 @@ def send_every_day():
                 o["vendor"] = item["value"]
         if o['vendor'] == "":
             without_vendors.append(o)
-    send_every_day_at_9(without_vendors, client, "*Orders with vendor information missing*\n")
+    send_every_day_at_9(without_vendors, client,
+                        "*Orders with vendor information missing*\n")
 # orders without delivery date
     params = {"per_page": 100}
     params["status"] = 'any'
@@ -977,7 +1006,8 @@ def send_every_day():
                     delivery_date = item["value"]
         if delivery_date == "":
             without_date.append(o)
-    send_every_day_at_9(without_date, client, "*Orders with delivery date missing*\n")
+    send_every_day_at_9(without_date, client,
+                        "*Orders with delivery date missing*\n")
 # orders to be delivered tomorrow
     params = {"per_page": 100}
     params["status"] = 'tbd-unpaid, tbd-paid'
@@ -998,6 +1028,7 @@ def send_every_day():
     vendor_wise_tbd_tomorrow(tbd_tomorrow, client)
     return {"Result": "Success"}
 
+
 @app.route("/order_details", methods=["POST"])
 def order_details():
     data = request.form.to_dict(flat=False)
@@ -1007,10 +1038,15 @@ def order_details():
     orders = wcapi.get("orders", params=params).json()
     orders = get_orders_with_messages_without(orders, wcapi)
     main_text = ""
+    total = 0
     for o in orders:
-        main_text+=o['c_msg']
-        main_text+="-----------------------------------------\n\n"
+        total += float(o['total_amount'])
+    for o in orders:
+        main_text += o['c_msg']
+        main_text += "-----------------------------------------\n\n"
+    main_text += ("*Total Amount: "+str(total)+"*\n\n")
     return {"result": main_text}
+
 
 @app.route("/customer_details", methods=["POST"])
 def customer_details():
@@ -1022,11 +1058,208 @@ def customer_details():
     orders = get_orders_with_customer_detail(orders)
     main_text = ""
     for o in orders:
-        main_text+=o['c_msg']
-        main_text+="\n-----------------------------------------\n\n"
+        main_text += o['c_msg']
+        main_text += "\n-----------------------------------------\n\n"
     return {"result": main_text}
 
 
+@app.route("/supplier_messages", methods=["POST"])
+def supplier_messages():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    orders = wcapi.get("orders", params=params).json()
+    orders = get_orders_with_supplier(orders, wcapi)
+    main_text = ""
+    for o in orders:
+        main_text += o['s_msg']
+        main_text += "\n-----------------------------------------\n\n"
+    return {"result": main_text}
+
+
+@app.route("/multiple_links", methods=["POST"])
+def multiple_links():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    del params['status']
+    orders = wcapi.get("orders", params=params).json()
+    reciept = "Leap " + \
+        get_list_to_string(list(map(lambda o: str(o['id']), orders)))
+    payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+    if len(payment_links) > 0:
+        counter = 1
+        while True:
+            reciept = "Leap " + \
+                get_list_to_string(
+                    list(map(lambda o: str(o['id']), orders)))+"-"+str(counter)
+            payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+            if len(payment_links) == 0:
+                break
+            counter += 1
+    customer_ids = []
+    total_amount = 0
+    for o in orders:
+        customer_ids.append(o['customer_id'])
+        wallet_payment = 0
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment = (-1)*float(item["total"])
+        total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
+            o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+    if len(list(set(customer_ids))) != 1:
+        return {"result": "error"}
+    data1 = {
+        "amount": total_amount*100,
+        "receipt": reciept,
+        "customer": {
+            "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
+            "contact": o["billing"]["phone"]
+        },
+        "type": "link",
+        "view_less": 1,
+        "currency": "INR",
+        "description": "Thank you for making a healthy and sustainable choice",
+        "reminder_enable": False,
+        "callback_url": "https://leapclub.in/",
+        "callback_method": "get",
+        "sms_notify": False,
+        'email_notify': False
+    }
+    try:
+        invoice = razorpay_client.invoice.create(data=data1)
+        status = "success"
+        short_url = invoice['short_url']
+        for i in data['order_ids']:
+            new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]
+                                            ["phone"], name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
+            db.session.add(new_payment_link)
+            db.session.commit()
+        return {"result": "success", 'order_ids': data['order_ids'], 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept}
+    except:
+        return {"result": "error"}
+
+
+def send_session_m_st(order_id, vendor, order_note):
+    order = wcapi.get("orders/"+str(order_id)).json()
+    mobile_number = order["billing"]["phone"]
+    order = get_orders_with_messages([order], wcapi)
+    order_note_t = ""
+    if order_note != "":
+        order_note_t = "Please note:\n\n"+order_note+"\n\n"
+    order[0]['c_msg'] = "Hi,\n\nYour "+vendor_type[vendor] + \
+        " order will be delivered today. Let us know if everything meets your expectations.\n\n" + \
+        order_note_t+order[0]['c_msg']
+    mobile_number = mobile_number[-10:]
+    mobile_number = (
+        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+    url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
+        mobile_number + "?messageText="+order[0]["c_msg"]
+    headers = {
+        'Authorization': app.config["WATI_AUTHORIZATION"],
+        'Content-Type': 'application/json',
+    }
+    ctime = time.time()
+    response = requests.request(
+        "POST", url, headers=headers)
+    result = json.loads(response.text.encode('utf8'))
+    if result["result"] in ["success", "PENDING", "SENT"]:
+        new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail",
+                            broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
+        db.session.add(new_wt)
+        db.session.commit()
+    result["template_name"] = 'order_detail'
+    result["parameteres"] = [{'name': 'order_id', 'value': str(order_id)}]
+    return result
+
+def send_whatsapp_temp_sess(args):
+    args['product_type'] = args['vendor_type']
+    r_s_msg = send_session_m_st(
+        args['order_id'], args['seller'], args['order_note'])
+    if not r_s_msg['result']:
+        order_note = args["order_note"].replace("\r", "")
+        order_note = order_note.replace("\n", " ")
+        order_note = order_note.replace("  ", " ")
+        args['order_note'] = order_note
+        mobile_number = args["mobile_number"].strip(" ")
+        mobile_number = mobile_number[-10:]
+        mobile_number = (
+            "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+        result = send_whatsapp_msg(args, mobile_number, "delivery_today_0203")
+        if result["result"] in ["success", "PENDING", "SENT"]:
+            new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+        else:
+            new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
+                                "broadcast_name"], status="failed", time_sent=datetime.utcnow())
+        db.session.add(new_wt)
+        db.session.commit()
+        result['order_id'] = str(args['order_id'])
+        return result
+    r_s_msg["order_id"] = args['order_id']
+    return r_s_msg
+
+
+@app.route('/send_whatsapp_msg_with_s', methods=['GET'])
+def send_whatsapp_msg_with_s():
+    args = request.args.to_dict(flat=True)
+    return send_whatsapp_temp_sess(args)
+
+@app.route("/send_whatsapp_messages", methods=['POST'])
+def send_whatsapp_messages_m():
+    data = request.form.to_dict(flat=False)
+    results = []
+    if (len(data)) > 0:
+        orders = list_orders_with_status(
+            wcapi, {"include": get_list_to_string(data['order_ids[]'])})
+        for o in orders:
+            wallet_payment = 0
+            refunds = 0
+            for r in o["refunds"]:
+                refunds = refunds + float(r["total"])
+            o["total_refunds"] = refunds*-1
+            o["total"] = float(o["total"])
+            vendor, manager, delivery_date, order_note,  = "", "", "", ""
+            for item in o["meta_data"]:
+                if item["key"] == "wos_vendor_data":
+                    vendor = item["value"]["vendor_name"]
+                elif item["key"] == "_wc_acof_6" and item['value'] != "":
+                    vendor = item["value"]
+                elif item["key"] == "_wc_acof_3":
+                    manager = item["value"]
+                elif item["key"] == "_wc_acof_7":
+                    order_note = item["value"]
+                elif item["key"] == "_delivery_date":
+                    if delivery_date == "":
+                        delivery_date = item["value"]
+                elif item["key"] == "_wc_acof_2_formatted":
+                    if delivery_date == "":
+                        delivery_date = item["value"]
+            if len(o["fee_lines"]) > 0:
+                for item in o["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment = (-1)*float(item["total"])
+            if vendor in vendor_type.keys():
+                o["vendor_type"] = vendor_type[vendor]
+            else:
+                o["vendor_type"] = ""
+            o["wallet_payment"] = wallet_payment
+            o["total"] = float(o["total"]) + float(o["wallet_payment"])
+            td = "today_prepay"
+            if o["date_paid"] == None:
+                td = 'today_postpay'
+            params = {'c_name': o['billing']['first_name'], 
+            'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
+                'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
+            r = send_whatsapp_temp_sess(params)
+            results.append(r)
+        return {'result': 'success', 'results': results}
+    else:
+        return jsonify({"result": "error"})
+
 if __name__ == "__main__":
-    db.create_all() 
+    db.create_all()
     app.run(debug=True)

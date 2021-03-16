@@ -128,6 +128,13 @@ TemplatesBroadcast = {
 
     "new-signup":{
            'any': {"template": "thank_you_signing_up_2", "broadcast": "new-signup"}
+    },
+    "delivery_today_0203":{
+        'bakery': {"template": "delivery_today_0203", "broadcast": "delivery_today"},
+        'grocery': {"template": "delivery_today_0203", "broadcast": "delivery_today"},
+        'personal_care': {"template": "delivery_today_0203", "broadcast": "delivery_today"},
+        'dairy': {"template": "delivery_today_0203", "broadcast": "delivery_today"}
+
     }
 }
 
