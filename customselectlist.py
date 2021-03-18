@@ -5,7 +5,9 @@ list_vendor = [
     "Mr. Dairy","mrdairy",
     "The Womens Company",
     "kyssafarms",
-    "Kyssa Farms"
+    "Kyssa Farms",
+    'antarkranti',
+    'Antarkranti',
 ]
 
 list_created_via = [

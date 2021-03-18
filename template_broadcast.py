@@ -149,5 +149,7 @@ vendor_type = {
     'mrdairy': 'dairy',
     'Mr. Dairy': 'dairy',
     'kyssafarms': 'grocery',
-    'Kyssa Farms': 'grocery'
+    'Kyssa Farms': 'grocery',
+    'antarkranti': 'grocery',
+    'Antarkranti':'grocery',
 }
