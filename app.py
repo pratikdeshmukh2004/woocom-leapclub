@@ -21,6 +21,8 @@ from pytz import timezone
 from slack import WebClient
 from slack_bot import send_slack_message, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
 from flask_crontab import Crontab
+from slack_chennels import CHANNELS
+
 
 
 app = Flask(__name__, instance_relative_config=True)
@@ -180,12 +182,7 @@ def get_dairy_condition(o, d):
         else:
             return False
 
-
-@app.route("/orders")
-def woocom_orders():
-    if not g.user:
-        return redirect(url_for('login'))
-    args = request.args.to_dict(flat=False)
+def get_orders_for_home(args, tab):
     params = get_params(args)
     if "created_via" in params:
         args["created_via"] = params["created_via"]
@@ -209,7 +206,6 @@ def woocom_orders():
             orders = wcapi.get("order2", params=params).json()
     else:
         orders = wcapi.get("order2", params=params).json()
-
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
     orders = filter_orders(orders, args)
     managers = []
@@ -280,8 +276,22 @@ def woocom_orders():
         elif args['status'][0] == 'dairy':
             params['status'] = 'dairy'
             params['page'] = 1
-    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble)
+    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab)
 
+
+@app.route("/orders")
+def woocom_orders():
+    if not g.user:
+        return redirect(url_for('login'))
+    args = request.args.to_dict(flat=False)
+    return get_orders_for_home(args, tab='woocom_orders')
+
+@app.route("/vendor_orders")
+def vendor_orders():
+    if not g.user:
+        return redirect(url_for('login'))
+    args = request.args.to_dict(flat=False)
+    return get_orders_for_home(args, tab='vendor_orders')
 
 def send_whatsapp_msg(args, mobile, name):
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
@@ -337,9 +347,9 @@ def send_whatsapp(name):
         mobile_number = (
             "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
         result = send_whatsapp_msg(args, mobile_number, name)
-        if result["result"] in ["success", "PENDING", "SENT"]:
+        if result["result"] in ["success", "PENDING", "SENT", True]:
             new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
-                                "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+                                "broadcast_name"]["broadcastName"], status="success", time_sent=datetime.utcnow())
         else:
             new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
                                 "broadcast_name"], status="failed", time_sent=datetime.utcnow())
@@ -392,11 +402,29 @@ def download_csv():
                 if delivery_date == "":
                     delivery_date = item["value"]
             elif item["key"] == "_wc_acof_2_formatted":
-                if delivery_date == "":
+                 if delivery_date == "":
                     delivery_date = item["value"]
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=product_sheet", json={
                                  "products": get_csv_from_products(orders, wcapi, 'google-sheet'), "sheet_name": vendor+"_"+delivery_date})
         return {'result': 'success'}
+    elif data['action'][0] == 'delivery-google-sheet':
+        vendor = ""
+        delivery_date = ""
+        o = orders[0]
+        for item in o["meta_data"]:
+            if item["key"] == "wos_vendor_data":
+                vendor = item["value"]["vendor_name"]
+            elif item["key"] == "_wc_acof_6" and item['value'] != "":
+                vendor = item["value"]
+            elif item["key"] == "_delivery_date":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+        response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=delivery_sheet", json=orders)
+        return {'result': 'success'}
+
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
         filename = str(datetime.utcnow())+"-" + \
@@ -606,9 +634,9 @@ def new_order():
                 else:
                     result = send_whatsapp_msg(params, num, "order_postpay")
 
-            if result["result"] in ["success", "PENDING", "SENT"]:
+            if result["result"] in ["success", "PENDING", "SENT", True]:
                 new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
-                                    "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+                                    "broadcast_name"], status="success", time_sent=datetime.utcnow())
             else:
                 new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
                                     "broadcast_name"], status="failed", time_sent=datetime.utcnow())
@@ -644,72 +672,6 @@ def _format_mobile_number(number):
         "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     return mobile_number
 
-
-@app.route("/vendor_order_sheet")
-def vendor_order_sheet():
-    if not g.user:
-        return redirect(url_for('login'))
-    args = request.args.to_dict(flat=False)
-    params = get_params(args)
-    params["per_page"] = 100
-    if "status" in args:
-        params["status"] = get_list_to_string(args["status"])
-    t_orders = time.time()
-    if len(args) > 0:
-        orders = list_orders_with_status(wcapi, params)
-    else:
-        orders = []
-    print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
-    orders = filter_orders(orders, args)
-    managers = []
-    wtmessages_list = {}
-    for o in orders:
-        wallet_payment = 0
-        refunds = 0
-        for r in o["refunds"]:
-            refunds = refunds + float(r["total"])
-        o["total_refunds"] = refunds*-1
-        o["total"] = float(o["total"])
-        wt_messages = wtmessages.query.filter_by(order_id=o["id"]).all()
-        wtmessages_list[o["id"]] = wt_messages
-        vendor, manager, delivery_date, order_note,  = "", "", "", ""
-        for item in o["meta_data"]:
-            if item["key"] == "wos_vendor_data":
-                vendor = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                vendor = item["value"]
-            elif item["key"] == "_wc_acof_3":
-                manager = item["value"]
-            elif item["key"] == "_wc_acof_7":
-                order_note = item["value"]
-            elif item["key"] == "_delivery_date":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-            elif item["key"] == "_wc_acof_2_formatted":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-        if len(o["fee_lines"]) > 0:
-            for item in o["fee_lines"]:
-                if "wallet" in item["name"].lower():
-                    wallet_payment = (-1)*float(item["total"])
-
-        if manager not in managers:
-            managers.append(manager)
-        if vendor in vendor_type.keys():
-            o["vendor_type"] = vendor_type[vendor]
-        else:
-            o["vendor_type"] = ""
-        o["vendor"] = vendor
-        o["delivery_date"] = delivery_date
-        o["order_note"] = order_note
-        o["manager"] = manager
-        o["wallet_payment"] = wallet_payment
-        o["total"] = float(o["total"]) + float(o["wallet_payment"])
-        o["checkout_url"] = get_checkout_url(o)
-    if "status" in args:
-        if args["status"][0] == "subscription":
-            params["status"] = "subscription"
-    return render_template("vendor-order-sheet/index.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"])
 
 
 def get_subscription_wallet_balance(subscriptions):
@@ -788,7 +750,7 @@ def send_session_message(order_id):
         "POST", url, headers=headers)
     print("Time To Send Session Message - ", time.time()-ctime)
     result = json.loads(response.text.encode('utf8'))
-    if result["result"] in ["success", "PENDING", "SENT"]:
+    if result["result"] in ["success", "PENDING", "SENT", True]:
         new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail",
                             broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
     else:
@@ -1166,7 +1128,7 @@ def send_session_m_st(order_id, vendor, order_note):
     response = requests.request(
         "POST", url, headers=headers)
     result = json.loads(response.text.encode('utf8'))
-    if result["result"] in ["success", "PENDING", "SENT"]:
+    if result["result"] in ["success", "PENDING", "SENT", True]:
         new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail",
                             broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
         db.session.add(new_wt)
@@ -1189,9 +1151,9 @@ def send_whatsapp_temp_sess(args):
         mobile_number = (
             "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
         result = send_whatsapp_msg(args, mobile_number, "delivery_today_0203")
-        if result["result"] in ["success", "PENDING", "SENT"]:
+        if result["result"] in ["success", "PENDING", "SENT", True]:
             new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
-                                "broadcast"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+                                "broadcast_name"], status="success", time_sent=datetime.utcnow())
         else:
             new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
                                 "broadcast_name"], status="failed", time_sent=datetime.utcnow())
@@ -1237,7 +1199,7 @@ def send_whatsapp_messages_m():
                         delivery_date = item["value"]
                 elif item["key"] == "_wc_acof_2_formatted":
                     if delivery_date == "":
-                        delivery_date = item["value"]
+                        delivery_date = item["value"]   
             if len(o["fee_lines"]) > 0:
                 for item in o["fee_lines"]:
                     if "wallet" in item["name"].lower():
@@ -1255,10 +1217,88 @@ def send_whatsapp_messages_m():
             'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
                 'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
             r = send_whatsapp_temp_sess(params)
+            r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
             results.append(r)
         return {'result': 'success', 'results': results}
     else:
         return jsonify({"result": "error"})
+
+def update_order_status_with_id(order, status):
+    data = {}
+    order_id = order['id']
+    r_list = []
+    if status == 'cancel':
+        data['status'] = 'cancelled'
+        r_list.append("Mark as cancelled")
+    elif status == 'delivered':
+        if order['status'] == 'tbd-unpaid':
+            data['status'] = 'delivered-unpaid'
+            r_list.append("Mark as delivered-unpaid")
+        elif order['status'] == 'tbd-paid':
+            data['status'] = 'completed'
+            r_list.append("Mark as delivered-paid")
+    elif status == 'tbd':
+        if order['date_paid'] == None:
+            data['status'] = 'tbd-unpaid'
+            r_list.append("Mark as tbd-unpaid")
+        else:
+            data['status'] = 'tbd-paid'
+            r_list.append("Mark as tbd-paid")
+    u_order = wcapi.put("orders/"+str(order_id), data).json()
+    if 'id' in u_order.keys():
+        r_list.append("success")
+    else:
+        r_list.append('error')    
+    return r_list    
+
+        
+
+
+@app.route("/change_order_status", methods=['POST'])
+def change_order_status():
+    data = request.form.to_dict(flat=False)
+    result_list = []
+    if data['status'][0] == 'cancel':
+        msg_text = '*These orders are marked as cancelled*\n\n'
+    if data['status'][0] == 'tbd':
+        msg_text = '*These orders are marked as to-be-delivered*\n\n'
+    if data['status'][0] == 'delivered':
+        msg_text = '*These orders are marked as Delivered*\n\n'
+    error_text = ""
+    success_text = ""
+    if len(data.keys())>1:
+        for i in data['order_ids[]']:
+            order =  wcapi.get("orders/"+str(i)).json()
+            message, status = update_order_status_with_id(order, data['status'][0])
+            name = order['billing']['first_name']+" "+order['billing']['last_name']
+            result_list.append({'order_id': i, 'status': status, 'message': message, 'name': name})
+            if status == "success":
+                success_text+=i+"-"+name+"-"+message+"\n"
+            else:
+                error_text+=i+"-"+name+"-"+message+"\n"
+        msg_text+=success_text
+        if len(error_text)>0:
+            msg_text+='\n*These orders gave error*\n\n'
+            msg_text+=error_text
+        response = client.chat_postMessage(
+            channel=CHANNELS['VENDOR_WISE'],
+            blocks=[
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": msg_text
+                    }
+                }
+            ]
+        )
+        return {'result': 'success', 'result_list': result_list}
+    else:
+        return{'result': 'error'}
+
+
+
+
 
 if __name__ == "__main__":
     db.create_all()

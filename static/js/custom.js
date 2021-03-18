@@ -142,7 +142,7 @@ function SendWhatsappMessages(path) {
     url: path,
     success: function (res) {
       console.log(res);
-      if (["success", "PENDING", "SENT"].includes(res.result)) {
+      if (["success", "PENDING", "SENT", true].includes(res.result)) {
         $.nok({
           message: "Success, Message Sent!",
           type: "success",
@@ -386,6 +386,64 @@ function genMultipleLinks() {
   })
 }
 
+function changeOrderStatus(status) {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  console.log(inp_select_v);
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/change_order_status",
+    data: { 'order_ids': inp_select_v, "status": status },
+    success: function (res) {
+      if (res.result == 'success'){
+        trtext = ""
+        for (var o of res.result_list){
+          trtext+=`
+              <tr>
+                <td><p>`+o.order_id+" ( "+o.name+` ) </p></td>
+                <td><p>`+o.status+`</p></td>
+                <td><p>`+o.message+`</p></td>
+              </tr>
+          `
+        }
+        Swal.fire({
+          html: `
+            <table class='table'>
+              <thead>
+              <tr>
+                <th><b>Order ID ( Name )</b></th>  
+                <th><b>Result</b></th>  
+                <th><b>Message</b></th>  
+              </tr>  
+              </thead>
+              <tbody>
+              `+trtext+`
+              </tbody>
+            </table>
+          `,
+          width: 700,
+          backdrop: `
+            rgba(0,0,123,0.4)
+          `
+        }).then(()=>{
+          location.reload()
+        })
+      }
+      else{
+        $.nok({
+          message: "Error, Order Status Not Changed Please Check Order ID!",
+          type: "error",
+        });
+      }
+    }
+})
+}
 
 function sendWMessages() {
   var inp_select = $('#select_inps')
@@ -403,17 +461,39 @@ function sendWMessages() {
     data: { 'order_ids': inp_select_v },
     success: function (res) {
       if (res.result == 'success'){
-        for (var r of res.results){
-          if (["success", "PENDING", "SENT"].includes(res.result)) {
-            updateSpan(r.order_id, r.template_name, 'text-success')
+        trtext = ""
+        for (var o of res.results){
+          if(["success", "PENDING", "SENT", true].includes(o.result)){
+            updateSpan(o.order_id, o.template_name, 'text-success')
           }else{
-            updateSpan(r.order_id, r.template_name, 'text-danger')
+            updateSpan(o.order_id, o.template_name, 'text-danger')
           }
+          trtext+=`
+              <tr>
+                <td><p>`+o.order_id+" ( "+o.customer_name+` ) </p></td>
+                <td><p>`+o.result+`</p></td>
+              </tr>
+          `
         }
-        $.nok({
-          message: "Success, Message Sent!",
-          type: "success",
-        });
+        Swal.fire({
+          html: `
+            <table class='table'>
+              <thead>
+              <tr>
+                <th><b>Order ID ( Name )</b></th>  
+                <th><b>Result</b></th>  
+              </tr>  
+              </thead>
+              <tbody>
+              `+trtext+`
+              </tbody>
+            </table>
+          `,
+          width: 700,
+          backdrop: `
+            rgba(0,0,123,0.4)
+          `
+        })
       }
       else{
         $.nok({
@@ -424,3 +504,4 @@ function sendWMessages() {
     }
   })
 }
+

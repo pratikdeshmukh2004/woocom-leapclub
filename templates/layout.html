@@ -28,10 +28,26 @@
     <script src="{{url_for('static', filename='js/bootstrap.bundle.min.js')}}"></script>
     <script src="{{url_for('static', filename='js/bootstrap-selectpicker.min.js')}}"></script>
     <script src="{{url_for('static', filename='js/jquery-ui.js')}}"></script>
-    <script src="{{url_for('static', filename='js/custom.js')}}"></script>
     <script src="{{url_for('static', filename='js/jquery.nok.min.js')}}"></script>
+    <script src="{{url_for('static', filename='js/sweetalert2.js')}}"></script>
+    <script src="{{url_for('static', filename='js/custom.js')}}"></script>
   </head>
   <body>
     <div>{% block content %}{% endblock %}</div>
+    <!-- <script>
+      Swal.fire({
+  title: 'Custom width, padding, background.',
+  width: 600,
+  timer: 10000,
+  padding: '3em',
+  background: '#fff url(/images/trees.png)',
+  backdrop: `
+    rgba(0,0,123,0.4)
+    url("/images/nyan-cat.gif")
+    left top
+    no-repeat
+  `
+})
+    </script> -->
   </body>
 </html>

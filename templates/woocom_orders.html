@@ -1,17 +1,31 @@
 {% extends "layout.html" %} {% block content %}
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
   <div class="container">
-    <a class="navbar-brand font-weight-bold" href="#">Orders</a>
+    <a class="navbar-brand font-weight-bold" href="#">
+      {%if tab=='vendor_orders'%}
+      Vendor Orders
+      {%else%}
+      Orders
+      {%endif%}
+    </a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
       aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav ml-auto">
+        {%if tab != 'vendor_orders'%}
         <li class="nav-item">
-          <a class="nav-link" href="{{url_for('vendor_order_sheet')}}">
-            Vendor-Sheet</a>
+          <a class="nav-link" href="{{url_for('vendor_orders')}}">
+            Vendor-Orders</a>
         </li>
+        {%endif%}
+        {%if tab != 'woocom_orders'%}
+        <li class="nav-item">
+          <a class="nav-link" href="{{url_for('woocom_orders')}}">
+            Orders</a>
+        </li>
+        {%endif%}
         <li class="nav-item">
           <a class="nav-link" href="{{url_for('subscriptions')}}">
             Subscriptions</a>
@@ -32,43 +46,43 @@
 <ul class="nav nav-tabs mt-2 ml-1">
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'failed, pending' %} active {%endif%}"
-      href="{{url_for('woocom_orders', status='failed, pending')}}">Failed</a>
+      href="{{url_for(tab, status='failed, pending')}}">Failed</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'processing' %} active {%endif%}"
-      href="{{url_for('woocom_orders', status='processing')}}">Processing</a>
+      href="{{url_for(tab, status='processing')}}">Processing</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'tbd-paid, tbd-unpaid' %} active {%endif%}"
-      href="{{url_for('woocom_orders', status='tbd-paid, tbd-unpaid')}}">To Be Delivered</a>
+      href="{{url_for(tab, status='tbd-paid, tbd-unpaid')}}">To Be Delivered</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'subscription' %} active {%endif%}"
-      href="{{url_for('woocom_orders', status='subscription')}}">Subscription</a>
+      href="{{url_for(tab, status='subscription')}}">Subscription</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'delivered-unpaid' %} active {%endif%}"
-      href="{{url_for('woocom_orders', status='delivered-unpaid')}}">Delivered Unpaid</a>
+      href="{{url_for(tab, status='delivered-unpaid')}}">Delivered Unpaid</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'completed' %} active {%endif%}"
-      href="{{url_for('woocom_orders', status='completed')}}">Delivered Paid</a>
+      href="{{url_for(tab, status='completed')}}">Delivered Paid</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'refunded' %} active {%endif%}"
-      href="{{url_for('woocom_orders', status='refunded')}}">Refunded</a>
+      href="{{url_for(tab, status='refunded')}}">Refunded</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'cancelled' %} active {%endif%}"
-      href="{{url_for('woocom_orders', status='cancelled')}}">Cancelled</a>
+      href="{{url_for(tab, status='cancelled')}}">Cancelled</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'any' %} active {%endif%}"
-      href="{{url_for('woocom_orders', status='any')}}">All</a>
+      href="{{url_for(tab, status='any')}}">All</a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'dairy' %} active {%endif%}"
-      href="{{url_for('woocom_orders', status='dairy')}}">Dairy</a>
+      href="{{url_for(tab, status='dairy')}}">Dairy</a>
   </li>
 </ul>
 <div class="mt-3 ml-3 mr-3">
@@ -152,6 +166,7 @@
     {% if nav_active != '' %}
     <input style="display: none;" name="status" value="{{nav_active}}">
     {% endif %}
+    {%if nav_active in ['processing', 'tbd-paid, tbd-unpaid'] or tab in ['vendor_orders', 'woocom_orders']%}
     <select id="select_inps" data-live-search="true" data-actions-box="true" multiple required title="Order ID"
       name="order_ids" class="selectpicker mr-2">
       {% for o in orders %}
@@ -160,25 +175,52 @@
       </option>
       {% endfor%}
     </select>
+    {%endif%}
     <input name='status' value='{{nav_active}}' style='display: none'>
-    <button data-toggle="tooltip" title="Download Order Sheet" name="action" value="order_sheet" class="btn btn-info"><i
-        class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
-    <button data-toggle="tooltip" title="Download Vendor Order Sheet" name="action" value="vendor_sheet" class="btn btn-info ml-2"><i
-        class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
-    <button data-toggle="tooltip" type='button' title="Order-Sheet To Google Sheet" onclick="sendToGoogleSheet('google_sheet', '{{nav_active}}')" class="btn btn-info ml-2"><i
-        class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
-    <button data-toggle="tooltip" onclick="sendToGoogleSheet('product_google_sheet', '{{nav_active}}')" type="button" title="Product-Sheet To Google Sheet"
-      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
-    <button data-toggle="tooltip" onclick="copyOrderDetail('{{nav_active}}')" type="button" title="Copy Order Details"
-    class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
-    <button data-toggle="tooltip" onclick="copyCustomerDetail('{{nav_active}}')" type="button" title="Copy Customer Detail"
-    class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
-    <button data-toggle="tooltip" onclick="copySupplierMessage('{{nav_active}}')" type="button" title="Copy Supplier Message"
-    class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
-    <button data-toggle="tooltip" onclick="genMultipleLinks()" type="button" title="Gen Payment Links"
-    class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-link" aria-hidden="true"></i></button>
-    <button data-toggle="tooltip" onclick="sendWMessages()" type="button" title="Send Today Message"
-    class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-whatsapp" aria-hidden="true"></i></button>
+    {%if tab == 'vendor_orders'%}
+      <button data-toggle="tooltip" title="Download Order Sheet" name="action" value="order_sheet" class="btn btn-info"><i
+          class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
+
+      <button data-toggle="tooltip" title="Download Vendor Order Sheet" name="action" value="vendor_sheet" class="btn btn-info ml-2"><i
+          class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
+
+      <button data-toggle="tooltip" type='button' title="Order-Sheet To Google Sheet" onclick="sendToGoogleSheet('google_sheet', '{{nav_active}}')" class="btn btn-info ml-2"><i
+          class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
+
+      <button data-toggle="tooltip" onclick="sendToGoogleSheet('product_google_sheet', '{{nav_active}}')" type="button" title="Product-Sheet To Google Sheet"
+        class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
+      
+      <button data-toggle="tooltip" onclick="sendToGoogleSheet('delivery-google-sheet', '{{nav_active}}')" type="button" title="Delivery-Sheet To Google Sheet"
+        class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
+
+        
+      <button data-toggle="tooltip" onclick="copyCustomerDetail('{{nav_active}}')" type="button" title="Copy Customer Detail"
+        class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
+        
+      <button data-toggle="tooltip" onclick="copySupplierMessage('{{nav_active}}')" type="button" title="Copy Supplier Message"
+        class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
+  
+    {%elif tab == 'woocom_orders'%}
+      <button data-toggle="tooltip" onclick="copyOrderDetail('{{nav_active}}')" type="button" title="Copy Order Details"
+      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
+
+      <button data-toggle="tooltip" onclick="genMultipleLinks()" type="button" title="Gen Payment Links"
+      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-link" aria-hidden="true"></i></button>
+
+      <button data-toggle="tooltip" onclick="sendWMessages()" type="button" title="Send Today Message"
+      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-whatsapp" aria-hidden="true"></i></button>
+    {%if nav_active == 'processing'%}
+      <button onclick="changeOrderStatus('cancel')" type="button"
+        class="btn btn-info ml-2">Mark as Cancelled</button>
+      <button onclick="changeOrderStatus('tbd')" type="button"
+        class="btn btn-info ml-2">Mark as TBD</button>
+    {%elif nav_active == 'tbd-paid, tbd-unpaid'%}
+      <button onclick="changeOrderStatus('cancel')" type="button"
+        class="btn btn-info ml-2">Mark as Cancelled</button>
+      <button onclick="changeOrderStatus('delivered')" type="button"
+        class="btn btn-info ml-2">Mark as Delivered</button>
+    {%endif%}
+    {%endif%}
   </form>
   {%if nav_active == 'any'%}
   <div class='ml-auto mt-1'>
@@ -400,7 +442,7 @@
   <ul class="pagination justify-content-center">
     <li class="page-item {% if page == 1%} disabled {%endif%}">
       <a class="page-link"
-        href="{{url_for('woocom_orders', page=page-1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active, after=query['after'], before=query['before'])}}"
+        href="{{url_for(tab, page=page-1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active, after=query['after'], before=query['before'])}}"
         tabindex="-1">Previous</a>
     </li>
     <li class="page-item">
@@ -408,7 +450,7 @@
     </li>
     <li class="page-item {% if orders | length != 50%} disabled {%endif%}">
       <a class="page-link"
-        href="{{url_for('woocom_orders', page=page+1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active, after=query['after'], before=query['before'])}}">Next</a>
+        href="{{url_for(tab, page=page+1, order_ids = query['order_ids'], payment_status=query['payment_status'], phone_number=query['phone_number'], name=query['name'], vendor=query['vendor'], manager=query['manager'], created_via=query['created_via'], delivery_date=query['delivery_date'], status=nav_active, after=query['after'], before=query['before'])}}">Next</a>
     </li>
   </ul>
 </nav>
