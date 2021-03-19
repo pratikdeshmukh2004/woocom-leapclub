@@ -1244,7 +1244,7 @@ def update_order_status_with_id(order, status):
         else:
             data['status'] = 'tbd-paid'
             r_list.append("Mark as tbd-paid")
-    u_order = wcapi.put("orders/"+str(order_id), data).json()
+    u_order = wcapi_write.put("orders/"+str(order_id), data).json()
     if 'id' in u_order.keys():
         r_list.append("success")
     else:
