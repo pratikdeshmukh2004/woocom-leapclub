@@ -586,12 +586,22 @@ def update_order_status(order, invoice_id, wcapi):
     if order['status'] in ['tbd-unpaid']:
         data['status'] = 'tbd-paid'
         u_order = wcapi.put("orders/"+str(order_id), data).json()
-
+        if 'id' in u_order.keys():
+            return True
+        else:
+            return False
     elif order['status'] in ['delivered-unpaid']:
         data['status'] = 'completed'
         data['date_completed'] = c_date.strftime(format)
         data['date_completed_gmt'] = utc_time.strftime(format)
         u_order = wcapi.put("orders/"+str(order_id), data).json()
+        if 'id' in u_order.keys():
+            return True
+        else:
+            return False
+    else:
+        False
+    
 
 
 def get_products_from_thread(product_ids, wcapi):

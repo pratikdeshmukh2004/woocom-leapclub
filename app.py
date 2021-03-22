@@ -838,7 +838,23 @@ def razorpay():
                             vendor_name = item["value"]
                     if vendor_name in vendor_type.keys():
                         vendor_t = vendor_type[vendor_name]
-                    update_order_status(order, invoice_id, wcapi_write)
+                    status = update_order_status(order, invoice_id, wcapi_write)
+                    if status:
+                        txt_msg = "These orders are marked as paid in admin panel: "+order_id
+                    else:
+                        txt_msg = "These orders gave an error while marking them as paid: "+order_id
+                    response = client.chat_postMessage(
+                        channel=CHANNELS['PAYMENT_NOTIFICATIONS'],
+                        blocks=[
+                            {
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": txt_msg
+                                }
+                            }
+                        ]
+                    )
             return("Done")
         else:
             return "Payment.Paid"
