@@ -181,7 +181,27 @@ def get_dairy_condition(o, d):
             return True
         else:
             return False
-
+def filter_orders_for_errors(orders):
+    new_orders = []
+    for o in orders:
+        delivery_date = ""
+        vendor = ""
+        for item in o["meta_data"]:
+            if item["key"] == "_delivery_date":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+            elif item["key"] == "wos_vendor_data":
+                vendor = item["value"]["vendor_name"]
+            elif item["key"] == "_wc_acof_6" and item['value'] != "":
+                vendor = item["value"]
+        if o['status'] in ['processing', 'pending', 'failed']:
+            new_orders.append(o)
+        elif vendor == "" or delivery_date == "":
+            new_orders.append(o)
+    return new_orders
 def get_orders_for_home(args, tab):
     params = get_params(args)
     if "created_via" in params:
@@ -197,6 +217,14 @@ def get_orders_for_home(args, tab):
             orders.extend(list_orders_with_status(wcapi, params.copy()))
             orders = list(
                 filter(lambda o: get_dairy_condition(o, delivery), orders))
+        elif args['status'][0] == 'errors':
+            params['status'] = 'any'
+            params['created_via'] = "admin,checkout,Order clone"
+            d3 = datetime.now() - timedelta(days=3)
+            d3 = str(d3.strftime('%Y-%m-%d'))+"T00:00:00"
+            params['after'] = d3
+            orders = list_orders_with_status(wcapi, params.copy())
+            orders = filter_orders_for_errors(orders)
         elif args['status'][0] == 'dairy':
             orders = list_orders_with_status(wcapi, params.copy())
             del params['vendor']
@@ -252,7 +280,6 @@ def get_orders_for_home(args, tab):
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
                     wallet_payment = (-1)*float(item["total"])
-
         if manager not in managers:
             managers.append(manager)
         if vendor in vendor_type.keys():
@@ -276,6 +303,8 @@ def get_orders_for_home(args, tab):
         elif args['status'][0] == 'dairy':
             params['status'] = 'dairy'
             params['page'] = 1
+        elif args['status'][0] == 'errors':
+            params['status'] = 'errors'
     return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab)
 
 
@@ -838,7 +867,23 @@ def razorpay():
                             vendor_name = item["value"]
                     if vendor_name in vendor_type.keys():
                         vendor_t = vendor_type[vendor_name]
-                    update_order_status(order, invoice_id, wcapi_write)
+                    status = update_order_status(order, invoice_id, wcapi_write)
+                    if status:
+                        txt_msg = "These orders are marked as paid in admin panel: "+order_id
+                    else:
+                        txt_msg = "These orders gave an error while marking them as paid: "+order_id
+                    response = client.chat_postMessage(
+                        channel=CHANNELS['PAYMENT_NOTIFICATIONS'],
+                        blocks=[
+                            {
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": txt_msg
+                                }
+                            }
+                        ]
+                    )
             return("Done")
         else:
             return "Payment.Paid"
