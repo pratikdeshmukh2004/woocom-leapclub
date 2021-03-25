@@ -84,6 +84,11 @@
     <a class="nav-link {% if nav_active == 'dairy' %} active {%endif%}"
       href="{{url_for(tab, status='dairy')}}">Dairy</a>
   </li>
+  <li class="nav-item">
+    <a class="nav-link {% if nav_active == 'errors' %} active {%endif%}"
+      href="{{url_for(tab, status='errors')}}">Errors</a>
+  </li>
+
 </ul>
 <div class="mt-3 ml-3 mr-3">
   <form autocomplete="off" class="form-inline" role="form">
@@ -210,7 +215,7 @@
       <button data-toggle="tooltip" onclick="sendWMessages()" type="button" title="Send Today Message"
       class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-whatsapp" aria-hidden="true"></i></button>
     {%endif%}
-    {%if nav_active == 'processing'%}
+    {%if nav_active in ['processing', 'failed, pending']%}
       <button onclick="changeOrderStatus('cancel')" type="button"
         class="btn btn-info ml-2">Mark as Cancelled</button>
       <button onclick="changeOrderStatus('tbd')" type="button"
