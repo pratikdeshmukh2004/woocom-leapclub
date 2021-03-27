@@ -1093,61 +1093,68 @@ def multiple_links():
     params["include"] = get_list_to_string(data["order_ids"])
     del params['status']
     orders = wcapi.get("orders", params=params).json()
-    reciept = "Leap " + \
-        get_list_to_string(list(map(lambda o: str(o['id']), orders)))
-    payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
-    if len(payment_links) > 0:
-        counter = 1
-        while True:
-            reciept = "Leap " + \
-                get_list_to_string(
-                    list(map(lambda o: str(o['id']), orders)))+"-"+str(counter)
-            payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
-            if len(payment_links) == 0:
-                break
-            counter += 1
-    customer_ids = []
-    total_amount = 0
+    customers = {}
+    results = []
     for o in orders:
-        customer_ids.append(o['customer_id'])
-        wallet_payment = 0
-        if len(o["fee_lines"]) > 0:
-            for item in o["fee_lines"]:
-                if "wallet" in item["name"].lower():
-                    wallet_payment = (-1)*float(item["total"])
-        total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
-            o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
-    if len(list(set(customer_ids))) != 1:
-        return {"result": "error"}
-    data1 = {
-        "amount": total_amount*100,
-        "receipt": reciept,
-        "customer": {
-            "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
-            "contact": o["billing"]["phone"]
-        },
-        "type": "link",
-        "view_less": 1,
-        "currency": "INR",
-        "description": "Thank you for making a healthy and sustainable choice",
-        "reminder_enable": False,
-        "callback_url": "https://leapclub.in/",
-        "callback_method": "get",
-        "sms_notify": False,
-        'email_notify': False
-    }
-    try:
-        invoice = razorpay_client.invoice.create(data=data1)
-        status = "success"
-        short_url = invoice['short_url']
-        for i in data['order_ids']:
-            new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]
-                                            ["phone"], name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
-            db.session.add(new_payment_link)
-            db.session.commit()
-        return {"result": "success", 'order_ids': data['order_ids'], 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept}
-    except:
-        return {"result": "error"}
+        mobile_number = o['billing']['phone']
+        mobile_number = mobile_number[-10:]
+        mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+        if mobile_number in customers:
+            customers[mobile_number].append(o)
+        else:
+            customers[mobile_number] = [o]
+    for customer in customers:
+        o_ids = list(map(lambda o: str(o['id']), customers[customer]))
+        reciept = "Leap " + \
+            get_list_to_string(o_ids)
+        payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+        if len(payment_links) > 0:
+            counter = 1
+            while True:
+                reciept = "Leap " + \
+                    get_list_to_string(o_ids)+"-"+str(counter)
+                payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+                if len(payment_links) == 0:
+                    break
+                counter += 1
+        total_amount = 0
+        for o in customers[customer]:
+            wallet_payment = 0
+            if len(o["fee_lines"]) > 0:
+                for item in o["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment = (-1)*float(item["total"])
+            total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
+                o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+        data1 = {
+            "amount": total_amount*100,
+            "receipt": reciept,
+            "customer": {
+                "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
+                "contact": customer
+            },
+            "type": "link",
+            "view_less": 1,
+            "currency": "INR",
+            "description": "Thank you for making a healthy and sustainable choice",
+            "reminder_enable": False,
+            "callback_url": "https://leapclub.in/",
+            "callback_method": "get",
+            "sms_notify": False,
+            'email_notify': False
+        }
+        try:
+            invoice = razorpay_client.invoice.create(data=data1)
+            status = "success"
+            short_url = invoice['short_url']
+            for i in o_ids:
+                new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=customer, name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
+                db.session.add(new_payment_link)
+                db.session.commit()
+            results.append({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":customer})
+        except:
+            results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
+    return {'results': results}
 
 
 def send_session_m_st(order_id, vendor, order_note):

@@ -285,6 +285,9 @@ def get_orders_with_messages(orders, wcapi):
         c_msg = c_msg + \
             list_order_refunds(order_refunds) + \
             list_only_refunds(order_refunds)
+        payment_status = "Paid To LeapClub."
+        if o['payment_method'] == 'other':
+            payment_status = "Cash On Delivery"
         s_msg = ("Order ID: "+str(o["id"])
                  + "\n\nName: "+o["billing"]["first_name"] +
                  " "+o["billing"]["last_name"]
@@ -295,7 +298,7 @@ def get_orders_with_messages(orders, wcapi):
                  get_totals(o["total"], order_refunds)
                      + get_shipping_total(o)
                      + "\n\n"+list_order_items(o["line_items"], order_refunds)
-                     + "Payment Status: Paid To LeapClub."
+                     + "Payment Status: "+payment_status
                      + "\nCustomer Note: "+o["customer_note"])
         o["c_msg"] = c_msg
         o["s_msg"] = s_msg
@@ -679,6 +682,10 @@ def get_orders_with_supplier(orders, wcapi):
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
         else:
             order_refunds = []
+        payment_status = "Paid To LeapClub."
+        if o['payment_method'] == 'other':
+            payment_status = "Cash On Delivery"
+
         s_msg = ("Order ID: "+str(o["id"])
                  + "\n\nName: "+o["billing"]["first_name"] +
                  " "+o["billing"]["last_name"]
@@ -689,7 +696,7 @@ def get_orders_with_supplier(orders, wcapi):
                  get_totals(o["total"], order_refunds)
                      + get_shipping_total(o)
                      + "\n\n"+list_order_items(o["line_items"], order_refunds)
-                     + "Payment Status: Paid To LeapClub."
+                     + "Payment Status: "+payment_status
                      + "\nCustomer Note: "+o["customer_note"])
         o["s_msg"] = s_msg
     return orders

@@ -349,42 +349,42 @@ function copySupplierMessage(status) {
 }
 
 
-function genMultipleLinks() {
-  var inp_select = $('#select_inps')
-  var inp_select_v = inp_select.val()
-  $.nok({
-    message: "Processing Your Request Please Wait!",
-    type: "success",
-  });
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/multiple_links",
-    data: { 'order_ids': inp_select_v },
-    success: function (res) {
-      if (res.result == 'success'){
-        for (var id of res.order_ids){
-          var tag = $('#payment-' + id.toString())
-          console.log(typeof (res.amount));
-          tag.text(res.receipt + " | " + (res.amount / 100).toString())
-          tag.attr('onclick', "copyText('" + res.short_url + "')")
-          tag.attr('class', 'text-success')
-        }
-        $.nok({
-          message: "Success, Payment Links Generated!",
-          type: "success",
-        });
-      }
-      else{
-        $.nok({
-          message: "Error, Payment Links Not Generated Please Check Order ID!",
-          type: "error",
-        });
-      }
-    }
-  })
-}
+// function genMultipleLinks() {
+//   var inp_select = $('#select_inps')
+//   var inp_select_v = inp_select.val()
+//   $.nok({
+//     message: "Processing Your Request Please Wait!",
+//     type: "success",
+//   });
+//   $.ajax({
+//     type: "POST",
+//     crossDomain: true,
+//     dataType: "json",
+//     url: "/multiple_links",
+//     data: { 'order_ids': inp_select_v },
+//     success: function (res) {
+//       if (res.result == 'success'){
+//         for (var id of res.order_ids){
+//           var tag = $('#payment-' + id.toString())
+//           console.log(typeof (res.amount));
+//           tag.text(res.receipt + " | " + (res.amount / 100).toString())
+//           tag.attr('onclick', "copyText('" + res.short_url + "')")
+//           tag.attr('class', 'text-success')
+//         }
+//         $.nok({
+//           message: "Success, Payment Links Generated!",
+//           type: "success",
+//         });
+//       }
+//       else{
+//         $.nok({
+//           message: "Error, Payment Links Not Generated Please Check Order ID!",
+//           type: "error",
+//         });
+//       }
+//     }
+//   })
+// }
 
 function changeOrderStatus(status) {
   var inp_select = $('#select_inps')
@@ -505,3 +505,4 @@ function sendWMessages() {
   })
 }
 
+  
