@@ -165,27 +165,6 @@ function SendWhatsappMessages(path) {
   });
 }
 
-function copyToClipboard(id) {
-  var tag = document.getElementById("" + id + "")
-  var text = tag.innerHTML.trim()
-  text = text.replace("&amp;", "&")
-  var input = document.body.appendChild(document.createElement("textarea"));
-  input.value = text;
-  input.select();
-  var status = document.execCommand("copy");
-  input.parentNode.removeChild(input);
-  if (status) {
-    $.nok({
-      message: "Success, Message Copied!",
-      type: "success",
-    });
-  } else {
-    $.nok({
-      message: "Error, Message Not Copied!",
-      type: "error",
-    });
-  }
-}
 
 function sendToGoogleSheet(act, status) {
   var inp_select = $('#select_inps')
@@ -505,4 +484,42 @@ function sendWMessages() {
   })
 }
 
-  
+function copyToClipboard(id) {
+  $.ajax({
+    type: "GET",
+    crossDomain: true,
+    dataType: "json",
+    url: "/get_copy_messages/"+id.toString(),
+    success: function (res) {
+      if (res.status == 'success') {
+        var input = document.body.appendChild(document.createElement("textarea"));
+        input.value = res.text;
+        input.select();
+        var status = document.execCommand("copy");
+        input.parentNode.removeChild(input);
+        if (status) {
+          $.nok({
+            message: "Success, Message Copied!",
+            type: "success",
+          });
+        } else {
+          $.nok({
+            message: "Error, Message Not Copied!",
+            type: "error",
+          });
+        }
+      } else {
+        $.nok({
+          message: "Error, Message Not Copied!",
+          type: "error",
+        });
+      }
+    },
+    error: function (res) {
+      $.nok({
+        message: "API Error, Message Not Sent!",
+        type: "error",
+      });
+    },
+  });
+}

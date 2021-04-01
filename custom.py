@@ -102,13 +102,22 @@ def list_order_refunds(order_refunds):
         msg = "We are not able to send: \n\n"+msg
     return msg
 
+def get_line_items_with_product(order_items, wcapi):
+    def get_product(item):
+        product = wcapi.get("products/"+str(item['product_id'])).json()
+        item['product'] = product
+        return item
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(get_product, order_items)
+    return list(result)
 
-def list_order_items(order_items, refunds):
+def list_order_items(order_items, refunds, wcapi):
     msg = ""
     total_refunds = []
     for r in refunds:
         for ri in r["line_items"]:
             total_refunds.append(ri)
+    order_items = get_line_items_with_product(order_items, wcapi)
     for order_item in order_items:
         for refund in total_refunds:
             if order_item["id"] == int(refund["meta_data"][0]["value"]):
@@ -117,29 +126,52 @@ def list_order_items(order_items, refunds):
                 order_item["total"] = float(
                     order_item["total"]) + float(refund["total"])
         if order_item["quantity"] > 0:
-            msg = (
-                msg
-                + order_item["name"]
-                + " x "
-                + str(order_item["quantity"])
-                + "\n"
-                + "₹"
-                + str(order_item["price"])
-                + " x "
-                + str(order_item["quantity"])
-                + " = "
-                + str(order_item["total"])
-                + "\n\n"
-            )
+            name_w = order_item['name'].split("(")
+            if order_item['product']['weight'] != "" and len(name_w) == 2:
+                name_w_g = name_w[1].split(" ")
+                f_q = int(name_w_g[0])*int(order_item['quantity'])
+                if f_q>=1000:
+                    f_q = f_q/1000
+                    name_w_g[1] = name_w_g[1].replace("gm", 'kg')
+                    name_w = name_w[0]+"("+str(f_q)+" "+name_w_g[1]
+                else:
+                    name_w = name_w[0]+"("+str(f_q)+" "+name_w_g[1]
+                msg = (
+                    msg
+                    + name_w
+                    + "\n₹"
+                    + str(order_item["price"])
+                    + " x "
+                    + str(order_item["quantity"])
+                    + " = "
+                    + str(order_item["total"])
+                    + "\n\n"
+                )
+
+            else:
+                msg = (
+                    msg
+                    + order_item["name"]
+                    + " x "
+                    + str(order_item["quantity"])
+                    + "\n₹"
+                    + str(order_item["price"])
+                    + " x "
+                    + str(order_item["quantity"])
+                    + " = "
+                    + str(order_item["total"])
+                    + "\n\n"
+                )
     return msg
 
 
-def list_order_items_csv(order_items, refunds):
+def list_order_items_csv(order_items, refunds, wcapi):
     msg = ""
     total_refunds = []
     for r in refunds:
         for ri in r["line_items"]:
             total_refunds.append(ri)
+    order_items = get_line_items_with_product(order_items, wcapi)
     for order_item in order_items:
         for refund in total_refunds:
             if order_item["id"] == int(refund["meta_data"][0]["value"]):
@@ -148,7 +180,20 @@ def list_order_items_csv(order_items, refunds):
                 order_item["total"] = float(
                     order_item["total"]) + float(refund["total"])
         if order_item["quantity"] > 0:
-            msg = (
+            name_w = order_item['name'].split("(")
+            if order_item['product']['weight'] != "" and len(name_w) == 2:
+                name_w_g = name_w[1].split(" ")
+                f_q = int(name_w_g[0])*int(order_item['quantity'])
+                name_w = name_w[0]+"("+str(f_q)+" "+name_w_g[1]
+                msg = (
+                    msg
+                    + name_w
+                    + " = "
+                    + str(order_item["total"])
+                    + "\n\n"
+                )
+            else:
+                msg = (
                 msg
                 + order_item["name"]
                 + " x "
@@ -278,7 +323,7 @@ def get_orders_with_messages(orders, wcapi):
         if len(o["refunds"]) > 0:
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
         c_msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
-            list_order_items(o["line_items"], order_refunds) + \
+            list_order_items(o["line_items"], order_refunds, wcapi) + \
             "*Total Amount: " + \
             get_totals(o["total"], order_refunds) + \
             get_shipping_total(o)+"*\n\n"
@@ -297,7 +342,7 @@ def get_orders_with_messages(orders, wcapi):
                      + "\n\nTotal Amount: " +
                  get_totals(o["total"], order_refunds)
                      + get_shipping_total(o)
-                     + "\n\n"+list_order_items(o["line_items"], order_refunds)
+                     + "\n\n"+list_order_items(o["line_items"], order_refunds, wcapi)
                      + "Payment Status: "+payment_status
                      + "\nCustomer Note: "+o["customer_note"])
         o["c_msg"] = c_msg
@@ -327,7 +372,7 @@ def get_orders_with_messages_without(orders, wcapi):
         if len(o["refunds"]) > 0:
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
         c_msg = "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
-            list_order_items(o["line_items"], order_refunds) + \
+            list_order_items(o["line_items"], order_refunds, wcapi) + \
             "*Total Amount: " + \
             get_totals(o["total"], order_refunds) + \
             get_shipping_total(o)+"*\n\n"
@@ -375,7 +420,7 @@ def get_csv_from_orders(orders, wcapi):
             o["shipping"]["city"]+", "+o["shipping"]["state"] +
             ", "+o["shipping"]["postcode"],
             "Total Amount": get_totals(o["total"], refunds)+get_shipping_total_for_csv(o),
-            "Order Details": list_order_items_csv(o["line_items"], refunds),
+            "Order Details": list_order_items_csv(o["line_items"], refunds, wcapi),
             "Comments": "Payment Status: Paid To Leap",
             "Customer Note": o["customer_note"]
         })
@@ -429,7 +474,7 @@ def get_csv_from_vendor_orders(orders, wcapi):
             "Total Order Amount": o["total"],
             "Refund Amount": get_total_from_line_items(o["refunds"])*-1,
             "Delivery Charge": o["shipping_total"],
-            "Order Items": list_order_items_csv(o["line_items"], refunds)+list_order_refunds(refunds),
+            "Order Items": list_order_items_csv(o["line_items"], refunds, wcapi)+list_order_refunds(refunds),
             "Payment Method": o["payment_method_title"],
             "Status": o["status"],
             "Item Total": get_total_from_line_items(o["line_items"])
@@ -695,7 +740,7 @@ def get_orders_with_supplier(orders, wcapi):
                      + "\n\nTotal Amount: " +
                  get_totals(o["total"], order_refunds)
                      + get_shipping_total(o)
-                     + "\n\n"+list_order_items(o["line_items"], order_refunds)
+                     + "\n\n"+list_order_items(o["line_items"], order_refunds, wcapi)
                      + "Payment Status: "+payment_status
                      + "\nCustomer Note: "+o["customer_note"])
         o["s_msg"] = s_msg

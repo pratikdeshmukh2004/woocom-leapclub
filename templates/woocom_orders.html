@@ -46,39 +46,39 @@
 <ul class="nav nav-tabs mt-2 ml-1">
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'failed, pending' %} active {%endif%}"
-      href="{{url_for(tab, status='failed, pending')}}">Failed</a>
+      href="{{url_for(tab, status='failed, pending')}}">Failed <span class="badge badge-primary">{{tab_nums['failed']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'processing' %} active {%endif%}"
-      href="{{url_for(tab, status='processing')}}">Processing</a>
+      href="{{url_for(tab, status='processing')}}">Processing  <span class="badge badge-primary">{{tab_nums['processing']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'tbd-paid, tbd-unpaid' %} active {%endif%}"
-      href="{{url_for(tab, status='tbd-paid, tbd-unpaid')}}">To Be Delivered</a>
+      href="{{url_for(tab, status='tbd-paid, tbd-unpaid')}}">To Be Delivered  <span class="badge badge-primary">{{tab_nums['tbd']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'subscription' %} active {%endif%}"
-      href="{{url_for(tab, status='subscription')}}">Subscription</a>
+      href="{{url_for(tab, status='subscription')}}">Subscription  <span class="badge badge-primary">{{tab_nums['subscription']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'delivered-unpaid' %} active {%endif%}"
-      href="{{url_for(tab, status='delivered-unpaid')}}">Delivered Unpaid</a>
+      href="{{url_for(tab, status='delivered-unpaid')}}">Delivered Unpaid  <span class="badge badge-primary">{{tab_nums['delivered-unpaid']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'completed' %} active {%endif%}"
-      href="{{url_for(tab, status='completed')}}">Delivered Paid</a>
+      href="{{url_for(tab, status='completed')}}">Delivered Paid  <span class="badge badge-primary">{{tab_nums['completed']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'refunded' %} active {%endif%}"
-      href="{{url_for(tab, status='refunded')}}">Refunded</a>
+      href="{{url_for(tab, status='refunded')}}">Refunded  <span class="badge badge-primary">{{tab_nums['refunded']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'cancelled' %} active {%endif%}"
-      href="{{url_for(tab, status='cancelled')}}">Cancelled</a>
+      href="{{url_for(tab, status='cancelled')}}">Cancelled  <span class="badge badge-primary">{{tab_nums['cancelled']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'any' %} active {%endif%}"
-      href="{{url_for(tab, status='any')}}">All</a>
+      href="{{url_for(tab, status='any')}}">All  <span class="badge badge-primary">{{tab_nums['any']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'dairy' %} active {%endif%}"
@@ -455,12 +455,6 @@ function genMultipleLinks() {
             </button>
             {% endif %}
             {% endif %}
-            <p style="display: none;" id="c_msg_{{o.id}}">
-              {{o.c_msg}}
-            </p>
-            <p style="display: none;" id="s_msg_{{o.id}}">
-              {{o.s_msg}}
-            </p>
           </div>
         </td>
         <td scope="row">{{ o.id}}</td>
