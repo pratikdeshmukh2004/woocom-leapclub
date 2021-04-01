@@ -132,8 +132,10 @@ def list_order_items(order_items, refunds, wcapi):
                 f_q = float(order_item['product']['weight'])*float(order_item['quantity'])
                 if f_q<1:
                     f_q = f_q*1000
+                    f_q = int(f_q) if float(int(f_q))==f_q else round(f_q, 2)
                     name_w = name_w[0]+"("+str(f_q)+" gm)"
                 else:
+                    f_q = int(f_q) if float(int(f_q))==f_q else round(f_q, 2)
                     name_w = name_w[0]+"("+str(f_q)+" kg)"
                 msg = (
                     msg
@@ -185,8 +187,10 @@ def list_order_items_csv(order_items, refunds, wcapi):
                 f_q = float(order_item['product']['weight'])*float(order_item['quantity'])
                 if f_q<1:
                     f_q = f_q*1000
+                    f_q = int(f_q) if float(int(f_q))==f_q else round(f_q, 2)
                     name_w = name_w[0]+"("+str(f_q)+" gm)"
                 else:
+                    f_q = int(f_q) if float(int(f_q))==f_q else round(f_q, 2)
                     name_w = name_w[0]+"("+str(f_q)+" kg)"
                 msg = (
                     msg
@@ -699,14 +703,13 @@ def get_csv_from_products(orders, wcapi, format):
             name_w = p['Product Name'].split("(")
             if len(name_w) == 2:
                 name_w_g = name_w[1].split(" ")
-                f_q = total_quantity
+                f_q=total_quantity
                 if f_q<1:
                     f_q = f_q*1000
-                    name_w = name_w[0]+"("+str(f_q)+" gm)"
+                    f_q = int(f_q) if float(int(f_q))==f_q else round(f_q, 2)
                 else:
-                    name_w = name_w[0]+"("+str(f_q)+" kg)"
-                p['Product Name'] = name_w
-
+                    f_q = int(f_q) if float(int(f_q))==f_q else round(f_q, 2)
+                p['Product Name'] = name_w[0]
         p['Weight Existed'] = is_weight
         p['Quantity'] = total_quantity
         writer.writerow({
