@@ -129,13 +129,12 @@ def list_order_items(order_items, refunds, wcapi):
             name_w = order_item['name'].split("(")
             if order_item['product']['weight'] != "" and len(name_w) == 2:
                 name_w_g = name_w[1].split(" ")
-                f_q = int(name_w_g[0])*int(order_item['quantity'])
-                if f_q>=1000:
-                    f_q = f_q/1000
-                    name_w_g[1] = name_w_g[1].replace("gm", 'kg')
-                    name_w = name_w[0]+"("+str(f_q)+" "+name_w_g[1]
+                f_q = float(order_item['product']['weight'])*float(order_item['quantity'])
+                if f_q<1:
+                    f_q = f_q*1000
+                    name_w = name_w[0]+"("+str(f_q)+" gm)"
                 else:
-                    name_w = name_w[0]+"("+str(f_q)+" "+name_w_g[1]
+                    name_w = name_w[0]+"("+str(f_q)+" kg)"
                 msg = (
                     msg
                     + name_w
@@ -183,8 +182,12 @@ def list_order_items_csv(order_items, refunds, wcapi):
             name_w = order_item['name'].split("(")
             if order_item['product']['weight'] != "" and len(name_w) == 2:
                 name_w_g = name_w[1].split(" ")
-                f_q = int(name_w_g[0])*int(order_item['quantity'])
-                name_w = name_w[0]+"("+str(f_q)+" "+name_w_g[1]
+                f_q = float(order_item['product']['weight'])*float(order_item['quantity'])
+                if f_q<1:
+                    f_q = f_q*1000
+                    name_w = name_w[0]+"("+str(f_q)+" gm)"
+                else:
+                    name_w = name_w[0]+"("+str(f_q)+" kg)"
                 msg = (
                     msg
                     + name_w
@@ -693,6 +696,17 @@ def get_csv_from_products(orders, wcapi, format):
         if weight != "":
             is_weight = "YES"
             total_quantity = float(p['Quantity'])*float(weight)
+            name_w = p['Product Name'].split("(")
+            if len(name_w) == 2:
+                name_w_g = name_w[1].split(" ")
+                f_q = total_quantity
+                if f_q<1:
+                    f_q = f_q*1000
+                    name_w = name_w[0]+"("+str(f_q)+" gm)"
+                else:
+                    name_w = name_w[0]+"("+str(f_q)+" kg)"
+                p['Product Name'] = name_w
+
         p['Weight Existed'] = is_weight
         p['Quantity'] = total_quantity
         writer.writerow({

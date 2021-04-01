@@ -205,9 +205,9 @@ def filter_orders_for_errors(orders):
 
 def get_tabs_nums():
     main_dict = {}
-    main_dict['failed'] = {'per_page': 1,'status': "failed, pending"}
+    main_dict['failed, pending'] = {'per_page': 1,'status': "failed, pending"}
     main_dict['processing'] = {'per_page': 1,'status': "processing"}
-    main_dict['tbd'] = {'per_page': 1,'status': "tbd-paid, tbd-unpaid"}
+    main_dict['tbd-paid, tbd-unpaid'] = {'per_page': 1,'status': "tbd-paid, tbd-unpaid"}
     main_dict['delivered-unpaid'] = {'per_page': 1,'status': "delivered-unpaid"}
     main_dict['completed'] = {'per_page': 1,'status': "completed"}
     main_dict['refunded'] = {'per_page': 1,'status': "refunded"}
@@ -220,11 +220,14 @@ def get_tabs_nums():
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(_get_tabs_nums, main_dict)
     return main_dict
+
+
 def get_orders_for_home(args, tab):
     params = get_params(args)
     if "created_via" in params:
         args["created_via"] = params["created_via"]
     t_orders = time.time()
+    tabs_nums = get_tabs_nums()
     if 'status' in args:
         if args['status'][0] == 'dairy' and 'delivery_date' in params:
             delivery = params['delivery_date']
@@ -235,6 +238,7 @@ def get_orders_for_home(args, tab):
             orders.extend(list_orders_with_status(wcapi, params.copy()))
             orders = list(
                 filter(lambda o: get_dairy_condition(o, delivery), orders))
+            tabs_nums['dairy'] = len(orders)
         elif args['status'][0] == 'errors':
             params['status'] = 'any'
             params['created_via'] = "admin,checkout,Order clone"
@@ -243,13 +247,17 @@ def get_orders_for_home(args, tab):
             params['after'] = d3
             orders = list_orders_with_status(wcapi, params.copy())
             orders = filter_orders_for_errors(orders)
+            tabs_nums['errors'] = len(orders)
         elif args['status'][0] == 'dairy':
             orders = list_orders_with_status(wcapi, params.copy())
             del params['vendor']
             params['created_via'] = "subscription"
             orders.extend(list_orders_with_status(wcapi, params.copy()))
+            tabs_nums['dairy'] = len(orders)
         else:
-            orders = wcapi.get("order2", params=params).json()
+            orders = wcapi.get("order2", params=params)
+            tabs_nums[params['status']] = orders.headers['X-WP-Total']
+            orders = orders.json()
     else:
         orders = wcapi.get("order2", params=params).json()
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
@@ -320,7 +328,7 @@ def get_orders_for_home(args, tab):
             params['page'] = 1
         elif args['status'][0] == 'errors':
             params['status'] = 'errors'
-    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=get_tabs_nums())
+    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
 
 
 @app.route("/orders")

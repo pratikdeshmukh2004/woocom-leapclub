@@ -46,7 +46,7 @@
 <ul class="nav nav-tabs mt-2 ml-1">
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'failed, pending' %} active {%endif%}"
-      href="{{url_for(tab, status='failed, pending')}}">Failed <span class="badge badge-primary">{{tab_nums['failed']}}</span></a>
+      href="{{url_for(tab, status='failed, pending')}}">Failed <span class="badge badge-primary">{{tab_nums['failed, pending']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'processing' %} active {%endif%}"
@@ -54,7 +54,7 @@
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'tbd-paid, tbd-unpaid' %} active {%endif%}"
-      href="{{url_for(tab, status='tbd-paid, tbd-unpaid')}}">To Be Delivered  <span class="badge badge-primary">{{tab_nums['tbd']}}</span></a>
+      href="{{url_for(tab, status='tbd-paid, tbd-unpaid')}}">To Be Delivered  <span class="badge badge-primary">{{tab_nums['tbd-paid, tbd-unpaid']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'subscription' %} active {%endif%}"
@@ -82,11 +82,11 @@
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'dairy' %} active {%endif%}"
-      href="{{url_for(tab, status='dairy')}}">Dairy</a>
+      href="{{url_for(tab, status='dairy')}}">Dairy <span class="badge badge-primary">{{tab_nums['dairy']}}</span></a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if nav_active == 'errors' %} active {%endif%}"
-      href="{{url_for(tab, status='errors')}}">Errors</a>
+      href="{{url_for(tab, status='errors')}}">Errors <span class="badge badge-primary">{{tab_nums['errors']}}</span></a>
   </li>
 
 </ul>
