@@ -249,7 +249,7 @@ def get_params(args):
         if 'status_f' in args:
             params['status'] = get_list_to_string(args['status_f'])
         elif args["status"][0] == 'subscription':
-            params["status"] = "tbd-paid, tbd-unpaid"
+            params["status"] = "any"
             params["created_via"] = "subscription"
         elif args['status'][0] == "dairy":
             params["status"] = "processing, tbd-unpaid, tbd-paid"

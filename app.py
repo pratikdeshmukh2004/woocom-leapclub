@@ -1312,6 +1312,13 @@ def update_order_status_with_id(order, status):
         elif order['status'] == 'tbd-paid':
             data['status'] = 'completed'
             r_list.append("Mark as delivered-paid")
+        else:
+            if order['date_paid'] == None:
+                data['status'] = 'delivered-unpaid'
+                r_list.append("Mark as delivered-unpaid")
+            else:
+                data['status'] = 'completed'
+                r_list.append("Mark as delivered-paid")
     elif status == 'tbd':
         if order['date_paid'] == None:
             data['status'] = 'tbd-unpaid'
@@ -1344,11 +1351,19 @@ def change_order_status():
     if len(data.keys())>1:
         for i in data['order_ids[]']:
             order =  wcapi.get("orders/"+str(i)).json()
+            wallet_payment = 0
+            if len(order["fee_lines"]) > 0:
+                for item in order["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment = (-1)*float(item["total"])
+            order['total']= float(order['total'])+wallet_payment
             message, status = update_order_status_with_id(order, data['status'][0])
             name = order['billing']['first_name']+" "+order['billing']['last_name']
             result_list.append({'order_id': i, 'status': status, 'message': message, 'name': name})
             if status == "success":
                 success_text+=i+"-"+name+"-"+message+"\n"
+                if order['payment_method'] == 'wallet' and order['created_via'] == 'subscription':
+                    refund = wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(order['total'])}).json()
             else:
                 error_text+=i+"-"+name+"-"+message+"\n"
         msg_text+=success_text

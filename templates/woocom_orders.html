@@ -215,14 +215,19 @@
       <button data-toggle="tooltip" onclick="sendWMessages()" type="button" title="Send Today Message"
       class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-whatsapp" aria-hidden="true"></i></button>
     {%endif%}
-    {%if nav_active in ['processing', 'failed, pending']%}
-      <button onclick="changeOrderStatus('cancel')" type="button"
-        class="btn btn-info ml-2">Mark as Cancelled</button>
+    {%if nav_active in ['processing', 'failed, pending', 'subscription']%}
       <button onclick="changeOrderStatus('tbd')" type="button"
         class="btn btn-info ml-2">Mark as TBD</button>
-    {%elif nav_active == 'tbd-paid, tbd-unpaid'%}
+    {%endif%}
+    {%if nav_active in ['tbd-paid, tbd-unpaid', 'processing', 'failed, pending']%}
       <button onclick="changeOrderStatus('cancel')" type="button"
         class="btn btn-info ml-2">Mark as Cancelled</button>
+    {%endif%}
+    {%if nav_active in ['subscription']%}
+      <button onclick="changeOrderStatus('cancel')" type="button"
+        class="btn btn-info ml-2">Mark as Cancelled + Refund</button>
+    {%endif%}
+    {%if nav_active in ['tbd-paid, tbd-unpaid', 'subscription']%}
       <button onclick="changeOrderStatus('delivered')" type="button"
         class="btn btn-info ml-2">Mark as Delivered</button>
     {%endif%}
