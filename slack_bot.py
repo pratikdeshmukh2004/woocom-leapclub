@@ -68,7 +68,7 @@ def send_slack_message(client, wcapi, o):
         + taguser
     )
     th_s_msg = "*Order Items*\n" + \
-        list_order_items(o["line_items"], order_refunds)
+        list_order_items(o["line_items"], order_refunds, wcapi)
     response = client.chat_postMessage(
         channel=CHANNELS['ORDER_NOTIFICATIONS'],
         blocks=[
@@ -146,7 +146,7 @@ def send_slack_message_dairy(client, wcapi, o):
         + taguser
     )
     th_s_msg = "*Order Items*\n" + \
-        list_order_items(o["line_items"], order_refunds)
+        list_order_items(o["line_items"], order_refunds, wcapi)
     response = client.chat_postMessage(
         channel=CHANNELS['DAIRY_NOTIFICATIONS'],
         blocks=[
@@ -206,7 +206,7 @@ def send_slack_message_calcelled(client, wcapi, o):
 
     )
     th_s_msg = "*Order Items*\n" + \
-        list_order_items(o["line_items"], order_refunds)
+        list_order_items(o["line_items"], order_refunds, wcapi)
     response = client.chat_postMessage(
         channel=CHANNELS['ORDER_NOTIFICATIONS'],
         blocks=[
@@ -270,7 +270,7 @@ def send_slack_message_calcelled_dairy(client, wcapi, o):
 
     )
     th_s_msg = "*Order Items*\n" + \
-        list_order_items(o["line_items"], order_refunds)
+        list_order_items(o["line_items"], order_refunds, wcapi)
     response = client.chat_postMessage(
         channel=CHANNELS['DAIRY_NOTIFICATIONS'],
         blocks=[

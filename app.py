@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv, get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv, get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier, list_order_refunds, get_shipping_total, list_only_refunds
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -202,11 +202,32 @@ def filter_orders_for_errors(orders):
         elif vendor == "" or delivery_date == "":
             new_orders.append(o)
     return new_orders
+
+def get_tabs_nums():
+    main_dict = {}
+    main_dict['failed, pending'] = {'per_page': 1,'status': "failed, pending"}
+    main_dict['processing'] = {'per_page': 1,'status': "processing"}
+    main_dict['tbd-paid, tbd-unpaid'] = {'per_page': 1,'status': "tbd-paid, tbd-unpaid"}
+    main_dict['delivered-unpaid'] = {'per_page': 1,'status': "delivered-unpaid"}
+    main_dict['completed'] = {'per_page': 1,'status': "completed"}
+    main_dict['refunded'] = {'per_page': 1,'status': "refunded"}
+    main_dict['cancelled'] = {'per_page': 1,'status': "cancelled"}
+    main_dict['any'] = {'per_page': 1,'status': "any"}
+    main_dict['subscription'] = {'per_page': 1,'status': "tbd-paid, tbd-unpaid", 'created_via': 'subscription'}
+    def _get_tabs_nums(params):
+        orders = wcapi.get("order2", params=main_dict[params]).headers['X-WP-Total']
+        main_dict[params] = orders
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(_get_tabs_nums, main_dict)
+    return main_dict
+
+
 def get_orders_for_home(args, tab):
     params = get_params(args)
     if "created_via" in params:
         args["created_via"] = params["created_via"]
     t_orders = time.time()
+    tabs_nums = get_tabs_nums()
     if 'status' in args:
         if args['status'][0] == 'dairy' and 'delivery_date' in params:
             delivery = params['delivery_date']
@@ -217,6 +238,7 @@ def get_orders_for_home(args, tab):
             orders.extend(list_orders_with_status(wcapi, params.copy()))
             orders = list(
                 filter(lambda o: get_dairy_condition(o, delivery), orders))
+            tabs_nums['dairy'] = len(orders)
         elif args['status'][0] == 'errors':
             params['status'] = 'any'
             params['created_via'] = "admin,checkout,Order clone"
@@ -225,13 +247,17 @@ def get_orders_for_home(args, tab):
             params['after'] = d3
             orders = list_orders_with_status(wcapi, params.copy())
             orders = filter_orders_for_errors(orders)
+            tabs_nums['errors'] = len(orders)
         elif args['status'][0] == 'dairy':
             orders = list_orders_with_status(wcapi, params.copy())
             del params['vendor']
             params['created_via'] = "subscription"
             orders.extend(list_orders_with_status(wcapi, params.copy()))
+            tabs_nums['dairy'] = len(orders)
         else:
-            orders = wcapi.get("order2", params=params).json()
+            orders = wcapi.get("order2", params=params)
+            tabs_nums[params['status']] = orders.headers['X-WP-Total']
+            orders = orders.json()
     else:
         orders = wcapi.get("order2", params=params).json()
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
@@ -239,9 +265,6 @@ def get_orders_for_home(args, tab):
     managers = []
     wtmessages_list = {}
     payment_links = {}
-    t_refunds = time.time()
-    orders = get_orders_with_messages(orders, wcapi)
-    print("Time To Fetch Total Refunds: "+str(time.time()-t_refunds))
     total_payble = 0
     vendor_payble = {'dairy': 0, 'bakery': 0,
                      "grocery": 0, "personal_care": 0, '': 0}
@@ -305,7 +328,7 @@ def get_orders_for_home(args, tab):
             params['page'] = 1
         elif args['status'][0] == 'errors':
             params['status'] = 'errors'
-    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab)
+    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
 
 
 @app.route("/orders")
@@ -412,7 +435,7 @@ def download_csv():
             if len(o["refunds"]) > 0:
                 refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
             o['line_items_text'] = list_order_items_csv(
-                o["line_items"], refunds).replace("&amp;", "&")
+                o["line_items"], refunds, wcapi).replace("&amp;", "&")
             o['total_text'] = get_totals(
                 o["total"], refunds)+get_shipping_total_for_csv(o)
         response = requests.post(
@@ -677,7 +700,7 @@ def new_order():
         if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and (od > nd):
             if vendor in ["Mr. Dairy", "mrdairy"]:
                 send_slack_message_dairy(client, wcapi, o)
-            s_msg = send_slack_message(client, wcapi, o)
+            msg = send_slack_message(client, wcapi, o)
             update_wati_contact_attributs(o)
 
         if (o["status"] == "cancelled"):
@@ -946,7 +969,7 @@ def google_sheet():
                     refunds = wcapi.get(
                         "orders/"+str(o["id"])+"/refunds").json()
                 o['line_items_text'] = list_order_items_csv(
-                    o["line_items"], refunds).replace("&amp;", "&")
+                    o["line_items"], refunds, wcapi).replace("&amp;", "&")
                 o['total_text'] = get_totals(
                     o["total"], refunds)+get_shipping_total_for_csv(o)
             response = requests.post(
@@ -1093,61 +1116,68 @@ def multiple_links():
     params["include"] = get_list_to_string(data["order_ids"])
     del params['status']
     orders = wcapi.get("orders", params=params).json()
-    reciept = "Leap " + \
-        get_list_to_string(list(map(lambda o: str(o['id']), orders)))
-    payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
-    if len(payment_links) > 0:
-        counter = 1
-        while True:
-            reciept = "Leap " + \
-                get_list_to_string(
-                    list(map(lambda o: str(o['id']), orders)))+"-"+str(counter)
-            payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
-            if len(payment_links) == 0:
-                break
-            counter += 1
-    customer_ids = []
-    total_amount = 0
+    customers = {}
+    results = []
     for o in orders:
-        customer_ids.append(o['customer_id'])
-        wallet_payment = 0
-        if len(o["fee_lines"]) > 0:
-            for item in o["fee_lines"]:
-                if "wallet" in item["name"].lower():
-                    wallet_payment = (-1)*float(item["total"])
-        total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
-            o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
-    if len(list(set(customer_ids))) != 1:
-        return {"result": "error"}
-    data1 = {
-        "amount": total_amount*100,
-        "receipt": reciept,
-        "customer": {
-            "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
-            "contact": o["billing"]["phone"]
-        },
-        "type": "link",
-        "view_less": 1,
-        "currency": "INR",
-        "description": "Thank you for making a healthy and sustainable choice",
-        "reminder_enable": False,
-        "callback_url": "https://leapclub.in/",
-        "callback_method": "get",
-        "sms_notify": False,
-        'email_notify': False
-    }
-    try:
-        invoice = razorpay_client.invoice.create(data=data1)
-        status = "success"
-        short_url = invoice['short_url']
-        for i in data['order_ids']:
-            new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]
-                                            ["phone"], name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
-            db.session.add(new_payment_link)
-            db.session.commit()
-        return {"result": "success", 'order_ids': data['order_ids'], 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept}
-    except:
-        return {"result": "error"}
+        mobile_number = o['billing']['phone']
+        mobile_number = mobile_number[-10:]
+        mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+        if mobile_number in customers:
+            customers[mobile_number].append(o)
+        else:
+            customers[mobile_number] = [o]
+    for customer in customers:
+        o_ids = list(map(lambda o: str(o['id']), customers[customer]))
+        reciept = "Leap " + \
+            get_list_to_string(o_ids)
+        payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+        if len(payment_links) > 0:
+            counter = 1
+            while True:
+                reciept = "Leap " + \
+                    get_list_to_string(o_ids)+"-"+str(counter)
+                payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+                if len(payment_links) == 0:
+                    break
+                counter += 1
+        total_amount = 0
+        for o in customers[customer]:
+            wallet_payment = 0
+            if len(o["fee_lines"]) > 0:
+                for item in o["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment = (-1)*float(item["total"])
+            total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
+                o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+        data1 = {
+            "amount": total_amount*100,
+            "receipt": reciept,
+            "customer": {
+                "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
+                "contact": customer
+            },
+            "type": "link",
+            "view_less": 1,
+            "currency": "INR",
+            "description": "Thank you for making a healthy and sustainable choice",
+            "reminder_enable": False,
+            "callback_url": "https://leapclub.in/",
+            "callback_method": "get",
+            "sms_notify": False,
+            'email_notify': False
+        }
+        try:
+            invoice = razorpay_client.invoice.create(data=data1)
+            status = "success"
+            short_url = invoice['short_url']
+            for i in o_ids:
+                new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=customer, name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
+                db.session.add(new_payment_link)
+                db.session.commit()
+            results.append({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":customer})
+        except:
+            results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
+    return {'results': results}
 
 
 def send_session_m_st(order_id, vendor, order_note):
@@ -1282,6 +1312,13 @@ def update_order_status_with_id(order, status):
         elif order['status'] == 'tbd-paid':
             data['status'] = 'completed'
             r_list.append("Mark as delivered-paid")
+        else:
+            if order['date_paid'] == None:
+                data['status'] = 'delivered-unpaid'
+                r_list.append("Mark as delivered-unpaid")
+            else:
+                data['status'] = 'completed'
+                r_list.append("Mark as delivered-paid")
     elif status == 'tbd':
         if order['date_paid'] == None:
             data['status'] = 'tbd-unpaid'
@@ -1314,11 +1351,19 @@ def change_order_status():
     if len(data.keys())>1:
         for i in data['order_ids[]']:
             order =  wcapi.get("orders/"+str(i)).json()
+            wallet_payment = 0
+            if len(order["fee_lines"]) > 0:
+                for item in order["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment = (-1)*float(item["total"])
+            order['total']= float(order['total'])+wallet_payment
             message, status = update_order_status_with_id(order, data['status'][0])
             name = order['billing']['first_name']+" "+order['billing']['last_name']
             result_list.append({'order_id': i, 'status': status, 'message': message, 'name': name})
             if status == "success":
                 success_text+=i+"-"+name+"-"+message+"\n"
+                if order['payment_method'] == 'wallet' and order['created_via'] == 'subscription':
+                    refund = wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(order['total']), 'details': 'Refund added for order ID-'+str(order['id'])}).json()
             else:
                 error_text+=i+"-"+name+"-"+message+"\n"
         msg_text+=success_text
@@ -1341,8 +1386,55 @@ def change_order_status():
     else:
         return{'result': 'error'}
 
-
-
+@app.route("/get_copy_messages/<string:id>")
+def get_copy_messages(id):
+    o = wcapi.get("orders/"+id[6:]).json()
+    order_refunds = []
+    if len(o["refunds"]) > 0:
+        order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+    msg = ""
+    if 'c_msg' in id:
+        delivery_date = ""
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        for item in o["meta_data"]:
+            if item["key"] == "_delivery_date":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+            elif item["key"] == "_wc_acof_2_formatted":
+                if delivery_date == "":
+                    delivery_date = item["value"]
+        if delivery_date:
+            try:
+                dt = datetime.datetime.strptime(delivery_date, '%Y-%m-%d')
+                delivery_date = months[dt.month-1]+" " + str(dt.day)
+            except:
+                delivery_date=""
+        msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
+            list_order_items(o["line_items"], order_refunds, wcapi) + \
+            "*Total Amount: " + \
+            get_totals(o["total"], order_refunds) + \
+            get_shipping_total(o)+"*\n\n"
+        msg = msg + \
+            list_order_refunds(order_refunds) + \
+            list_only_refunds(order_refunds)
+    else:
+        payment_status = "Paid To LeapClub."
+        if o['payment_method'] == 'other':
+            payment_status = "Cash On Delivery"
+        msg = ("Order ID: "+str(o["id"])
+                 + "\n\nName: "+o["billing"]["first_name"] +
+                 " "+o["billing"]["last_name"]
+                 + "\nMobile: "+o["billing"]["phone"]
+                 + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
+                 ", "+o["billing"]["address_2"]
+                     + "\n\nTotal Amount: " +
+                 get_totals(o["total"], order_refunds)
+                     + get_shipping_total(o)
+                     + "\n\n"+list_order_items(o["line_items"], order_refunds, wcapi)
+                     + "Payment Status: "+payment_status
+                     + "\nCustomer Note: "+o["customer_note"])
+    return {'status': 'success', 'text': msg}
 
 
 if __name__ == "__main__":

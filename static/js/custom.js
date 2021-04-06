@@ -165,27 +165,6 @@ function SendWhatsappMessages(path) {
   });
 }
 
-function copyToClipboard(id) {
-  var tag = document.getElementById("" + id + "")
-  var text = tag.innerHTML.trim()
-  text = text.replace("&amp;", "&")
-  var input = document.body.appendChild(document.createElement("textarea"));
-  input.value = text;
-  input.select();
-  var status = document.execCommand("copy");
-  input.parentNode.removeChild(input);
-  if (status) {
-    $.nok({
-      message: "Success, Message Copied!",
-      type: "success",
-    });
-  } else {
-    $.nok({
-      message: "Error, Message Not Copied!",
-      type: "error",
-    });
-  }
-}
 
 function sendToGoogleSheet(act, status) {
   var inp_select = $('#select_inps')
@@ -349,42 +328,42 @@ function copySupplierMessage(status) {
 }
 
 
-function genMultipleLinks() {
-  var inp_select = $('#select_inps')
-  var inp_select_v = inp_select.val()
-  $.nok({
-    message: "Processing Your Request Please Wait!",
-    type: "success",
-  });
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/multiple_links",
-    data: { 'order_ids': inp_select_v },
-    success: function (res) {
-      if (res.result == 'success'){
-        for (var id of res.order_ids){
-          var tag = $('#payment-' + id.toString())
-          console.log(typeof (res.amount));
-          tag.text(res.receipt + " | " + (res.amount / 100).toString())
-          tag.attr('onclick', "copyText('" + res.short_url + "')")
-          tag.attr('class', 'text-success')
-        }
-        $.nok({
-          message: "Success, Payment Links Generated!",
-          type: "success",
-        });
-      }
-      else{
-        $.nok({
-          message: "Error, Payment Links Not Generated Please Check Order ID!",
-          type: "error",
-        });
-      }
-    }
-  })
-}
+// function genMultipleLinks() {
+//   var inp_select = $('#select_inps')
+//   var inp_select_v = inp_select.val()
+//   $.nok({
+//     message: "Processing Your Request Please Wait!",
+//     type: "success",
+//   });
+//   $.ajax({
+//     type: "POST",
+//     crossDomain: true,
+//     dataType: "json",
+//     url: "/multiple_links",
+//     data: { 'order_ids': inp_select_v },
+//     success: function (res) {
+//       if (res.result == 'success'){
+//         for (var id of res.order_ids){
+//           var tag = $('#payment-' + id.toString())
+//           console.log(typeof (res.amount));
+//           tag.text(res.receipt + " | " + (res.amount / 100).toString())
+//           tag.attr('onclick', "copyText('" + res.short_url + "')")
+//           tag.attr('class', 'text-success')
+//         }
+//         $.nok({
+//           message: "Success, Payment Links Generated!",
+//           type: "success",
+//         });
+//       }
+//       else{
+//         $.nok({
+//           message: "Error, Payment Links Not Generated Please Check Order ID!",
+//           type: "error",
+//         });
+//       }
+//     }
+//   })
+// }
 
 function changeOrderStatus(status) {
   var inp_select = $('#select_inps')
@@ -505,3 +484,42 @@ function sendWMessages() {
   })
 }
 
+function copyToClipboard(id) {
+  $.ajax({
+    type: "GET",
+    crossDomain: true,
+    dataType: "json",
+    url: "/get_copy_messages/"+id.toString(),
+    success: function (res) {
+      if (res.status == 'success') {
+        var input = document.body.appendChild(document.createElement("textarea"));
+        input.value = res.text;
+        input.select();
+        var status = document.execCommand("copy");
+        input.parentNode.removeChild(input);
+        if (status) {
+          $.nok({
+            message: "Success, Message Copied!",
+            type: "success",
+          });
+        } else {
+          $.nok({
+            message: "Error, Message Not Copied!",
+            type: "error",
+          });
+        }
+      } else {
+        $.nok({
+          message: "Error, Message Not Copied!",
+          type: "error",
+        });
+      }
+    },
+    error: function (res) {
+      $.nok({
+        message: "API Error, Message Not Sent!",
+        type: "error",
+      });
+    },
+  });
+}
