@@ -1406,9 +1406,10 @@ def get_copy_messages(id):
                     delivery_date = item["value"]
         if delivery_date:
             try:
-                dt = datetime.datetime.strptime(delivery_date, '%Y-%m-%d')
+                dt = datetime.strptime(delivery_date, '%Y-%m-%d')
                 delivery_date = months[dt.month-1]+" " + str(dt.day)
-            except:
+            except Exception as e:
+                print(e)
                 delivery_date=""
         msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
             list_order_items(o["line_items"], order_refunds, wcapi) + \
