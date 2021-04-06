@@ -70,7 +70,7 @@ def list_order_items_without_refunds(order_items):
     return msg
 
 
-def list_order_refunds(order_refunds):
+def list_order_refunds(order_refunds, line_item):
     msg = ""
     line_items = []
     m_list = []
@@ -84,20 +84,23 @@ def list_order_refunds(order_refunds):
                 line_items.append(ri)
                 m_list.append(ri["meta_data"][0]["value"])
     for order_item in line_items:
-        msg = (
-            msg
-            + order_item["name"]
-            + " x "
-            + str(order_item["quantity"]*-1)
-            + "\n"
-            + "₹"
-            + str(order_item["price"])
-            + " x "
-            + str(order_item["quantity"]*-1)
-            + " = "
-            + str(order_item["subtotal"])[1:]
-            + "\n\n"
-        )
+        item_id = list(filter(lambda x: x['key'] == '_refunded_item_id', order_item['meta_data']))[0]['value']
+        o_i = list(filter(lambda oi: int(oi["id"]) == int(item_id), line_item))
+        if int(o_i[0]['quantity']) == 0:
+            msg = (
+                msg
+                + order_item["name"]
+                + " x "
+                + str(order_item["quantity"]*-1)
+                + "\n"
+                + "₹"
+                + str(order_item["price"])
+                + " x "
+                + str(order_item["quantity"]*-1)
+                + " = "
+                + str(order_item["subtotal"])[1:]
+                + "\n\n"
+            )
     if len(msg) > 0:
         msg = "We are not able to send: \n\n"+msg
     return msg
@@ -335,7 +338,7 @@ def get_orders_with_messages(orders, wcapi):
             get_totals(o["total"], order_refunds) + \
             get_shipping_total(o)+"*\n\n"
         c_msg = c_msg + \
-            list_order_refunds(order_refunds) + \
+            list_order_refunds(order_refunds, o['line_items']) + \
             list_only_refunds(order_refunds)
         payment_status = "Paid To LeapClub."
         if o['payment_method'] == 'other':
@@ -384,7 +387,7 @@ def get_orders_with_messages_without(orders, wcapi):
             get_totals(o["total"], order_refunds) + \
             get_shipping_total(o)+"*\n\n"
         c_msg = c_msg + \
-            list_order_refunds(order_refunds) + \
+            list_order_refunds(order_refunds, o['line_items']) + \
             list_only_refunds(order_refunds)
         o["c_msg"] = c_msg
         o['total_amount'] = get_totals(o["total"], order_refunds)
@@ -481,7 +484,7 @@ def get_csv_from_vendor_orders(orders, wcapi):
             "Total Order Amount": o["total"],
             "Refund Amount": get_total_from_line_items(o["refunds"])*-1,
             "Delivery Charge": o["shipping_total"],
-            "Order Items": list_order_items_csv(o["line_items"], refunds, wcapi)+list_order_refunds(refunds),
+            "Order Items": list_order_items_csv(o["line_items"], refunds, wcapi)+list_order_refunds(refunds, o['line_items']),
             "Payment Method": o["payment_method_title"],
             "Status": o["status"],
             "Item Total": get_total_from_line_items(o["line_items"])
