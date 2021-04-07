@@ -1,7 +1,6 @@
 $(document).ready(function () {
   $("#list_product_categories").on("submit", function (event) {
     event.preventDefault();
-    console.log(event.target.shipping_class.value);
     $.NotificationApp.send(
       "Sending",
       "Please Wait For A While",
@@ -18,14 +17,12 @@ $(document).ready(function () {
         "/list_product_categories?shipping_class=" +
         event.target.shipping_class.value,
       success: function (res) {
-        console.log(res);
         var input = document.body.appendChild(document.createElement("input"));
         res = res.replace("&amp;", "&");
         input.value = res;
         input.select();
         var status = document.execCommand("copy");
         input.parentNode.removeChild(input);
-        console.log(input.value);
         if (status) {
           $.NotificationApp.send(
             "Success",
@@ -36,7 +33,6 @@ $(document).ready(function () {
             10000
           );
         } else {
-          console.log(status);
           $.NotificationApp.send(
             "Error",
             "Message Not Copied!",
@@ -48,7 +44,6 @@ $(document).ready(function () {
         }
       },
       error: function (res) {
-        console.log(res);
       },
     });
   });
@@ -93,14 +88,12 @@ function CheckOutRequest(url) {
     dataType: "json",
     url: url,
     success: function (res) {
-      console.log(res);
       if (res.result == "success") {
         $.nok({
           message: "Success, Link Generated!",
           type: "success",
         });
         var tag = $('#payment-' + res.order_id)
-        console.log(typeof (res.payment.amount));
         tag.text(res.payment.receipt + " | " + (res.payment.amount / 100).toString())
         tag.attr('onclick', "copyText('" + res.short_url + "')")
         tag.attr('class', 'text-success')
@@ -141,7 +134,6 @@ function SendWhatsappMessages(path) {
     dataType: "json",
     url: path,
     success: function (res) {
-      console.log(res);
       if (["success", "PENDING", "SENT", true].includes(res.result)) {
         $.nok({
           message: "Success, Message Sent!",
@@ -180,7 +172,6 @@ function sendToGoogleSheet(act, status) {
     url: "/csv",
     data: { 'order_ids': inp_select_v, 'action': [act], 'status': status },
     success: function (res) {
-      console.log(res);
       if (res.result == 'success') {
         $.nok({
           message: "Success, Sheet Created!",
@@ -230,10 +221,28 @@ function copyOrderDetail(status) {
           type: "success",
         });
       } else {
+        if (text.length>0){
+          Swal.fire({
+        html: `
+        <pre>
+        <div style='text-align: left;'>
+<b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
+
+`+text+`
+</pre>
+</div>
+        `,
+        width: 700,
+        backdrop: `
+          rgba(0,0,123,0.4)
+        `
+      })
+        }else{
         $.nok({
           message: "Error, Message Not Copied!",
           type: "error",
         });
+      }
       }
     },
     error: function (err) {
@@ -271,10 +280,28 @@ function copyCustomerDetail(status) {
           type: "success",
         });
       } else {
+        if (text.length>0){
+          Swal.fire({
+        html: `
+        <pre>
+        <div style='text-align: left;'>
+<b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
+
+`+text+`
+</pre>
+</div>
+        `,
+        width: 700,
+        backdrop: `
+          rgba(0,0,123,0.4)
+        `
+      })
+        }else{
         $.nok({
           message: "Error, Message Not Copied!",
           type: "error",
         });
+      }
       }
     },
     error: function (err) {
@@ -312,10 +339,28 @@ function copySupplierMessage(status) {
           type: "success",
         });
       } else {
+        if (text.length>0){
+          Swal.fire({
+        html: `
+        <pre>
+        <div style='text-align: left;'>
+<b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
+
+`+text+`
+</pre>
+</div>
+        `,
+        width: 700,
+        backdrop: `
+          rgba(0,0,123,0.4)
+        `
+      })
+        }else{
         $.nok({
           message: "Error, Message Not Copied!",
           type: "error",
         });
+      }
       }
     },
     error: function (err) {
@@ -327,48 +372,74 @@ function copySupplierMessage(status) {
   });
 }
 
-
-// function genMultipleLinks() {
-//   var inp_select = $('#select_inps')
-//   var inp_select_v = inp_select.val()
-//   $.nok({
-//     message: "Processing Your Request Please Wait!",
-//     type: "success",
-//   });
-//   $.ajax({
-//     type: "POST",
-//     crossDomain: true,
-//     dataType: "json",
-//     url: "/multiple_links",
-//     data: { 'order_ids': inp_select_v },
-//     success: function (res) {
-//       if (res.result == 'success'){
-//         for (var id of res.order_ids){
-//           var tag = $('#payment-' + id.toString())
-//           console.log(typeof (res.amount));
-//           tag.text(res.receipt + " | " + (res.amount / 100).toString())
-//           tag.attr('onclick', "copyText('" + res.short_url + "')")
-//           tag.attr('class', 'text-success')
-//         }
-//         $.nok({
-//           message: "Success, Payment Links Generated!",
-//           type: "success",
-//         });
-//       }
-//       else{
-//         $.nok({
-//           message: "Error, Payment Links Not Generated Please Check Order ID!",
-//           type: "error",
-//         });
-//       }
-//     }
-//   })
-// }
+function genMultipleLinks() {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/multiple_links",
+    data: { 'order_ids': inp_select_v },
+    success: function (res) {
+      new_tr = ""
+      for (var c of res.results){
+        if (c.result == 'success'){
+          for (var id of c.order_ids){
+            var tag = $('#payment-' + id.toString())
+            tag.text(c.receipt + " | " + (c.amount / 100).toString())
+            tag.attr('onclick', "copyText('" + c.short_url + "')")
+            tag.attr('class', 'text-success')
+          }
+          new_tr +=`
+          <tr>
+            <td><p>`+c.mobile.toString()+`</p></td>
+            <td><p>`+(c.amount/100).toString()+`</p></td>
+            <td><p>`+c.receipt+`</p></td>
+            <td><button class='btn btn-success btn-sm' title='Click To Copy Payment Link' onclick="copyText('`+c.short_url+`')">Copy Link</button></td>
+          </tr>`
+        }else{
+          new_tr +=`
+          <tr class='table-danger'>
+            <td><p>`+c.mobile.toString()+`</p></td>
+            <td><p>`+(c.amount/100).toString()+`</p></td>
+            <td><p>`+c.receipt+`</p></td>
+          </tr>`
+        }
+      }
+      Swal.fire({
+        html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th><b>Mobile</b></th>  
+              <th><b>Amount</b></th>  
+              <th><b>Receipt</b></th>  
+            </tr>  
+            </thead>
+            <tbody>
+            `+new_tr+`
+            </tbody>
+          </table>
+        `,
+        width: 700,
+        backdrop: `
+          rgba(0,0,123,0.4)
+        `,
+      confirmButtonColor: '#FF3232',
+      confirmButtonText: 'Close'
+      })
+    }
+  })
+}
 
 function changeOrderStatus(status) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
-  console.log(inp_select_v);
   $.nok({
     message: "Processing Your Request Please Wait!",
     type: "success",
@@ -424,10 +495,9 @@ function changeOrderStatus(status) {
 })
 }
 
-function sendWMessages() {
+function sendWMessages(name) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
-  console.log(inp_select_v);
   $.nok({
     message: "Processing Your Request Please Wait!",
     type: "success",
@@ -436,7 +506,7 @@ function sendWMessages() {
     type: "POST",
     crossDomain: true,
     dataType: "json",
-    url: "/send_whatsapp_messages",
+    url: "/send_whatsapp_messages/"+name,
     data: { 'order_ids': inp_select_v },
     success: function (res) {
       if (res.result == 'success'){
@@ -483,8 +553,11 @@ function sendWMessages() {
     }
   })
 }
-
 function copyToClipboard(id) {
+  $.nok({
+    message: "Please Wait For a While, Generating Message ....",
+    type: "success",
+  });
   $.ajax({
     type: "GET",
     crossDomain: true,
@@ -503,10 +576,28 @@ function copyToClipboard(id) {
             type: "success",
           });
         } else {
+          if (res.text.length>0){
+            Swal.fire({
+          html: `
+          <pre>
+          <div style='text-align: left;'>
+<b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
+
+`+res.text+`
+</pre>
+</div>
+          `,
+          width: 700,
+          backdrop: `
+            rgba(0,0,123,0.4)
+          `
+        })
+          }else{
           $.nok({
             message: "Error, Message Not Copied!",
             type: "error",
           });
+        }
         }
       } else {
         $.nok({

@@ -135,6 +135,13 @@ TemplatesBroadcast = {
         'personal_care': {"template": "delivery_today_0203", "broadcast": "delivery_today"},
         'dairy': {"template": "delivery_today_0203", "broadcast": "delivery_today"}
 
+    },
+    "feedback_old_prepaid_v2":{
+        'bakery': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
+        'grocery': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
+        'personal_care': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
+        'dairy': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"}
+
     }
 }
 

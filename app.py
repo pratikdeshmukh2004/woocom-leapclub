@@ -819,47 +819,45 @@ def send_session_message(order_id):
 def gen_payment_link(order_id):
     if not g.user:
         return redirect(url_for('login'))
-    page = request.args.get('page', 0)
     o = wcapi.get("orders/"+order_id).json()
-    c_orders = list_orders_with_status_N2(wcapi, {'customer': o['customer_id']})
-    print(c_orders)
-    # payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
-    # wallet_payment = 0
-    # if len(o["fee_lines"]) > 0:
-    #     for item in o["fee_lines"]:
-    #         if "wallet" in item["name"].lower():
-    #             wallet_payment = (-1)*float(item["total"])
-    # data = {
-    #     "amount": (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))*100,
-    #     "receipt": "Leap "+str(o["id"])+"-"+str(len(payment_links)+1),
-    #     "customer": {
-    #         "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
-    #         "contact": o["billing"]["phone"]
-    #     },
-    #     "type": "link",
-    #     "view_less": 1,
-    #     "currency": "INR",
-    #     "description": "Thank you for making a healthy and sustainable choice",
-    #     "reminder_enable": False,
-    #     "callback_url": "https://leapclub.in/",
-    #     "callback_method": "get",
-    #     "sms_notify": False,
-    #     'email_notify': False
-    # }
-    # try:
-    #     invoice = razorpay_client.invoice.create(data=data)
-    #     status = "success"
-    #     short_url = invoice['short_url']
-    #     new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]
-    #                                     ["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
-    # except:
-    #     status = "failed"
-    #     short_url = ""
-    #     new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]
-    #                                     ["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
-    # db.session.add(new_payment_link)
-    # db.session.commit()
-    # return jsonify({"result": status, 'payment': data, "short_url": short_url, "order_id": order_id})
+    payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
+    wallet_payment = 0
+    if len(o["fee_lines"]) > 0:
+        for item in o["fee_lines"]:
+            if "wallet" in item["name"].lower():
+                wallet_payment = (-1)*float(item["total"])
+    data = {
+        "amount": (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))*100,
+        "receipt": "Leap "+str(o["id"])+"-"+str(len(payment_links)+1),
+        "customer": {
+            "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
+            "contact": o["billing"]["phone"]
+        },
+        "type": "link",
+        "view_less": 1,
+        "currency": "INR",
+        "description": "Thank you for making a healthy and sustainable choice",
+        "reminder_enable": False,
+        "callback_url": "https://leapclub.in/",
+        "callback_method": "get",
+        "sms_notify": False,
+        'email_notify': False
+    }
+    try:
+        invoice = razorpay_client.invoice.create(data=data)
+        status = "success"
+        short_url = invoice['short_url']
+        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]
+                                        ["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
+    except Exception as e:
+        print(e)
+        status = "failed"
+        short_url = ""
+        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]
+                                        ["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
+    db.session.add(new_payment_link)
+    db.session.commit()
+    return jsonify({"result": status, 'payment': data, "short_url": short_url, "order_id": order_id})
 
 
 @app.route("/razorpay", methods=["GET", "POST"])
@@ -1177,7 +1175,8 @@ def multiple_links():
                 db.session.add(new_payment_link)
                 db.session.commit()
             results.append({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":customer})
-        except:
+        except Exception as e:
+            print(e)
             results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
     return {'results': results}
 
@@ -1242,13 +1241,39 @@ def send_whatsapp_temp_sess(args):
     return r_s_msg
 
 
+def send_whatsapp_temp(args, name):
+    args['order_type'] = args['vendor_type']
+    order_note = args["order_note"].replace("\r", "")
+    order_note = order_note.replace("\n", " ")
+    order_note = order_note.replace("  ", " ")
+    args['order_note'] = order_note
+    mobile_number = args["mobile_number"].strip(" ")
+    mobile_number = mobile_number[-10:]
+    mobile_number = (
+        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+    result = send_whatsapp_msg(args, mobile_number, name)
+    if result["result"] in ["success", "PENDING", "SENT", True]:
+        new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
+                            "broadcast_name"], status="success", time_sent=datetime.utcnow())
+    else:
+        new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
+                            "broadcast_name"], status="failed", time_sent=datetime.utcnow())
+    db.session.add(new_wt)
+    db.session.commit()
+    result['order_id'] = str(args['order_id'])
+    return result
+    r_s_msg["order_id"] = args['order_id']
+    return r_s_msg
+
+
+
 @app.route('/send_whatsapp_msg_with_s', methods=['GET'])
 def send_whatsapp_msg_with_s():
     args = request.args.to_dict(flat=True)
     return send_whatsapp_temp_sess(args)
 
-@app.route("/send_whatsapp_messages", methods=['POST'])
-def send_whatsapp_messages_m():
+@app.route("/send_whatsapp_messages/<string:name>", methods=['POST'])
+def send_whatsapp_messages_m(name):
     data = request.form.to_dict(flat=False)
     results = []
     if (len(data)) > 0:
@@ -1284,16 +1309,37 @@ def send_whatsapp_messages_m():
             if vendor in vendor_type.keys():
                 o["vendor_type"] = vendor_type[vendor]
             else:
-                o["vendor_type"] = ""
+                if vendor == "":
+                    r = {'result': "Vendor Error", 'order_id': o['id']}
+                    r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
+                    results.append(r)
+                    continue
+                else:
+                    o["vendor_type"] = ""
             o["wallet_payment"] = wallet_payment
             o["total"] = float(o["total"]) + float(o["wallet_payment"])
-            td = "today_prepay"
-            if o["date_paid"] == None:
-                td = 'today_postpay'
-            params = {'c_name': o['billing']['first_name'], 
-            'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
-                'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
-            r = send_whatsapp_temp_sess(params)
+            # Template Name
+            if name == 'today':
+                td = "today_prepay"
+                if o["date_paid"] == None:
+                    td = 'today_postpay'
+                params = {'c_name': o['billing']['first_name'], 
+                'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
+                    'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
+                r = send_whatsapp_temp_sess(params)
+            else:
+                td = 'feedback_old_prepaid_v2'
+                months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                if len(delivery_date)>0:
+                    dt = datetime.strptime(delivery_date, '%Y-%m-%d')
+                    d_date = dt.strftime("%A")+", "+months[dt.month-1]+" " + str(dt.day)
+                else:
+                    d_date = ""
+                params = {'c_name': o['billing']['first_name'], 
+                'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date_last_order': d_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
+                    'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
+                r = send_whatsapp_temp(params, td)
             r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
             results.append(r)
         return {'result': 'success', 'results': results}
@@ -1414,7 +1460,6 @@ def get_copy_messages(id):
                 dt = datetime.strptime(delivery_date, '%Y-%m-%d')
                 delivery_date = months[dt.month-1]+" " + str(dt.day)
             except Exception as e:
-                print(e)
                 delivery_date=""
         msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
             list_order_items(o["line_items"], order_refunds, wcapi) + \
@@ -1440,7 +1485,7 @@ def get_copy_messages(id):
                      + "\n\n"+list_order_items(o["line_items"], order_refunds, wcapi)
                      + "Payment Status: "+payment_status
                      + "\nCustomer Note: "+o["customer_note"])
-    return {'status': 'success', 'text': msg}
+    return {'status': 'success', 'text': msg.strip()}
 
 
 if __name__ == "__main__":
