@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv, get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier, list_order_refunds, get_shipping_total, list_only_refunds
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv, get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier, list_order_refunds, get_shipping_total, list_only_refunds, list_orders_with_status_N2
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -819,7 +819,11 @@ def send_session_message(order_id):
 def gen_payment_link(order_id):
     if not g.user:
         return redirect(url_for('login'))
+    args = request.args.to_dict(flat=True)
     o = wcapi.get("orders/"+order_id).json()
+    orders = list_orders_with_status_N2(wcapi, {'status': 'tbd-unpaid, delivered-unpaid', 'customer': o['customer_id']})
+    if len(orders)>1 and 'check' not in args:
+        return jsonify({"result": 'check', 'orders':orders})
     payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
     wallet_payment = 0
     if len(o["fee_lines"]) > 0:
@@ -850,7 +854,6 @@ def gen_payment_link(order_id):
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]
                                         ["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
     except Exception as e:
-        print(e)
         status = "failed"
         short_url = ""
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]
@@ -1176,7 +1179,6 @@ def multiple_links():
                 db.session.commit()
             results.append({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":customer})
         except Exception as e:
-            print(e)
             results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
     return {'results': results}
 
@@ -1410,13 +1412,16 @@ def change_order_status():
             order['total']= float(order['total'])+wallet_payment
             message, status = update_order_status_with_id(order, data['status'][0])
             name = order['billing']['first_name']+" "+order['billing']['last_name']
-            result_list.append({'order_id': i, 'status': status, 'message': message, 'name': name})
+            refund_s = "NO"
             if status == "success":
                 success_text+=i+"-"+name+"-"+message+"\n"
                 if order['payment_method'] == 'wallet' and order['created_via'] == 'subscription':
-                    refund = wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(order['total']), 'details': 'Refund added for order ID-'+str(order['id'])}).json()
+                    refund = wcapiw.post("wallet/"+str(order['customer_id']), data={'type':'credit','amount': float(order['total']), 'details': 'Refund added for order ID-'+str(order['id'])}).json()
+                    if refund['response'] == 'success':
+                        refund_s = "YES"
             else:
                 error_text+=i+"-"+name+"-"+message+"\n"
+            result_list.append({'order_id': i, 'status': status, 'message': message, 'name': name,'refund': refund_s})
         msg_text+=success_text
         if len(error_text)>0:
             msg_text+='\n*These orders gave error*\n\n'
