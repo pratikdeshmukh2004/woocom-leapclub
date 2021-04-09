@@ -733,11 +733,14 @@ def get_csv_from_products(orders, wcapi, format):
 
 
 def get_orders_with_customer_detail(orders):
+    cnmsg = ""
+    if o['payment_method']=='other':
+        cnmsg = "\n\nCash on delivery"
     for o in orders:
         msg = str(o['id'])+" ("+o['billing']['first_name']+")\n"+o['billing']['phone']+"\n"+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"] + \
             ", "+o["shipping"]["city"]+", "+o["shipping"]["state"] + ", " + \
             o["shipping"]["postcode"]+"\n\nTotal Amount: " + \
-            str(o['total'])+"\n\nCustomer Note: "+o['customer_note']
+            str(o['total'])+"\n\nCustomer Note: "+o['customer_note']+cnmsg
         o['c_msg'] = msg
     return orders
 
