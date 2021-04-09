@@ -1302,7 +1302,7 @@ def update_order_status_with_id(order, status):
     data = {}
     order_id = order['id']
     r_list = []
-    if status == 'cancel':
+    if status == 'cancel' or status == 'cancel_r':
         data['status'] = 'cancelled'
         r_list.append("Mark as cancelled")
     elif status == 'delivered':
@@ -1346,6 +1346,8 @@ def change_order_status():
         msg_text = '*These orders are marked as to-be-delivered*\n\n'
     if data['status'][0] == 'delivered':
         msg_text = '*These orders are marked as Delivered*\n\n'
+    if data['status'][0] == 'cancel_r':
+        msg_text = '*These orders are marked as cancelled*\n\n'
     error_text = ""
     success_text = ""
     if len(data.keys())>1:
@@ -1362,7 +1364,7 @@ def change_order_status():
             result_list.append({'order_id': i, 'status': status, 'message': message, 'name': name})
             if status == "success":
                 success_text+=i+"-"+name+"-"+message+"\n"
-                if order['payment_method'] == 'wallet' and order['created_via'] == 'subscription':
+                if order['payment_method'] == 'wallet' and order['created_via'] == 'subscription' and data['status'][0] == 'cancel_r':
                     refund = wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(order['total']), 'details': 'Refund added for order ID-'+str(order['id'])}).json()
             else:
                 error_text+=i+"-"+name+"-"+message+"\n"
