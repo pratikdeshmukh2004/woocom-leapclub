@@ -474,6 +474,13 @@ def download_csv():
             elif item["key"] == "_wc_acof_2_formatted":
                 if delivery_date == "":
                     delivery_date = item["value"]
+        for order in orders:
+            wallet_payment = 0
+            if len(order["fee_lines"]) > 0:
+                for item in order["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment = (-1)*float(item["total"])
+            order['total']= float(order['total'])+wallet_payment
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=delivery_sheet", json=orders)
         return {'result': 'success'}
 
