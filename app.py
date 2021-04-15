@@ -1252,6 +1252,8 @@ def send_whatsapp_temp_sess(args):
 
 def send_whatsapp_temp(args, name):
     args['order_type'] = args['vendor_type']
+    if "#" in args['vendor_type']:
+        args['vendor_type'] = 'any'
     order_note = args["order_note"].replace("\r", "")
     order_note = order_note.replace("\n", " ")
     order_note = order_note.replace("  ", " ")
@@ -1285,6 +1287,7 @@ def send_whatsapp_msg_with_s():
 def send_whatsapp_messages_m(name):
     data = request.form.to_dict(flat=False)
     results = []
+    feedback_list = {}
     if (len(data)) > 0:
         orders = list_orders_with_status(
             wcapi, {"include": get_list_to_string(data['order_ids[]'])})
@@ -1348,9 +1351,29 @@ def send_whatsapp_messages_m(name):
                 params = {'c_name': o['billing']['first_name'], 
                 'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date_last_order': d_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
                     'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
-                r = send_whatsapp_temp(params, td)
+                r = {'customer_id': o['customer_id'], 'order_id': o['id']}
+                if o['customer_id'] in feedback_list:
+                    o_p = feedback_list[o['customer_id']]
+                    ids = o_p['vendor_type'].split(" (")[1][:-1]+", #"+str(o['id'])
+                    vendors = o_p['vendor_type'].split(" (")[0]
+                    if params['vendor_type'] not in o_p['vendor_type']:
+                        vendors = vendors+" + "+params['vendor_type']
+                    o_p['vendor_type'] = vendors+" ("+ids+")"
+                    feedback_list[o['customer_id']]=o_p
+                else:
+                    params['vendor_type'] = params['vendor_type']+" (#"+str(o['id'])+")"
+                    feedback_list[o['customer_id']]=params
             r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
             results.append(r)
+        if name == 'feedback':
+            for c in feedback_list:
+                r = send_whatsapp_temp(feedback_list[c], feedback_list[c]['name'])
+                for rs in range(len(results)):
+                    if 'result' not in results[rs]:
+                        if results[rs]['customer_id'] == c:
+                            r['customer_name'] = results[rs]['customer_name']
+                            r['order_id'] = results[rs]['order_id']
+                            results[rs] = r.copy()
         return {'result': 'success', 'results': results}
     else:
         return jsonify({"result": "error"})

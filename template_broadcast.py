@@ -140,7 +140,8 @@ TemplatesBroadcast = {
         'bakery': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
         'grocery': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
         'personal_care': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
-        'dairy': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"}
+        'dairy': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
+        'any': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"}
 
     }
 }
