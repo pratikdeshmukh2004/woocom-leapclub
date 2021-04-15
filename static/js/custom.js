@@ -602,7 +602,7 @@ function CheckOutRequest(url) {
         }
         Swal.fire({
         html: `
-        <b>These orders are unpaid of `+res.orders[0]['billing']['first_name']+" "+res.orders[0]['billing']['last_name']+`</b>
+        <b>Follow orders of `+res.orders[0]['billing']['first_name']+" "+res.orders[0]['billing']['last_name']+` are unpaid. Do you want to generate payment for a single order?</b>
           <table class='table'>
             <thead>
             <tr>
@@ -620,7 +620,8 @@ function CheckOutRequest(url) {
         backdrop: `
           rgba(0,0,123,0.4)
         `,
-      confirmButtonText: 'Generate',
+      confirmButtonText: 'Yes',
+      cancelButtonText: 'No',
       showCancelButton: true,
       }).then((result) => {
   if (result.isConfirmed) {
