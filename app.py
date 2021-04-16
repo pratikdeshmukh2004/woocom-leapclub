@@ -1449,6 +1449,9 @@ def change_order_status():
                 success_text+=i+"-"+name+"-"+message+"\n"
                 if order['payment_method'] == 'wallet' and order['created_via'] == 'subscription' and data['status'][0] == 'cancel_r':
                     refund = wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(order['total']), 'details': 'Refund added for order ID-'+str(order['id'])}).json()
+                    print(refund)
+                    if refund['response'] == 'success' and refund['id'] != False:
+                        refund_s = "YES"
             else:
                 error_text+=i+"-"+name+"-"+message+"\n"
             result_list.append({'order_id': i, 'status': status, 'message': message, 'name': name,'refund': refund_s})
