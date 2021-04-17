@@ -278,11 +278,73 @@
             <i data-toggle="tooltip" title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')"
               class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning ml-1" style="cursor: pointer;"
               aria-hidden="true"></i>
+            {%if nav_active == 'subscription'%}
+            <button data-toggle="tooltip" class="btn btn-warning btn-sm"
+              onclick="genSubscriptionLink('{{o.id}}')">
+              <i title="Generate Payment Link" class="mdi mdi-18px mdi-link"></i>
+            </button>
+            {%else%}
             <button data-toggle="tooltip" class="btn btn-warning btn-sm"
               onclick="CheckOutRequest('{{url_for('gen_payment_link', order_id=o.id)}}')">
               <i title="Generate Payment Link" class="mdi mdi-18px mdi-link"></i>
             </button>
+            {%endif%}
           </div>
+          <script>
+            function genSubscriptionLink(id){
+              Swal.fire({
+                title: 'Enter amount',
+                input: 'text',
+                inputAttributes: {
+                  autocapitalize: 'off'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Generate',
+                showLoaderOnConfirm: true,
+                preConfirm: (amount) => {
+                    return ($.ajax({
+                      type: "GET",
+                      crossDomain: true,
+                      dataType: "json",
+                      url: "/genSubscriptionLink/"+id+"/"+amount,
+                      success: function (res) {
+                        if (res.result == "success") {
+                          console.log(res);
+                          return res
+                        } else {
+                          Swal.showValidationMessage(
+                            `Please enter valid amount.`
+                          )
+                        }
+                      }
+                    }))
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+              }).then((res) => {
+                if (res.isConfirmed) {
+                  res = res.value
+                  if (res.result == "success") {
+                    Swal.fire({
+                      title: "Success, Link Generated!",
+                      icon: "success",
+                    });
+                    var tag = $('#payment-' + res.data.id)
+                    tag.text(res.data.receipt + " | " + (res.data.amount / 100).toString())
+                    tag.attr('onclick', "copyText('" + res.data.short_url + "')")
+                    tag.attr('class', 'text-success')
+                  } else {
+                    Swal.fire({
+                      title: "Error, Link Not Generated!",
+                      icon: "error",
+                    });
+                    var tag = $('#payment-' + res.data.id)
+                    tag.text(res.data.receipt)
+                    tag.attr('class', 'text-danger')
+                  }
+                }
+              })
+            }
+          </script>
           {% endif %}
           <div class="mt-1">
             {% if nav_active == "processing"%}

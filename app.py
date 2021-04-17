@@ -900,46 +900,79 @@ def razorpay():
     e = request.get_json()
     if len(e) > 0:
         if e["event"] == "invoice.paid":
-            mobile = e['payload']['payment']['entity']['contact']
-            order_id = e['payload']['order']['entity']['receipt'][5:].split(
-                "-")[0]
-            invoice_id = e['payload']['invoice']['entity']['id']
-            orders = wcapi.get("orders", params={"include": order_id})
-            if orders.status_code == 200:
-                orders = orders.json()
-                order = orders[0]
-                name = order['billing']['first_name']
-                if order['status'] in ['tbd-unpaid', 'delivered-unpaid']:
-                    msg = send_whatsapp_msg(
-                        {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
-                for order in orders:
-                    name = order['billing']['first_name']
-                    vendor_name = ""
-                    vendor_t = 'any'
-                    for item in order["meta_data"]:
-                        if item["key"] == "wos_vendor_data":
-                            vendor_name = item["value"]["vendor_name"]
-                        elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                            vendor_name = item["value"]
-                    if vendor_name in vendor_type.keys():
-                        vendor_t = vendor_type[vendor_name]
-                    status = update_order_status(order, invoice_id, wcapi_write)
-                    if status:
-                        txt_msg = "These orders are marked as paid in admin panel: "+order_id
-                    else:
-                        txt_msg = "These orders gave an error while marking them as paid: "+order_id
-                    response = client.chat_postMessage(
-                        channel=CHANNELS['PAYMENT_NOTIFICATIONS'],
-                        blocks=[
-                            {
-                                "type": "section",
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": txt_msg
+            if 'Wallet' in e['payload']['order']['entity']['receipt']:
+                customer_id = e['payload']['order']['entity']['receipt'].split("-")[1]
+                total = e['payload']['order']['entity']['amount_paid']/100
+                customer = wcapi.get("customers/"+str(customer_id)).json()
+                if 'code' not in customer:
+                    refund = wcapiw.post("wallet/"+customer_id, data={'type': 'credit', 'amount': total, 'details': 'Credited by Razorpay'}).json()
+                    if refund['response'] == 'success' and refund['id'] != False: 
+                        response = client.chat_postMessage(
+                            channel=CHANNELS['PAYMENT_NOTIFICATIONS'],
+                            blocks=[
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": str(total)+' added to wallet of '+customer['first_name']+" "+customer['last_name']
+                                    }
                                 }
-                            }
-                        ]
-                    )
+                            ]
+                        )
+                    else:
+                        response = client.chat_postMessage(
+                            channel=CHANNELS['PAYMENT_NOTIFICATIONS'],
+                            blocks=[
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": 'Error while adding money to wallet of '+customer['first_name']+" "+customer['last_name']
+                                    }
+                                }
+                            ]
+                        )
+            else:
+                mobile = e['payload']['payment']['entity']['contact']
+                order_id = e['payload']['order']['entity']['receipt'][5:].split(
+                    "-")[0]
+                invoice_id = e['payload']['invoice']['entity']['id']
+                orders = wcapi.get("orders", params={"include": order_id})
+                if orders.status_code == 200:
+                    orders = orders.json()
+                    order = orders[0]
+                    name = order['billing']['first_name']
+                    if order['status'] in ['tbd-unpaid', 'delivered-unpaid']:
+                        msg = send_whatsapp_msg(
+                            {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
+                    for order in orders:
+                        name = order['billing']['first_name']
+                        vendor_name = ""
+                        vendor_t = 'any'
+                        for item in order["meta_data"]:
+                            if item["key"] == "wos_vendor_data":
+                                vendor_name = item["value"]["vendor_name"]
+                            elif item["key"] == "_wc_acof_6" and item['value'] != "":
+                                vendor_name = item["value"]
+                        if vendor_name in vendor_type.keys():
+                            vendor_t = vendor_type[vendor_name]
+                        status = update_order_status(order, invoice_id, wcapi_write)
+                        if status:
+                            txt_msg = "These orders are marked as paid in admin panel: "+order_id
+                        else:
+                            txt_msg = "These orders gave an error while marking them as paid: "+order_id
+                        response = client.chat_postMessage(
+                            channel=CHANNELS['PAYMENT_NOTIFICATIONS'],
+                            blocks=[
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": txt_msg
+                                    }
+                                }
+                            ]
+                        )
             return("Done")
         else:
             return "Payment.Paid"
@@ -1472,7 +1505,6 @@ def change_order_status():
                 success_text+=i+"-"+name+"-"+message+"\n"
                 if order['payment_method'] == 'wallet' and order['created_via'] == 'subscription' and data['status'][0] == 'cancel_r':
                     refund = wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(order['total']), 'details': 'Refund added for order ID-'+str(order['id'])}).json()
-                    print(refund)
                     if refund['response'] == 'success' and refund['id'] != False:
                         refund_s = "YES"
             else:
@@ -1547,6 +1579,56 @@ def get_copy_messages(id):
                      + "Payment Status: "+payment_status
                      + "\nCustomer Note: "+o["customer_note"])
     return {'status': 'success', 'text': msg.strip()}
+
+@app.route("/genSubscriptionLink/<string:id>/<int:amount>")
+def genSubscriptionLink(id, amount):
+    order = wcapi.get("orders/"+id).json()
+    mobile_number = order['billing']["phone"].strip(" ")
+    mobile_number = mobile_number[-10:]
+    mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+    reciept = "Wallet-" + mobile_number
+    payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+    if len(payment_links) > 0:
+        counter = 1
+        while True:
+            reciept = "Wallet-" + str(order['customer_id'])+"-"+str(counter)
+            payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+            if len(payment_links) == 0:
+                break
+            counter += 1
+    data = {
+            "amount": amount*100,
+            "receipt": reciept,
+            "customer": {
+                "name": order["shipping"]["first_name"] + " " + order["shipping"]["last_name"],
+                "contact": mobile_number
+            },
+            "type": "link",
+            "view_less": 1,
+            "currency": "INR",
+            "description": "Thank you for making a healthy and sustainable choice",
+            "reminder_enable": False,
+            "callback_url": "https://leapclub.in/",
+            "callback_method": "get",
+            "sms_notify": False,
+            'email_notify': False
+        }
+    try:
+        invoice = razorpay_client.invoice.create(data=data)
+        status = "success"
+        short_url = invoice['short_url']
+        new_payment_link = PaymentLinks(order_id=order["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=order["billing"]
+                                        ["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
+    except Exception as e:
+        status = "failed"
+        short_url = ""
+        new_payment_link = PaymentLinks(order_id=order["id"], receipt=data["receipt"], payment_link_url="", contact=order["billing"]
+                                        ["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
+    db.session.add(new_payment_link)
+    db.session.commit()
+    data['id'] = order['id']
+    data['short_url'] = short_url
+    return {'result': 'success', 'data': data}
 
 
 if __name__ == "__main__":
