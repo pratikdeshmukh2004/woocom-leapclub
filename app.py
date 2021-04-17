@@ -430,6 +430,8 @@ def download_csv():
         csv_text = get_csv_from_products(orders, wcapi, 'csv')
         filename = str(datetime.utcnow())+"-" + "Product-Sheet.csv"
     elif data["action"][0] == 'google_sheet':
+        delivery_dates = {}
+        status_list = {}
         for o in orders:
             refunds = []
             if len(o["refunds"]) > 0:
@@ -438,9 +440,30 @@ def download_csv():
                 o["line_items"], refunds, wcapi).replace("&amp;", "&")
             o['total_text'] = get_totals(
                 o["total"], refunds)+get_shipping_total_for_csv(o)
+            delivery_date= ""
+            for item in o["meta_data"]:
+                if item["key"] == "_delivery_date":
+                    if delivery_date == "":
+                        delivery_date = item["value"]
+                elif item["key"] == "_wc_acof_2_formatted":
+                    if delivery_date == "":
+                        delivery_date = item["value"]
+            if delivery_date not in delivery_dates:
+                delivery_dates[delivery_date] = {"count": 1}
+            else:
+                delivery_dates[delivery_date]['count'] +=1
+            status_t = o['status']
+            if 'tbd' in status_t:
+                status_t = "to-be-delivered"
+            if status_t not in status_list:
+                status_list[status_t] = {'count': 1}
+            else:
+                status_list[status_t]['count'] +=1
         response = requests.post(
             app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders)
-        return {'result': 'success'}
+        print(response.json())
+        sheet_url = "https://docs.google.com/spreadsheets/d/13SJsfwcI2-swCgef1Yg6S-FhFC5TL1YX46n1_c0vp98/edit#gid="+response.json()['ssUrl']
+        return {'result': 'success', 'ssUrl': sheet_url, 'total_o': len(orders), 'ssName': response.json()['ssName'], "delivery_dates": delivery_dates, 'status_list': status_list}
     elif data['action'][0] == 'product_google_sheet':
         vendor = ""
         delivery_date = ""

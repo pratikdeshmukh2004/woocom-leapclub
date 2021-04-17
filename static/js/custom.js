@@ -136,17 +136,53 @@ function sendToGoogleSheet(act, status) {
     data: { 'order_ids': inp_select_v, 'action': [act], 'status': status },
     success: function (res) {
       if (res.result == 'success') {
+        if (act == 'google_sheet'){
+          delivery_dates_text = ""
+          delivery_date_msg = ""
+          for (var d of Object.keys(res.delivery_dates)){
+            dt = d
+            if (d == ''){
+              dt = "No Date"
+            }
+            delivery_dates_text+=(dt+ " : "+res.delivery_dates[d]['count'].toString()+" orders <br>")
+          }
+          if (Object.keys(res.delivery_dates).length>1){
+            delivery_date_msg = "There are orders with different delivery date or no delivery date. Please change it now."
+          }
+          status_text = ""
+          status_msg = ""
+          for (var d of Object.keys(res.status_list)){
+            status_text+=(d+ " : "+res.status_list[d]['count'].toString()+" orders <br>")
+          }
+          if (Object.keys(res.status_list).length>1){
+            status_msg = "There are orders with different status. Please change all orders to To Be Delivered. "
+          }
+          Swal.fire({
+            html: `
+<b>`+res.total_o+` orders added to Google Sheet <a target='blank' href='`+res.ssUrl+`'>`+res.ssName+`</a></b><br/><br/>
+<div style='text-align: left'><b>Delivery Dates</b><br/>
+`+delivery_dates_text+`<br>
+`+delivery_date_msg+`</div><br/><br/>
+<div style='text-align: left'><b>Status</b><br/>
+`+status_text+`<br>
+`+status_msg+`</div>
+            `,
+            width: 700,
+            backdrop: `
+              rgba(0,0,123,0.4)
+            `
+          })
+        }else{
         $.nok({
           message: "Success, Sheet Created!",
           type: "success",
         });
-        inp_select.val("")
+      }
       } else {
         $.nok({
           message: "Error, Sheet Not Created!",
           type: "error",
         });
-        inp_select.val("")
       }
     },
     error: function (res) {
