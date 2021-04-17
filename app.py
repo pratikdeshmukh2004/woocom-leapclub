@@ -1586,7 +1586,7 @@ def genSubscriptionLink(id, amount):
     mobile_number = order['billing']["phone"].strip(" ")
     mobile_number = mobile_number[-10:]
     mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
-    reciept = "Wallet-" + mobile_number
+    reciept = "Wallet-" + str(order['customer_id'])
     payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
     if len(payment_links) > 0:
         counter = 1
