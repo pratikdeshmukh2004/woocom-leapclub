@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv, get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier, list_order_refunds, get_shipping_total, list_only_refunds
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv, get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier, list_order_refunds, get_shipping_total, list_only_refunds, list_orders_with_status_N2
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -474,6 +474,13 @@ def download_csv():
             elif item["key"] == "_wc_acof_2_formatted":
                 if delivery_date == "":
                     delivery_date = item["value"]
+        for order in orders:
+            wallet_payment = 0
+            if len(order["fee_lines"]) > 0:
+                for item in order["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment = (-1)*float(item["total"])
+            order['total']= float(order['total'])+wallet_payment
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=delivery_sheet", json=orders)
         return {'result': 'success'}
 
@@ -819,8 +826,11 @@ def send_session_message(order_id):
 def gen_payment_link(order_id):
     if not g.user:
         return redirect(url_for('login'))
-    page = request.args.get('page', 0)
+    args = request.args.to_dict(flat=True)
     o = wcapi.get("orders/"+order_id).json()
+    orders = list_orders_with_status_N2(wcapi, {'status': 'tbd-unpaid, delivered-unpaid', 'customer': o['customer_id']})
+    if len(orders)>1 and 'check' not in args:
+        return jsonify({"result": 'check', 'orders':orders})
     payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
     wallet_payment = 0
     if len(o["fee_lines"]) > 0:
@@ -850,7 +860,7 @@ def gen_payment_link(order_id):
         short_url = invoice['short_url']
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]
                                         ["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
-    except:
+    except Exception as e:
         status = "failed"
         short_url = ""
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]
@@ -1175,7 +1185,7 @@ def multiple_links():
                 db.session.add(new_payment_link)
                 db.session.commit()
             results.append({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":customer})
-        except:
+        except Exception as e:
             results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
     return {'results': results}
 
@@ -1240,15 +1250,44 @@ def send_whatsapp_temp_sess(args):
     return r_s_msg
 
 
+def send_whatsapp_temp(args, name):
+    args['order_type'] = args['vendor_type']
+    if "#" in args['vendor_type']:
+        args['vendor_type'] = 'any'
+    order_note = args["order_note"].replace("\r", "")
+    order_note = order_note.replace("\n", " ")
+    order_note = order_note.replace("  ", " ")
+    args['order_note'] = order_note
+    mobile_number = args["mobile_number"].strip(" ")
+    mobile_number = mobile_number[-10:]
+    mobile_number = (
+        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+    result = send_whatsapp_msg(args, mobile_number, name)
+    if result["result"] in ["success", "PENDING", "SENT", True]:
+        new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
+                            "broadcast_name"], status="success", time_sent=datetime.utcnow())
+    else:
+        new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
+                            "broadcast_name"], status="failed", time_sent=datetime.utcnow())
+    db.session.add(new_wt)
+    db.session.commit()
+    result['order_id'] = str(args['order_id'])
+    return result
+    r_s_msg["order_id"] = args['order_id']
+    return r_s_msg
+
+
+
 @app.route('/send_whatsapp_msg_with_s', methods=['GET'])
 def send_whatsapp_msg_with_s():
     args = request.args.to_dict(flat=True)
     return send_whatsapp_temp_sess(args)
 
-@app.route("/send_whatsapp_messages", methods=['POST'])
-def send_whatsapp_messages_m():
+@app.route("/send_whatsapp_messages/<string:name>", methods=['POST'])
+def send_whatsapp_messages_m(name):
     data = request.form.to_dict(flat=False)
     results = []
+    feedback_list = {}
     if (len(data)) > 0:
         orders = list_orders_with_status(
             wcapi, {"include": get_list_to_string(data['order_ids[]'])})
@@ -1282,18 +1321,59 @@ def send_whatsapp_messages_m():
             if vendor in vendor_type.keys():
                 o["vendor_type"] = vendor_type[vendor]
             else:
-                o["vendor_type"] = ""
+                if vendor == "":
+                    r = {'result': "Vendor Error", 'order_id': o['id']}
+                    r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
+                    results.append(r)
+                    continue
+                else:
+                    o["vendor_type"] = ""
             o["wallet_payment"] = wallet_payment
             o["total"] = float(o["total"]) + float(o["wallet_payment"])
-            td = "today_prepay"
-            if o["date_paid"] == None:
-                td = 'today_postpay'
-            params = {'c_name': o['billing']['first_name'], 
-            'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
-                'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
-            r = send_whatsapp_temp_sess(params)
+            # Template Name
+            if name == 'today':
+                td = "today_prepay"
+                if o["date_paid"] == None:
+                    td = 'today_postpay'
+                params = {'c_name': o['billing']['first_name'], 
+                'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
+                    'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
+                r = send_whatsapp_temp_sess(params)
+            else:
+                td = 'feedback_old_prepaid_v2'
+                months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                if len(delivery_date)>0:
+                    dt = datetime.strptime(delivery_date, '%Y-%m-%d')
+                    d_date = dt.strftime("%A")+", "+months[dt.month-1]+" " + str(dt.day)
+                else:
+                    d_date = ""
+                params = {'c_name': o['billing']['first_name'], 
+                'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date_last_order': d_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
+                    'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
+                r = {'customer_id': o['customer_id'], 'order_id': o['id']}
+                if o['customer_id'] in feedback_list:
+                    o_p = feedback_list[o['customer_id']]
+                    ids = o_p['vendor_type'].split(" (")[1][:-1]+", #"+str(o['id'])
+                    vendors = o_p['vendor_type'].split(" (")[0]
+                    if params['vendor_type'] not in o_p['vendor_type']:
+                        vendors = vendors+" + "+params['vendor_type']
+                    o_p['vendor_type'] = vendors+" ("+ids+")"
+                    feedback_list[o['customer_id']]=o_p
+                else:
+                    params['vendor_type'] = params['vendor_type']+" (#"+str(o['id'])+")"
+                    feedback_list[o['customer_id']]=params
             r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
             results.append(r)
+        if name == 'feedback':
+            for c in feedback_list:
+                r = send_whatsapp_temp(feedback_list[c], feedback_list[c]['name'])
+                for rs in range(len(results)):
+                    if 'result' not in results[rs]:
+                        if results[rs]['customer_id'] == c:
+                            r['customer_name'] = results[rs]['customer_name']
+                            r['order_id'] = results[rs]['order_id']
+                            results[rs] = r.copy()
         return {'result': 'success', 'results': results}
     else:
         return jsonify({"result": "error"})
@@ -1320,9 +1400,12 @@ def update_order_status_with_id(order, status):
                 data['status'] = 'completed'
                 r_list.append("Mark as delivered-paid")
     elif status == 'tbd':
-        if order['date_paid'] == None:
+        if order['status'] == 'pending':
             data['status'] = 'tbd-unpaid'
             r_list.append("Mark as tbd-unpaid")
+        elif order['payment_method_title'] not in ['Pre-paid', 'Wallet payment']:
+            data['status'] = 'tbd-unpaid'
+            r_list.append("Mark as tbd-unpaid") 
         else:
             data['status'] = 'tbd-paid'
             r_list.append("Mark as tbd-paid")
@@ -1361,13 +1444,17 @@ def change_order_status():
             order['total']= float(order['total'])+wallet_payment
             message, status = update_order_status_with_id(order, data['status'][0])
             name = order['billing']['first_name']+" "+order['billing']['last_name']
-            result_list.append({'order_id': i, 'status': status, 'message': message, 'name': name})
+            refund_s = "NO"
             if status == "success":
                 success_text+=i+"-"+name+"-"+message+"\n"
                 if order['payment_method'] == 'wallet' and order['created_via'] == 'subscription' and data['status'][0] == 'cancel_r':
                     refund = wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(order['total']), 'details': 'Refund added for order ID-'+str(order['id'])}).json()
+                    print(refund)
+                    if refund['response'] == 'success' and refund['id'] != False:
+                        refund_s = "YES"
             else:
                 error_text+=i+"-"+name+"-"+message+"\n"
+            result_list.append({'order_id': i, 'status': status, 'message': message, 'name': name,'refund': refund_s})
         msg_text+=success_text
         if len(error_text)>0:
             msg_text+='\n*These orders gave error*\n\n'
@@ -1411,7 +1498,6 @@ def get_copy_messages(id):
                 dt = datetime.strptime(delivery_date, '%Y-%m-%d')
                 delivery_date = months[dt.month-1]+" " + str(dt.day)
             except Exception as e:
-                print(e)
                 delivery_date=""
         msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
             list_order_items(o["line_items"], order_refunds, wcapi) + \
@@ -1419,7 +1505,7 @@ def get_copy_messages(id):
             get_totals(o["total"], order_refunds) + \
             get_shipping_total(o)+"*\n\n"
         msg = msg + \
-            list_order_refunds(order_refunds) + \
+            list_order_refunds(order_refunds, o['line_items']) + \
             list_only_refunds(order_refunds)
     else:
         payment_status = "Paid To LeapClub."
@@ -1437,7 +1523,7 @@ def get_copy_messages(id):
                      + "\n\n"+list_order_items(o["line_items"], order_refunds, wcapi)
                      + "Payment Status: "+payment_status
                      + "\nCustomer Note: "+o["customer_note"])
-    return {'status': 'success', 'text': msg}
+    return {'status': 'success', 'text': msg.strip()}
 
 
 if __name__ == "__main__":
