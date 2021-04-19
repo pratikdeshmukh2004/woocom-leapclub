@@ -717,3 +717,58 @@ function CheckOutRequest(url) {
     },
   });
 }
+
+
+function genSubscriptionLink(id){
+  Swal.fire({
+    title: 'Enter amount',
+    input: 'text',
+    inputAttributes: {
+      autocapitalize: 'off'
+    },
+    showCancelButton: true,
+    confirmButtonText: 'Generate',
+    showLoaderOnConfirm: true,
+    preConfirm: (amount) => {
+        return ($.ajax({
+          type: "GET",
+          crossDomain: true,
+          dataType: "json",
+          url: "/genSubscriptionLink/"+id+"/"+amount,
+          success: function (res) {
+            if (res.result == "success") {
+              console.log(res);
+              return res
+            } else {
+              Swal.showValidationMessage(
+                `Please enter valid amount.`
+              )
+            }
+          }
+        }))
+    },
+    allowOutsideClick: () => !Swal.isLoading()
+  }).then((res) => {
+    if (res.isConfirmed) {
+      res = res.value
+      if (res.result == "success") {
+        Swal.fire({
+          title: "Success, Link Generated!",
+          icon: "success",
+        });
+        var tag = $('#payment-' + res.data.id)
+        tag.text(res.data.receipt + " | " + (res.data.amount / 100).toString())
+        tag.attr('onclick', "copyText('" + res.data.short_url + "')")
+        tag.attr('class', 'text-success')
+      } else {
+        Swal.fire({
+          title: "Error, Link Not Generated!",
+          icon: "error",
+        });
+        var tag = $('#payment-' + res.data.id)
+        tag.text(res.data.receipt)
+        tag.attr('class', 'text-danger')
+      }
+    }
+  })
+}

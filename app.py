@@ -461,7 +461,6 @@ def download_csv():
                 status_list[status_t]['count'] +=1
         response = requests.post(
             app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders)
-        print(response.json())
         sheet_url = "https://docs.google.com/spreadsheets/d/13SJsfwcI2-swCgef1Yg6S-FhFC5TL1YX46n1_c0vp98/edit#gid="+response.json()['ssUrl']
         return {'result': 'success', 'ssUrl': sheet_url, 'total_o': len(orders), 'ssName': response.json()['ssName'], "delivery_dates": delivery_dates, 'status_list': status_list}
     elif data['action'][0] == 'product_google_sheet':
@@ -1629,6 +1628,76 @@ def genSubscriptionLink(id, amount):
     data['id'] = order['id']
     data['short_url'] = short_url
     return {'result': 'success', 'data': data}
+
+@app.route("/genMulSubscriptionLink", methods=['POST'])
+def genMulSubscriptionLink():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    del params['status']
+    orders = wcapi.get("orders", params=params).json()
+    customers = {}
+    results = []
+    for o in orders:
+        customer_id = o['customer_id']
+        if customer_id in customers:
+            customers[customer_id].append(o)
+        else:
+            customers[customer_id] = [o]
+    for customer in customers:
+        o_ids = list(map(lambda o: str(o['id']), customers[customer]))
+        reciept = "Wallet-" + str(customer)
+        payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+        if len(payment_links) > 0:
+            counter = 1
+            while True:
+                reciept = "Wallet-" + str(customer)+"-"+str(counter)
+                payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+                if len(payment_links) == 0:
+                    break
+                counter += 1
+        total_amount = 0
+        for o in customers[customer]:
+            wallet_payment = 0
+            if len(o["fee_lines"]) > 0:
+                for item in o["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment = (-1)*float(item["total"])
+            total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
+                o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+            mobile_number = o['billing']["phone"].strip(" ")
+            mobile_number = mobile_number[-10:]
+            mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+        data1 = {
+            "amount": total_amount*100,
+            "receipt": reciept,
+            "customer": {
+                "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
+                "contact": mobile_number
+            },
+            "type": "link",
+            "view_less": 1,
+            "currency": "INR",
+            "description": "Thank you for making a healthy and sustainable choice",
+            "reminder_enable": False,
+            "callback_url": "https://leapclub.in/",
+            "callback_method": "get",
+            "sms_notify": False,
+            'email_notify': False
+        }
+        try:
+            invoice = razorpay_client.invoice.create(data=data1)
+            status = "success"
+            short_url = invoice['short_url']
+            for i in o_ids:
+                new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=customer, name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
+                db.session.add(new_payment_link)
+                db.session.commit()
+            results.append({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":customer})
+        except Exception as e:
+            results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
+    return {'results': results}
 
 
 if __name__ == "__main__":
