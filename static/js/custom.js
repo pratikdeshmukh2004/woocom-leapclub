@@ -772,3 +772,69 @@ function genSubscriptionLink(id){
     }
   })
 }
+
+
+function genMulSubscriptionLinks() {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/genMulSubscriptionLink",
+    data: { 'order_ids': inp_select_v },
+    success: function (res) {
+      new_tr = ""
+      for (var c of res.results){
+        if (c.result == 'success'){
+          for (var id of c.order_ids){
+            var tag = $('#payment-' + id.toString())
+            tag.text(c.receipt + " | " + (c.amount / 100).toString())
+            tag.attr('onclick', "copyText('" + c.short_url + "')")
+            tag.attr('class', 'text-success')
+          }
+          new_tr +=`
+          <tr>
+            <td><p>`+c.mobile.toString()+`</p></td>
+            <td><p>`+(c.amount/100).toString()+`</p></td>
+            <td><p>`+c.receipt+`</p></td>
+            <td><button class='btn btn-success btn-sm' title='Click To Copy Payment Link' onclick="copyText('`+c.short_url+`')">Copy Link</button></td>
+          </tr>`
+        }else{
+          new_tr +=`
+          <tr class='table-danger'>
+            <td><p>`+c.mobile.toString()+`</p></td>
+            <td><p>`+(c.amount/100).toString()+`</p></td>
+            <td><p>`+c.receipt+`</p></td>
+          </tr>`
+        }
+      }
+      Swal.fire({
+        html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th><b>Mobile</b></th>  
+              <th><b>Amount</b></th>  
+              <th><b>Receipt</b></th>  
+            </tr>  
+            </thead>
+            <tbody>
+            `+new_tr+`
+            </tbody>
+          </table>
+        `,
+        width: 700,
+        backdrop: `
+          rgba(0,0,123,0.4)
+        `,
+      confirmButtonColor: '#FF3232',
+      confirmButtonText: 'Close'
+      })
+    }
+  })
+}
