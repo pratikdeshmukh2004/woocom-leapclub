@@ -19,9 +19,10 @@ import razorpay
 from datetime import datetime, timedelta
 from pytz import timezone
 from slack import WebClient
-from slack_bot import send_slack_message, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
+from slack_bot import send_slack_message_, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
 from flask_crontab import Crontab
 from slack_chennels import CHANNELS
+from modules.universal import format_mobile, send_slack_message
 
 
 
@@ -396,10 +397,7 @@ def send_whatsapp(name):
             nav_active = args["status"]
         else:
             nav_active = "any"
-        mobile_number = args["mobile_number"].strip(" ")
-        mobile_number = mobile_number[-10:]
-        mobile_number = (
-            "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+        mobile_number = format_mobile(args["mobile_number"])
         result = send_whatsapp_msg(args, mobile_number, name)
         if result["result"] in ["success", "PENDING", "SENT", True]:
             new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
@@ -615,10 +613,7 @@ def list_product_categories_by_c():
 
 
 def update_wati_contact_attributs(o):
-    mobile_number = o["billing"]["phone"].strip(" ")
-    mobile_number = mobile_number[-10:]
-    mobile_number = (
-        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+    mobile_number = format_mobile(o["billing"]["phone"])
     url = app.config["WATI_URL"] + \
         "/api/v1/updateContactAttributes/" + mobile_number
     vendor = ""
@@ -663,7 +658,7 @@ def new_order():
     o = request.get_json()
     if o == None:
         return "Please Enter Valid Detail...."
-    customer_number = _format_mobile_number(o["billing"]["phone"])
+    customer_number = format_mobile(o["billing"]["phone"])
     mobile_numbers = [customer_number]
     params = {}
     vendor = ""
@@ -731,7 +726,7 @@ def new_order():
         if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and (od > nd):
             if vendor in ["Mr. Dairy", "mrdairy"]:
                 send_slack_message_dairy(client, wcapi, o)
-            msg = send_slack_message(client, wcapi, o)
+            msg = send_slack_message_(client, wcapi, o)
             update_wati_contact_attributs(o)
 
         if (o["status"] == "cancelled"):
@@ -742,19 +737,10 @@ def new_order():
 
     if request.headers["x-wc-webhook-topic"] == "order.created":
         if (o["created_via"] == "admin"):
-            s_msg = send_slack_message(client, wcapi, o)
+            s_msg = send_slack_message_(client, wcapi, o)
             update_wati_contact_attributs(o)
 
     return {"Result": "Success No Error..."}
-
-
-def _format_mobile_number(number):
-    mobile_number = number.strip(" ").replace(" ", "")
-    mobile_number = mobile_number[-10:]
-    mobile_number = (
-        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
-    return mobile_number
-
 
 
 def get_subscription_wallet_balance(subscriptions):
@@ -817,11 +803,8 @@ def send_session_message(order_id):
     if not g.user:
         return redirect(url_for('login'))
     order = wcapi.get("orders/"+order_id).json()
-    mobile_number = order["billing"]["phone"]
+    mobile_number = format_mobile(order["billing"]["phone"])
     order = get_orders_with_messages([order], wcapi)
-    mobile_number = mobile_number[-10:]
-    mobile_number = (
-        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
     url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
         mobile_number + "?messageText="+order[0]["c_msg"]
     headers = {
@@ -881,7 +864,7 @@ def gen_payment_link(order_id):
         "receipt": "Leap "+str(o["id"])+"-"+str(len(payment_links)+1),
         "customer": {
             "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
-            "contact": o["billing"]["phone"]
+            "contact": format_mobile(o["billing"]["phone"])
         },
         "type": "link",
         "view_less": 1,
@@ -897,13 +880,11 @@ def gen_payment_link(order_id):
         invoice = razorpay_client.invoice.create(data=data)
         status = "success"
         short_url = invoice['short_url']
-        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=o["billing"]
-                                        ["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
+        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=format_mobile(o["billing"]["phone"]), name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
     except Exception as e:
         status = "failed"
         short_url = ""
-        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=o["billing"]
-                                        ["phone"], name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
+        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=format_mobile(o["billing"]["phone"]), name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
     db.session.add(new_payment_link)
     db.session.commit()
     return jsonify({"result": status, 'payment': data, "short_url": short_url, "order_id": order_id})
@@ -923,31 +904,9 @@ def razorpay():
                 if 'code' not in customer:
                     refund = wcapiw.post("wallet/"+customer_id, data={'type': 'credit', 'amount': total, 'details': 'Credited by Razorpay'}).json()
                     if refund['response'] == 'success' and refund['id'] != False: 
-                        response = client.chat_postMessage(
-                            channel=CHANNELS['PAYMENT_NOTIFICATIONS'],
-                            blocks=[
-                                {
-                                    "type": "section",
-                                    "text": {
-                                        "type": "mrkdwn",
-                                        "text": str(total)+' added to wallet of '+customer['first_name']+" "+customer['last_name']
-                                    }
-                                }
-                            ]
-                        )
+                        response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", str(total)+' added to wallet of '+customer['first_name']+" "+customer['last_name'])
                     else:
-                        response = client.chat_postMessage(
-                            channel=CHANNELS['PAYMENT_NOTIFICATIONS'],
-                            blocks=[
-                                {
-                                    "type": "section",
-                                    "text": {
-                                        "type": "mrkdwn",
-                                        "text": 'Error while adding money to wallet of '+customer['first_name']+" "+customer['last_name']
-                                    }
-                                }
-                            ]
-                        )
+                        response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", 'Error while adding money to wallet of '+customer['first_name']+" "+customer['last_name'])
             else:
                 mobile = e['payload']['payment']['entity']['contact']
                 order_id = e['payload']['order']['entity']['receipt'][5:].split(
@@ -977,18 +936,7 @@ def razorpay():
                             txt_msg = "These orders are marked as paid in admin panel: "+order_id
                         else:
                             txt_msg = "These orders gave an error while marking them as paid: "+order_id
-                        response = client.chat_postMessage(
-                            channel=CHANNELS['PAYMENT_NOTIFICATIONS'],
-                            blocks=[
-                                {
-                                    "type": "section",
-                                    "text": {
-                                        "type": "mrkdwn",
-                                        "text": txt_msg
-                                    }
-                                }
-                            ]
-                        )
+                        response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", txt_msg)
             return("Done")
         else:
             return "Payment.Paid"
@@ -1202,9 +1150,7 @@ def multiple_links():
     results = []
     paid_orders = []
     for o in orders:
-        mobile_number = o['billing']['phone']
-        mobile_number = mobile_number[-10:]
-        mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+        mobile_number = format_mobile(o['billing']['phone'])
         if mobile_number in customers:
             customers[mobile_number].append(o)
         else:
@@ -1317,10 +1263,7 @@ def send_whatsapp_temp_sess(args):
         order_note = order_note.replace("\n", " ")
         order_note = order_note.replace("  ", " ")
         args['order_note'] = order_note
-        mobile_number = args["mobile_number"].strip(" ")
-        mobile_number = mobile_number[-10:]
-        mobile_number = (
-            "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+        mobile_number = format_mobile(args["mobile_number"])
         result = send_whatsapp_msg(args, mobile_number, "delivery_today_0203")
         if result["result"] in ["success", "PENDING", "SENT", True]:
             new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
@@ -1344,10 +1287,7 @@ def send_whatsapp_temp(args, name):
     order_note = order_note.replace("\n", " ")
     order_note = order_note.replace("  ", " ")
     args['order_note'] = order_note
-    mobile_number = args["mobile_number"].strip(" ")
-    mobile_number = mobile_number[-10:]
-    mobile_number = (
-        "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+    mobile_number = format_mobile(args["mobile_number"])
     result = send_whatsapp_msg(args, mobile_number, name)
     if result["result"] in ["success", "PENDING", "SENT", True]:
         new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
@@ -1423,7 +1363,7 @@ def send_whatsapp_messages_m(name):
                     td = 'today_postpay'
                 params = {'c_name': o['billing']['first_name'], 
                 'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
-                    'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
+                    'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
                 r = send_whatsapp_temp_sess(params)
             else:
                 td = 'feedback_old_prepaid_v2'
@@ -1436,7 +1376,7 @@ def send_whatsapp_messages_m(name):
                     d_date = ""
                 params = {'c_name': o['billing']['first_name'], 
                 'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date_last_order': d_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
-                    'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': o['billing']['phone'], 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
+                    'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
                 r = {'customer_id': o['customer_id'], 'order_id': o['id']}
                 if o['customer_id'] in feedback_list:
                     o_p = feedback_list[o['customer_id']]
@@ -1544,18 +1484,7 @@ def change_order_status():
         if len(error_text)>0:
             msg_text+='\n*These orders gave error*\n\n'
             msg_text+=error_text
-        response = client.chat_postMessage(
-            channel=CHANNELS['VENDOR_WISE'],
-            blocks=[
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": msg_text
-                    }
-                }
-            ]
-        )
+        response =send_slack_message(client, "VENDOR_WISE", msg_text)
         return {'result': 'success', 'result_list': result_list}
     else:
         return{'result': 'error'}
@@ -1599,7 +1528,7 @@ def get_copy_messages(id):
         msg = ("Order ID: "+str(o["id"])
                  + "\n\nName: "+o["billing"]["first_name"] +
                  " "+o["billing"]["last_name"]
-                 + "\nMobile: "+o["billing"]["phone"]
+                 + "\nMobile: "+format_mobile(o["billing"]["phone"])
                  + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
                  ", "+o["billing"]["address_2"]
                      + "\n\nTotal Amount: " +
@@ -1647,8 +1576,7 @@ def genSubscriptionLink(id, amount):
         invoice = razorpay_client.invoice.create(data=data)
         status = "success"
         short_url = invoice['short_url']
-        new_payment_link = PaymentLinks(order_id=order["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=order["billing"]
-                                        ["phone"], name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
+        new_payment_link = PaymentLinks(order_id=order["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=format_mobile(order["billing"]["phone"]), name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
     except Exception as e:
         status = "failed"
         short_url = ""
@@ -1697,9 +1625,7 @@ def genMulSubscriptionLink():
                         wallet_payment = (-1)*float(item["total"])
             total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
                 o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
-            mobile_number = o['billing']["phone"].strip(" ")
-            mobile_number = mobile_number[-10:]
-            mobile_number = ("91"+mobile_number) if len(mobile_number) == 10 else mobile_number
+            mobile_number = format_mobile(o['billing']["phone"])
         data1 = {
             "amount": total_amount*100,
             "receipt": reciept,
@@ -1729,6 +1655,27 @@ def genMulSubscriptionLink():
         except Exception as e:
             results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
     return {'results': results}
+
+@app.route("/copy_linked_orders", methods=['POST'])
+def copy_linked_orders():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    del params['status']
+    orders = wcapi.get("orders", params=params).json()
+    customers = {}
+    for o in orders:
+        if o['customer_id'] in customers:
+            customers[o['customer_id']]['ids'].append(str(o['id']))
+        else:
+            customers[o['customer_id']] = {'ids': [str(o['id'])], 'name': o['billing']['first_name']}
+    text = "Linked Orders:\n\n"
+    for c in customers:
+        ids = " + ".join(customers[c]['ids'])
+        ids+=" ("+customers[c]['name']+")\n"
+        text+=ids
+    return {'status': 'success', 'text': text}
 
 
 if __name__ == "__main__":

@@ -850,3 +850,69 @@ function genMulSubscriptionLinks() {
     }
   })
 }
+
+
+function copyLinkedOrders() {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  $.nok({
+    message: "Please Wait For a While, Generating Message ....",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/copy_linked_orders",
+    data: {'order_ids': inp_select_v},
+    success: function (res) {
+      if (res.status == 'success') {
+        var input = document.body.appendChild(document.createElement("textarea"));
+        input.value = res.text;
+        input.select();
+        var status = document.execCommand("copy");
+        input.parentNode.removeChild(input);
+        if (status) {
+          $.nok({
+            message: "Success, Message Copied!",
+            type: "success",
+          });
+        } else {
+          if (res.text.length>0){
+            Swal.fire({
+          html: `
+          <pre>
+          <div style='text-align: left;'>
+<b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
+
+`+res.text+`
+</pre>
+</div>
+          `,
+          width: 700,
+          backdrop: `
+            rgba(0,0,123,0.4)
+          `
+        })
+          }else{
+          $.nok({
+            message: "Error, Message Not Copied!",
+            type: "error",
+          });
+        }
+        }
+      } else {
+        $.nok({
+          message: "Error, Message Not Copied!",
+          type: "error",
+        });
+      }
+    },
+    error: function (res) {
+      $.nok({
+        message: "API Error, Message Not Sent!",
+        type: "error",
+      });
+    },
+  });
+}

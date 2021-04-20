@@ -5,6 +5,7 @@ import datetime
 import concurrent.futures
 from customselectlist import list_created_via
 from pytz import timezone
+from modules.universal import format_mobile
 
 
 def format_delivery_date(d):
@@ -354,7 +355,7 @@ def get_orders_with_messages(orders, wcapi):
         s_msg = ("Order ID: "+str(o["id"])
                  + "\n\nName: "+o["billing"]["first_name"] +
                  " "+o["billing"]["last_name"]
-                 + "\nMobile: "+o["billing"]["phone"]
+                 + "\nMobile: "+format_mobile(o["billing"]["phone"])
                  + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
                  ", "+o["billing"]["address_2"]
                      + "\n\nTotal Amount: " +
@@ -433,7 +434,7 @@ def get_csv_from_orders(orders, wcapi):
             refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
         writer.writerow({
             "Order ID": o["id"],
-            "Customer Detail": "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+o["billing"]["phone"]
+            "Customer Detail": "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+format_mobile(o["billing"]["phone"])
             + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", " +
             o["shipping"]["city"]+", "+o["shipping"]["state"] +
             ", "+o["shipping"]["postcode"],
@@ -485,7 +486,7 @@ def get_csv_from_vendor_orders(orders, wcapi):
             "Date Created": o["date_created"],
             "Delivery Date": delivery_date,
             "Order ID": o["id"],
-            "Customer Detail":  "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+o["billing"]["phone"]
+            "Customer Detail":  "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+format_mobile(o["billing"]["phone"])
             + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", " +
             o["shipping"]["city"]+", "+o["shipping"]["state"] +
             ", "+o["shipping"]["postcode"],
@@ -745,7 +746,7 @@ def get_orders_with_customer_detail(orders):
         cnmsg = ""
         if o['payment_method']=='other':
             cnmsg = "\n\nCash on delivery"
-        msg = str(o['id'])+" ("+o['billing']['first_name']+")\n"+o['billing']['phone']+"\n"+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"] + \
+        msg = str(o['id'])+" ("+o['billing']['first_name']+")\n"+format_mobile(o['billing']['phone'])+"\n"+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"] + \
             ", "+o["shipping"]["city"]+", "+o["shipping"]["state"] + ", " + \
             o["shipping"]["postcode"]+"\n\nTotal Amount: " + \
             str(o['total'])+"\n\nCustomer Note: "+o['customer_note']+cnmsg
@@ -765,7 +766,7 @@ def get_orders_with_supplier(orders, wcapi):
         s_msg = ("Order ID: "+str(o["id"])
                  + "\n\nName: "+o["billing"]["first_name"] +
                  " "+o["billing"]["last_name"]
-                 + "\nMobile: "+o["billing"]["phone"]
+                 + "\nMobile: "+format_mobile(o["billing"]["phone"])
                  + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
                  ", "+o["billing"]["address_2"]
                      + "\n\nTotal Amount: " +
