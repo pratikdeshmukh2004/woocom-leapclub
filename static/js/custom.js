@@ -136,17 +136,53 @@ function sendToGoogleSheet(act, status) {
     data: { 'order_ids': inp_select_v, 'action': [act], 'status': status },
     success: function (res) {
       if (res.result == 'success') {
+        if (act == 'google_sheet'){
+          delivery_dates_text = ""
+          delivery_date_msg = ""
+          for (var d of Object.keys(res.delivery_dates)){
+            dt = d
+            if (d == ''){
+              dt = "No Date"
+            }
+            delivery_dates_text+=(dt+ " : "+res.delivery_dates[d]['count'].toString()+" orders <br>")
+          }
+          if (Object.keys(res.delivery_dates).length>1){
+            delivery_date_msg = "There are orders with different delivery date or no delivery date. Please change it now."
+          }
+          status_text = ""
+          status_msg = ""
+          for (var d of Object.keys(res.status_list)){
+            status_text+=(d+ " : "+res.status_list[d]['count'].toString()+" orders <br>")
+          }
+          if (Object.keys(res.status_list).length>1){
+            status_msg = "There are orders with different status. Please change all orders to To Be Delivered. "
+          }
+          Swal.fire({
+            html: `
+<b>`+res.total_o+` orders added to Google Sheet <a target='blank' href='`+res.ssUrl+`'>`+res.ssName+`</a></b><br/><br/>
+<div style='text-align: left'><b>Delivery Dates</b><br/>
+`+delivery_dates_text+`<br>
+`+delivery_date_msg+`</div><br/><br/>
+<div style='text-align: left'><b>Status</b><br/>
+`+status_text+`<br>
+`+status_msg+`</div>
+            `,
+            width: 700,
+            backdrop: `
+              rgba(0,0,123,0.4)
+            `
+          })
+        }else{
         $.nok({
           message: "Success, Sheet Created!",
           type: "success",
         });
-        inp_select.val("")
+      }
       } else {
         $.nok({
           message: "Error, Sheet Not Created!",
           type: "error",
         });
-        inp_select.val("")
       }
     },
     error: function (res) {
@@ -680,4 +716,125 @@ function CheckOutRequest(url) {
       });
     },
   });
+}
+
+
+function genSubscriptionLink(id){
+  Swal.fire({
+    title: 'Enter amount',
+    input: 'text',
+    inputAttributes: {
+      autocapitalize: 'off'
+    },
+    showCancelButton: true,
+    confirmButtonText: 'Generate',
+    showLoaderOnConfirm: true,
+    preConfirm: (amount) => {
+        return ($.ajax({
+          type: "GET",
+          crossDomain: true,
+          dataType: "json",
+          url: "/genSubscriptionLink/"+id+"/"+amount,
+          success: function (res) {
+            if (res.result == "success") {
+              console.log(res);
+              return res
+            } else {
+              Swal.showValidationMessage(
+                `Please enter valid amount.`
+              )
+            }
+          }
+        }))
+    },
+    allowOutsideClick: () => !Swal.isLoading()
+  }).then((res) => {
+    if (res.isConfirmed) {
+      res = res.value
+      if (res.result == "success") {
+        Swal.fire({
+          title: "Success, Link Generated!",
+          icon: "success",
+        });
+        var tag = $('#payment-' + res.data.id)
+        tag.text(res.data.receipt + " | " + (res.data.amount / 100).toString())
+        tag.attr('onclick', "copyText('" + res.data.short_url + "')")
+        tag.attr('class', 'text-success')
+      } else {
+        Swal.fire({
+          title: "Error, Link Not Generated!",
+          icon: "error",
+        });
+        var tag = $('#payment-' + res.data.id)
+        tag.text(res.data.receipt)
+        tag.attr('class', 'text-danger')
+      }
+    }
+  })
+}
+
+
+function genMulSubscriptionLinks() {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/genMulSubscriptionLink",
+    data: { 'order_ids': inp_select_v },
+    success: function (res) {
+      new_tr = ""
+      for (var c of res.results){
+        if (c.result == 'success'){
+          for (var id of c.order_ids){
+            var tag = $('#payment-' + id.toString())
+            tag.text(c.receipt + " | " + (c.amount / 100).toString())
+            tag.attr('onclick', "copyText('" + c.short_url + "')")
+            tag.attr('class', 'text-success')
+          }
+          new_tr +=`
+          <tr>
+            <td><p>`+c.mobile.toString()+`</p></td>
+            <td><p>`+(c.amount/100).toString()+`</p></td>
+            <td><p>`+c.receipt+`</p></td>
+            <td><button class='btn btn-success btn-sm' title='Click To Copy Payment Link' onclick="copyText('`+c.short_url+`')">Copy Link</button></td>
+          </tr>`
+        }else{
+          new_tr +=`
+          <tr class='table-danger'>
+            <td><p>`+c.mobile.toString()+`</p></td>
+            <td><p>`+(c.amount/100).toString()+`</p></td>
+            <td><p>`+c.receipt+`</p></td>
+          </tr>`
+        }
+      }
+      Swal.fire({
+        html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th><b>Mobile</b></th>  
+              <th><b>Amount</b></th>  
+              <th><b>Receipt</b></th>  
+            </tr>  
+            </thead>
+            <tbody>
+            `+new_tr+`
+            </tbody>
+          </table>
+        `,
+        width: 700,
+        backdrop: `
+          rgba(0,0,123,0.4)
+        `,
+      confirmButtonColor: '#FF3232',
+      confirmButtonText: 'Close'
+      })
+    }
+  })
 }

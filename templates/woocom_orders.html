@@ -208,10 +208,13 @@
     {%elif tab == 'woocom_orders'%}
       <button data-toggle="tooltip" onclick="copyOrderDetail('{{nav_active}}')" type="button" title="Copy Order Details"
       class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
-
-      <button data-toggle="tooltip" onclick="genMultipleLinks()" type="button" title="Gen Payment Links"
-      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-link" aria-hidden="true"></i></button>
-
+      {%if nav_active == 'subscription'%}
+        <button data-toggle="tooltip" onclick="genMulSubscriptionLinks()" type="button" title="Gen Payment Links"
+        class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-link" aria-hidden="true"></i></button>
+      {%else%}
+        <button data-toggle="tooltip" onclick="genMultipleLinks()" type="button" title="Gen Payment Links"
+        class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-link" aria-hidden="true"></i></button>
+      {%endif%}
       <button data-toggle="tooltip" onclick="sendWMessages('today')" type="button" title="Send Today Message"
       class="btn btn-info ml-2">Today</button>
       <button data-toggle="tooltip" onclick="sendWMessages('feedback')" type="button" title="Send Feedback Message"
@@ -278,10 +281,17 @@
             <i data-toggle="tooltip" title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')"
               class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning ml-1" style="cursor: pointer;"
               aria-hidden="true"></i>
+            {%if nav_active == 'subscription'%}
+            <button data-toggle="tooltip" class="btn btn-warning btn-sm"
+              onclick="genSubscriptionLink('{{o.id}}')">
+              <i title="Generate Payment Link" class="mdi mdi-18px mdi-link"></i>
+            </button>
+            {%else%}
             <button data-toggle="tooltip" class="btn btn-warning btn-sm"
               onclick="CheckOutRequest('{{url_for('gen_payment_link', order_id=o.id)}}')">
               <i title="Generate Payment Link" class="mdi mdi-18px mdi-link"></i>
             </button>
+            {%endif%}
           </div>
           {% endif %}
           <div class="mt-1">
