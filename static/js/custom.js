@@ -136,48 +136,48 @@ function sendToGoogleSheet(act, status) {
     data: { 'order_ids': inp_select_v, 'action': [act], 'status': status },
     success: function (res) {
       if (res.result == 'success') {
-        if (act == 'google_sheet'){
+        if (act == 'google_sheet') {
           delivery_dates_text = ""
           delivery_date_msg = ""
-          for (var d of Object.keys(res.delivery_dates)){
+          for (var d of Object.keys(res.delivery_dates)) {
             dt = d
-            if (d == ''){
+            if (d == '') {
               dt = "No Date"
             }
-            delivery_dates_text+=(dt+ " : "+res.delivery_dates[d]['count'].toString()+" orders <br>")
+            delivery_dates_text += (dt + " : " + res.delivery_dates[d]['count'].toString() + " orders <br>")
           }
-          if (Object.keys(res.delivery_dates).length>1){
+          if (Object.keys(res.delivery_dates).length > 1) {
             delivery_date_msg = "There are orders with different delivery date or no delivery date. Please change it now."
           }
           status_text = ""
           status_msg = ""
-          for (var d of Object.keys(res.status_list)){
-            status_text+=(d+ " : "+res.status_list[d]['count'].toString()+" orders <br>")
+          for (var d of Object.keys(res.status_list)) {
+            status_text += (d + " : " + res.status_list[d]['count'].toString() + " orders <br>")
           }
-          if (Object.keys(res.status_list).length>1){
+          if (Object.keys(res.status_list).length > 1) {
             status_msg = "There are orders with different status. Please change all orders to To Be Delivered. "
           }
           Swal.fire({
             html: `
-<b>`+res.total_o+` orders added to Google Sheet <a target='blank' href='`+res.ssUrl+`'>`+res.ssName+`</a></b><br/><br/>
+<b>`+ res.total_o + ` orders added to Google Sheet <a target='blank' href='` + res.ssUrl + `'>` + res.ssName + `</a></b><br/><br/>
 <div style='text-align: left'><b>Delivery Dates</b><br/>
-`+delivery_dates_text+`<br>
-`+delivery_date_msg+`</div><br/><br/>
+`+ delivery_dates_text + `<br>
+`+ delivery_date_msg + `</div><br/><br/>
 <div style='text-align: left'><b>Status</b><br/>
-`+status_text+`<br>
-`+status_msg+`</div>
+`+ status_text + `<br>
+`+ status_msg + `</div>
             `,
             width: 700,
             backdrop: `
               rgba(0,0,123,0.4)
             `
           })
-        }else{
-        $.nok({
-          message: "Success, Sheet Created!",
-          type: "success",
-        });
-      }
+        } else {
+          $.nok({
+            message: "Success, Sheet Created!",
+            type: "success",
+          });
+        }
       } else {
         $.nok({
           message: "Error, Sheet Not Created!",
@@ -220,28 +220,28 @@ function copyOrderDetail(status) {
           type: "success",
         });
       } else {
-        if (text.length>0){
+        if (text.length > 0) {
           Swal.fire({
-        html: `
+            html: `
         <pre>
         <div style='text-align: left;'>
 <b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
 
-`+text+`
+`+ text + `
 </pre>
 </div>
         `,
-        width: 700,
-        backdrop: `
+            width: 700,
+            backdrop: `
           rgba(0,0,123,0.4)
         `
-      })
-        }else{
-        $.nok({
-          message: "Error, Message Not Copied!",
-          type: "error",
-        });
-      }
+          })
+        } else {
+          $.nok({
+            message: "Error, Message Not Copied!",
+            type: "error",
+          });
+        }
       }
     },
     error: function (err) {
@@ -279,28 +279,28 @@ function copyCustomerDetail(status) {
           type: "success",
         });
       } else {
-        if (text.length>0){
+        if (text.length > 0) {
           Swal.fire({
-        html: `
+            html: `
         <pre>
         <div style='text-align: left;'>
 <b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
 
-`+text+`
+`+ text + `
 </pre>
 </div>
         `,
-        width: 700,
-        backdrop: `
+            width: 700,
+            backdrop: `
           rgba(0,0,123,0.4)
         `
-      })
-        }else{
-        $.nok({
-          message: "Error, Message Not Copied!",
-          type: "error",
-        });
-      }
+          })
+        } else {
+          $.nok({
+            message: "Error, Message Not Copied!",
+            type: "error",
+          });
+        }
       }
     },
     error: function (err) {
@@ -338,28 +338,28 @@ function copySupplierMessage(status) {
           type: "success",
         });
       } else {
-        if (text.length>0){
+        if (text.length > 0) {
           Swal.fire({
-        html: `
+            html: `
         <pre>
         <div style='text-align: left;'>
 <b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
 
-`+text+`
+`+ text + `
 </pre>
 </div>
         `,
-        width: 700,
-        backdrop: `
+            width: 700,
+            backdrop: `
           rgba(0,0,123,0.4)
         `
-      })
-        }else{
-        $.nok({
-          message: "Error, Message Not Copied!",
-          type: "error",
-        });
-      }
+          })
+        } else {
+          $.nok({
+            message: "Error, Message Not Copied!",
+            type: "error",
+          });
+        }
       }
     },
     error: function (err) {
@@ -385,33 +385,34 @@ function genMultipleLinks() {
     url: "/multiple_links",
     data: { 'order_ids': inp_select_v },
     success: function (res) {
-      new_tr = ""
-      for (var c of res.results){
-        if (c.result == 'success'){
-          for (var id of c.order_ids){
-            var tag = $('#payment-' + id.toString())
-            tag.text(c.receipt + " | " + (c.amount / 100).toString())
-            tag.attr('onclick', "copyText('" + c.short_url + "')")
-            tag.attr('class', 'text-success')
-          }
-          new_tr +=`
+      if (!Object.keys(res).includes('status')) {
+        new_tr = ""
+        for (var c of res.results) {
+          if (c.result == 'success') {
+            for (var id of c.order_ids) {
+              var tag = $('#payment-' + id.toString())
+              tag.text(c.receipt + " | " + (c.amount / 100).toString())
+              tag.attr('onclick', "copyText('" + c.short_url + "')")
+              tag.attr('class', 'text-success')
+            }
+            new_tr += `
           <tr>
-            <td><p>`+c.mobile.toString()+`</p></td>
-            <td><p>`+(c.amount/100).toString()+`</p></td>
-            <td><p>`+c.receipt+`</p></td>
-            <td><button class='btn btn-success btn-sm' title='Click To Copy Payment Link' onclick="copyText('`+c.short_url+`')">Copy Link</button></td>
+            <td><p>`+ c.mobile.toString() + `</p></td>
+            <td><p>`+ (c.amount / 100).toString() + `</p></td>
+            <td><p>`+ c.receipt + `</p></td>
+            <td><button class='btn btn-success btn-sm' title='Click To Copy Payment Link' onclick="copyText('`+ c.short_url + `')">Copy Link</button></td>
           </tr>`
-        }else{
-          new_tr +=`
+          } else {
+            new_tr += `
           <tr class='table-danger'>
-            <td><p>`+c.mobile.toString()+`</p></td>
-            <td><p>`+(c.amount/100).toString()+`</p></td>
-            <td><p>`+c.receipt+`</p></td>
+            <td><p>`+ c.mobile.toString() + `</p></td>
+            <td><p>`+ (c.amount / 100).toString() + `</p></td>
+            <td><p>`+ c.receipt + `</p></td>
           </tr>`
+          }
         }
-      }
-      Swal.fire({
-        html: `
+        Swal.fire({
+          html: `
           <table class='table'>
             <thead>
             <tr>
@@ -421,17 +422,23 @@ function genMultipleLinks() {
             </tr>  
             </thead>
             <tbody>
-            `+new_tr+`
+            `+ new_tr + `
             </tbody>
           </table>
         `,
-        width: 700,
-        backdrop: `
+          width: 700,
+          backdrop: `
           rgba(0,0,123,0.4)
         `,
-      confirmButtonColor: '#FF3232',
-      confirmButtonText: 'Close'
-      })
+          confirmButtonColor: '#FF3232',
+          confirmButtonText: 'Close'
+        })
+      }else{
+        Swal.fire({
+          icon: "warning",
+          html: "<b>Following orders are already paid. Please exclude them from selection: <b>"+res.result
+        })
+      }
     }
   })
 }
@@ -450,15 +457,15 @@ function changeOrderStatus(status) {
     url: "/change_order_status",
     data: { 'order_ids': inp_select_v, "status": status },
     success: function (res) {
-      if (res.result == 'success'){
+      if (res.result == 'success') {
         trtext = ""
-        for (var o of res.result_list){
-          trtext+=`
+        for (var o of res.result_list) {
+          trtext += `
               <tr>
-                <td><p>`+o.order_id+" ( "+o.name+` ) </p></td>
-                <td><p>`+o.status+`</p></td>
-                <td><p>`+o.message+`</p></td>
-                <td><p>`+o.refund+`</p></td>
+                <td><p>`+ o.order_id + " ( " + o.name + ` ) </p></td>
+                <td><p>`+ o.status + `</p></td>
+                <td><p>`+ o.message + `</p></td>
+                <td><p>`+ o.refund + `</p></td>
               </tr>
           `
         }
@@ -474,7 +481,7 @@ function changeOrderStatus(status) {
               </tr>  
               </thead>
               <tbody>
-              `+trtext+`
+              `+ trtext + `
               </tbody>
             </table>
           `,
@@ -482,18 +489,18 @@ function changeOrderStatus(status) {
           backdrop: `
             rgba(0,0,123,0.4)
           `
-        }).then(()=>{
+        }).then(() => {
           location.reload()
         })
       }
-      else{
+      else {
         $.nok({
           message: "Error, Order Status Not Changed Please Check Order ID!",
           type: "error",
         });
       }
     }
-})
+  })
 }
 
 function sendWMessages(name) {
@@ -507,21 +514,21 @@ function sendWMessages(name) {
     type: "POST",
     crossDomain: true,
     dataType: "json",
-    url: "/send_whatsapp_messages/"+name,
+    url: "/send_whatsapp_messages/" + name,
     data: { 'order_ids': inp_select_v },
     success: function (res) {
-      if (res.result == 'success'){
+      if (res.result == 'success') {
         trtext = ""
-        for (var o of res.results){
-          if(["success", "PENDING", "SENT", true].includes(o.result)){
+        for (var o of res.results) {
+          if (["success", "PENDING", "SENT", true].includes(o.result)) {
             updateSpan(o.order_id, o.template_name, 'text-success')
-          }else{
+          } else {
             updateSpan(o.order_id, o.template_name, 'text-danger')
           }
-          trtext+=`
+          trtext += `
               <tr>
-                <td><p>`+o.order_id+" ( "+o.customer_name+` ) </p></td>
-                <td><p>`+o.result+`</p></td>
+                <td><p>`+ o.order_id + " ( " + o.customer_name + ` ) </p></td>
+                <td><p>`+ o.result + `</p></td>
               </tr>
           `
         }
@@ -535,7 +542,7 @@ function sendWMessages(name) {
               </tr>  
               </thead>
               <tbody>
-              `+trtext+`
+              `+ trtext + `
               </tbody>
             </table>
           `,
@@ -545,7 +552,7 @@ function sendWMessages(name) {
           `
         })
       }
-      else{
+      else {
         $.nok({
           message: "Error, Messages not sent!",
           type: "error",
@@ -563,7 +570,7 @@ function copyToClipboard(id) {
     type: "GET",
     crossDomain: true,
     dataType: "json",
-    url: "/get_copy_messages/"+id.toString(),
+    url: "/get_copy_messages/" + id.toString(),
     success: function (res) {
       if (res.status == 'success') {
         var input = document.body.appendChild(document.createElement("textarea"));
@@ -577,28 +584,28 @@ function copyToClipboard(id) {
             type: "success",
           });
         } else {
-          if (res.text.length>0){
+          if (res.text.length > 0) {
             Swal.fire({
-          html: `
+              html: `
           <pre>
           <div style='text-align: left;'>
 <b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
 
-`+res.text+`
+`+ res.text + `
 </pre>
 </div>
           `,
-          width: 700,
-          backdrop: `
+              width: 700,
+              backdrop: `
             rgba(0,0,123,0.4)
           `
-        })
-          }else{
-          $.nok({
-            message: "Error, Message Not Copied!",
-            type: "error",
-          });
-        }
+            })
+          } else {
+            $.nok({
+              message: "Error, Message Not Copied!",
+              type: "error",
+            });
+          }
         }
       } else {
         $.nok({
@@ -627,18 +634,18 @@ function CheckOutRequest(url) {
     dataType: "json",
     url: url,
     success: function (res) {
-      if (res.result == 'check'){
+      if (res.result == 'check') {
         o_str = ""
-        for (var o of res.orders){
-          o_str+='<tr>'
-          o_str+='<td>'+o['id']+'</td>'
-          o_str+='<td>'+o['status']+'</td>'
-          o_str+='<td>'+o['total']+'</td>'
-          o_str+='</tr>'
+        for (var o of res.orders) {
+          o_str += '<tr>'
+          o_str += '<td>' + o['id'] + '</td>'
+          o_str += '<td>' + o['status'] + '</td>'
+          o_str += '<td>' + o['total'] + '</td>'
+          o_str += '</tr>'
         }
         Swal.fire({
-        html: `
-        <b>Follow orders of `+res.orders[0]['billing']['first_name']+" "+res.orders[0]['billing']['last_name']+` are unpaid. Do you want to generate payment for a single order?</b>
+          html: `
+        <b>Follow orders of `+ res.orders[0]['billing']['first_name'] + " " + res.orders[0]['billing']['last_name'] + ` are unpaid. Do you want to generate payment for a single order?</b>
           <table class='table'>
             <thead>
             <tr>
@@ -648,48 +655,48 @@ function CheckOutRequest(url) {
             </tr>  
             </thead>
             <tbody>
-            `+o_str+`
+            `+ o_str + `
             </tbody>
           </table>
         `,
-        width: 700,
-        backdrop: `
+          width: 700,
+          backdrop: `
           rgba(0,0,123,0.4)
         `,
-      confirmButtonText: 'Yes',
-      cancelButtonText: 'No',
-      showCancelButton: true,
-      }).then((result) => {
-  if (result.isConfirmed) {
-    $.ajax({
-    type: "GET",
-    crossDomain: true,
-    dataType: "json",
-    url: url+"?check=true",
-    success: function (res) {
-      if (res.result == "success") {
-        $.nok({
-          message: "Success, Link Generated!",
-          type: "success",
-        });
-        var tag = $('#payment-' + res.order_id)
-        tag.text(res.payment.receipt + " | " + (res.payment.amount / 100).toString())
-        tag.attr('onclick', "copyText('" + res.short_url + "')")
-        tag.attr('class', 'text-success')
-      } else {
-        $.nok({
-          message: "Error, Link Not Generated!",
-          type: "error",
-        });
-        var tag = $('#payment-' + res.order_id)
-        tag.text(res.payment.receipt)
-        tag.attr('class', 'text-danger')
+          confirmButtonText: 'Yes',
+          cancelButtonText: 'No',
+          showCancelButton: true,
+        }).then((result) => {
+          if (result.isConfirmed) {
+            $.ajax({
+              type: "GET",
+              crossDomain: true,
+              dataType: "json",
+              url: url + "?check=true",
+              success: function (res) {
+                if (res.result == "success") {
+                  $.nok({
+                    message: "Success, Link Generated!",
+                    type: "success",
+                  });
+                  var tag = $('#payment-' + res.order_id)
+                  tag.text(res.payment.receipt + " | " + (res.payment.amount / 100).toString())
+                  tag.attr('onclick', "copyText('" + res.short_url + "')")
+                  tag.attr('class', 'text-success')
+                } else {
+                  $.nok({
+                    message: "Error, Link Not Generated!",
+                    type: "error",
+                  });
+                  var tag = $('#payment-' + res.order_id)
+                  tag.text(res.payment.receipt)
+                  tag.attr('class', 'text-danger')
+                }
+              }
+            })
+          }
+        })
       }
-    }
-  })
-  }
-  })
-    }
       else if (res.result == "success") {
         $.nok({
           message: "Success, Link Generated!",
@@ -699,6 +706,11 @@ function CheckOutRequest(url) {
         tag.text(res.payment.receipt + " | " + (res.payment.amount / 100).toString())
         tag.attr('onclick', "copyText('" + res.short_url + "')")
         tag.attr('class', 'text-success')
+      } else if (res.result == 'paid') {
+        Swal.fire({
+          title: 'The order is already paid. Payment link cannot be generated.',
+          icon: 'warning',
+        })
       } else {
         $.nok({
           message: "Error, Link Not Generated!",
@@ -719,7 +731,7 @@ function CheckOutRequest(url) {
 }
 
 
-function genSubscriptionLink(id){
+function genSubscriptionLink(id) {
   Swal.fire({
     title: 'Enter amount',
     input: 'text',
@@ -730,22 +742,22 @@ function genSubscriptionLink(id){
     confirmButtonText: 'Generate',
     showLoaderOnConfirm: true,
     preConfirm: (amount) => {
-        return ($.ajax({
-          type: "GET",
-          crossDomain: true,
-          dataType: "json",
-          url: "/genSubscriptionLink/"+id+"/"+amount,
-          success: function (res) {
-            if (res.result == "success") {
-              console.log(res);
-              return res
-            } else {
-              Swal.showValidationMessage(
-                `Please enter valid amount.`
-              )
-            }
+      return ($.ajax({
+        type: "GET",
+        crossDomain: true,
+        dataType: "json",
+        url: "/genSubscriptionLink/" + id + "/" + amount,
+        success: function (res) {
+          if (res.result == "success") {
+            console.log(res);
+            return res
+          } else {
+            Swal.showValidationMessage(
+              `Please enter valid amount.`
+            )
           }
-        }))
+        }
+      }))
     },
     allowOutsideClick: () => !Swal.isLoading()
   }).then((res) => {
@@ -789,27 +801,27 @@ function genMulSubscriptionLinks() {
     data: { 'order_ids': inp_select_v },
     success: function (res) {
       new_tr = ""
-      for (var c of res.results){
-        if (c.result == 'success'){
-          for (var id of c.order_ids){
+      for (var c of res.results) {
+        if (c.result == 'success') {
+          for (var id of c.order_ids) {
             var tag = $('#payment-' + id.toString())
             tag.text(c.receipt + " | " + (c.amount / 100).toString())
             tag.attr('onclick', "copyText('" + c.short_url + "')")
             tag.attr('class', 'text-success')
           }
-          new_tr +=`
+          new_tr += `
           <tr>
-            <td><p>`+c.mobile.toString()+`</p></td>
-            <td><p>`+(c.amount/100).toString()+`</p></td>
-            <td><p>`+c.receipt+`</p></td>
-            <td><button class='btn btn-success btn-sm' title='Click To Copy Payment Link' onclick="copyText('`+c.short_url+`')">Copy Link</button></td>
+            <td><p>`+ c.mobile.toString() + `</p></td>
+            <td><p>`+ (c.amount / 100).toString() + `</p></td>
+            <td><p>`+ c.receipt + `</p></td>
+            <td><button class='btn btn-success btn-sm' title='Click To Copy Payment Link' onclick="copyText('`+ c.short_url + `')">Copy Link</button></td>
           </tr>`
-        }else{
-          new_tr +=`
+        } else {
+          new_tr += `
           <tr class='table-danger'>
-            <td><p>`+c.mobile.toString()+`</p></td>
-            <td><p>`+(c.amount/100).toString()+`</p></td>
-            <td><p>`+c.receipt+`</p></td>
+            <td><p>`+ c.mobile.toString() + `</p></td>
+            <td><p>`+ (c.amount / 100).toString() + `</p></td>
+            <td><p>`+ c.receipt + `</p></td>
           </tr>`
         }
       }
@@ -824,7 +836,7 @@ function genMulSubscriptionLinks() {
             </tr>  
             </thead>
             <tbody>
-            `+new_tr+`
+            `+ new_tr + `
             </tbody>
           </table>
         `,
@@ -832,8 +844,8 @@ function genMulSubscriptionLinks() {
         backdrop: `
           rgba(0,0,123,0.4)
         `,
-      confirmButtonColor: '#FF3232',
-      confirmButtonText: 'Close'
+        confirmButtonColor: '#FF3232',
+        confirmButtonText: 'Close'
       })
     }
   })

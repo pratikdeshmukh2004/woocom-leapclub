@@ -328,6 +328,8 @@ def get_orders_for_home(args, tab):
             params['page'] = 1
         elif args['status'][0] == 'errors':
             params['status'] = 'errors'
+        elif params['status'] in ['tbd-paid', 'tbd-unpaid']:
+            params['status'] = 'tbd-paid, tbd-unpaid'
     return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
 
 
@@ -853,14 +855,29 @@ def gen_payment_link(order_id):
     orders = list_orders_with_status_N2(wcapi, {'status': 'tbd-unpaid, delivered-unpaid', 'customer': o['customer_id']})
     if len(orders)>1 and 'check' not in args:
         return jsonify({"result": 'check', 'orders':orders})
-    payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
+    if o['status'] in ['tbd-paid', 'completed']:
+        return jsonify({'result': 'paid'})
     wallet_payment = 0
     if len(o["fee_lines"]) > 0:
         for item in o["fee_lines"]:
             if "wallet" in item["name"].lower():
                 wallet_payment = (-1)*float(item["total"])
+    total_amount = float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1)
+    reciept = "Leap " + str(o['id'])
+    payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
+    if len(payment_links) > 0:
+        counter = 1
+        while True:
+            if len(payment_links) == 0:
+                break
+            else:
+                if float(payment_links[0].amount) == float(total_amount)*100:
+                    return {"result": "success", 'order_id': o['id'], 'short_url': payment_links[0].payment_link_url, 'payment': {'amount': payment_links[0].amount, 'receipt': reciept}}
+            reciept = "Leap " + str(o['id'])+"-"+str(counter)
+            payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+            counter += 1
     data = {
-        "amount": (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))*100,
+        "amount": total_amount*100,
         "receipt": "Leap "+str(o["id"])+"-"+str(len(payment_links)+1),
         "customer": {
             "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
@@ -1183,6 +1200,7 @@ def multiple_links():
     orders = wcapi.get("orders", params=params).json()
     customers = {}
     results = []
+    paid_orders = []
     for o in orders:
         mobile_number = o['billing']['phone']
         mobile_number = mobile_number[-10:]
@@ -1191,20 +1209,11 @@ def multiple_links():
             customers[mobile_number].append(o)
         else:
             customers[mobile_number] = [o]
+        if o['status'] in ['tbd-paid', 'completed']:
+            paid_orders.append(str(o['id']))
+    if len(paid_orders)>0:
+        return jsonify({'status': 'paid', 'result': ",".join(paid_orders)})
     for customer in customers:
-        o_ids = list(map(lambda o: str(o['id']), customers[customer]))
-        reciept = "Leap " + \
-            get_list_to_string(o_ids)
-        payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
-        if len(payment_links) > 0:
-            counter = 1
-            while True:
-                reciept = "Leap " + \
-                    get_list_to_string(o_ids)+"-"+str(counter)
-                payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
-                if len(payment_links) == 0:
-                    break
-                counter += 1
         total_amount = 0
         for o in customers[customer]:
             wallet_payment = 0
@@ -1214,6 +1223,27 @@ def multiple_links():
                         wallet_payment = (-1)*float(item["total"])
             total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
                 o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+        o_ids = list(map(lambda o: str(o['id']), customers[customer]))
+        reciept = "Leap " + \
+            get_list_to_string(o_ids)
+        payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+        isexists = False
+        if len(payment_links) > 0:
+            counter = 1
+            while True:
+                if len(payment_links) == 0:
+                    break
+                else:
+                    if float(payment_links[0].amount) == float(total_amount)*100:
+                        results.append({"result": "success", 'order_ids': o_ids, 'short_url': payment_links[0].payment_link_url, 'amount': payment_links[0].amount, 'receipt': reciept, "mobile":customer})
+                        isexists = True
+                        break
+                reciept = "Leap " + \
+                    get_list_to_string(o_ids)+"-"+str(counter)
+                payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
+                counter += 1
+        if isexists:
+            continue
         data1 = {
             "amount": total_amount*100,
             "receipt": reciept,
@@ -1241,6 +1271,7 @@ def multiple_links():
                 db.session.commit()
             results.append({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":customer})
         except Exception as e:
+            print(e)
             results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
     return {'results': results}
 

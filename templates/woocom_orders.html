@@ -270,7 +270,7 @@
       {% for o in orders %}
       <tr>
         <td class="{{o.id}}" scope="row">
-          {% if o.vendor_type %}
+          {% if o.vendor_type or nav_active == 'subscription' %}
           <div style="min-width: 162px;">
             <a data-toggle="tooltip" target='blank' href="https://leapclub.in/wp-admin/post.php?post={{o.id}}&action=edit"><i
                 title="Edit Order" class="mdi mdi-18px mdi-pencil-outline btn-sm btn btn-warning"

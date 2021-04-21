@@ -22,14 +22,16 @@ def filter_orders(orders, params):
     f_orders = []
     for o in orders:
         c = {"payment_status": False, "manager": False}
-
+        if 'status' in params and 'payment_status' in params:
+            if params['status'][0] == 'tbd-paid, tbd-unpaid' and params['payment_status'][0] != "":
+                params['payment_status'][0] = ""
         if "payment_status" in params:
             if params["payment_status"][0] != "":
                 if params["payment_status"][0] == "unpaid":
-                    if o["date_paid"] == None:
+                    if o["payment_method_title"] == "Pay Online on Delivery":
                         c["payment_status"] = True
                 else:
-                    if o["date_paid"] != None:
+                    if o["payment_method_title"] == 'Pre-paid':
                         c["payment_status"] = True
             else:
                 c["payment_status"] = True
@@ -144,11 +146,11 @@ def list_order_items(order_items, refunds, wcapi):
                     msg
                     + name_w
                     + "\n₹"
-                    + str(order_item["price"])
+                    + str(round(order_item["price"],1))
                     + " x "
                     + str(order_item["quantity"])
                     + " = "
-                    + str(order_item["total"])
+                    + str(round(float(order_item["total"]),1))
                     + "\n\n"
                 )
 
@@ -159,11 +161,11 @@ def list_order_items(order_items, refunds, wcapi):
                     + " x "
                     + str(order_item["quantity"])
                     + "\n₹"
-                    + str(order_item["price"])
+                    + str(round(order_item["price"], 1))
                     + " x "
                     + str(order_item["quantity"])
                     + " = "
-                    + str(order_item["total"])
+                    + str(round(float(order_item["total"]),1))
                     + "\n\n"
                 )
     return msg
@@ -263,7 +265,13 @@ def get_params(args):
                 l_c = list_created_via.copy()
                 l_c.remove("subscription")
                 params["created_via"] = get_list_to_string(l_c)
-            params["status"] = args["status"][0]
+            if 'payment_status' in args and args["status"][0] == "tbd-paid, tbd-unpaid":
+                    if args['payment_status'][0] == 'paid':
+                        params['status'] = 'tbd-paid'
+                    else:
+                        params['status'] = 'tbd-unpaid'
+            else:
+                params["status"] = args["status"][0]
     else:
         l_c = list_created_via.copy()
         l_c.remove("subscription")
