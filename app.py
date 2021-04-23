@@ -1220,7 +1220,6 @@ def multiple_links():
                 db.session.commit()
             results.append({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":customer})
         except Exception as e:
-            print(e)
             results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
     return {'results': results}
 

@@ -530,8 +530,6 @@ function sendWMessages(name) {
                 <td><p>`+ o.customer_name + " ( " + o.phone_number + ` ) </p></td>
                 <td><p>`+ o.order_id + `</p></td>
                 <td><p>`+ o.result + `</p></td>
-                <td><p>`+ o.payment_status + `</p></td>
-                <td><button class='btn btn-sm btn-success'>Send Payment Link</button></td>
               </tr>
           `
         }
@@ -544,7 +542,6 @@ function sendWMessages(name) {
                 <th><b>Name (Mobile)</b></th>  
                 <th><b>Order IDS</b></th>  
                 <th><b>Result</b></th>  
-                <th><b>Paid/Unpaid</b></th>  
               </tr>  
               </thead>
               <tbody>
@@ -552,7 +549,7 @@ function sendWMessages(name) {
               </tbody>
             </table>
           `,
-          width: 1000,
+          width: 700,
           backdrop: `
             rgba(0,0,123,0.4)
           `
