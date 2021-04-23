@@ -224,7 +224,11 @@ def get_tabs_nums():
 
 
 def get_orders_for_home(args, tab):
-    params = get_params(args)
+    params = get_params(args.copy())
+    if 'payment_status' in args:
+        p_s = args['payment_status'].copy()
+    else:
+        p_s = ""
     if "created_via" in params:
         args["created_via"] = params["created_via"]
     t_orders = time.time()
@@ -262,7 +266,7 @@ def get_orders_for_home(args, tab):
     else:
         orders = wcapi.get("order2", params=params).json()
     print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
-    orders = filter_orders(orders, args)
+    orders = filter_orders(orders, args.copy())
     managers = []
     wtmessages_list = {}
     payment_links = {}
@@ -331,6 +335,7 @@ def get_orders_for_home(args, tab):
             params['status'] = 'errors'
         elif params['status'] in ['tbd-paid', 'tbd-unpaid']:
             params['status'] = 'tbd-paid, tbd-unpaid'
+    args['payment_status'] = p_s
     return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
 
 
@@ -846,22 +851,20 @@ def gen_payment_link(order_id):
             if "wallet" in item["name"].lower():
                 wallet_payment = (-1)*float(item["total"])
     total_amount = float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1)
-    reciept = "Leap " + str(o['id'])
+    total_amount = round(total_amount, 1)
     payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
-    if len(payment_links) > 0:
-        counter = 1
-        while True:
-            if len(payment_links) == 0:
-                break
-            else:
-                if float(payment_links[0].amount) == float(total_amount)*100:
-                    return {"result": "success", 'order_id': o['id'], 'short_url': payment_links[0].payment_link_url, 'payment': {'amount': payment_links[0].amount, 'receipt': reciept}}
-            reciept = "Leap " + str(o['id'])+"-"+str(counter)
-            payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
-            counter += 1
+    counter = 0
+    while counter<len(payment_links):
+        if float(payment_links[counter].amount) == float(total_amount)*100:
+            return {"text": "Link is already exists","result": "success", 'order_id': o['id'], 'short_url': payment_links[counter].payment_link_url, 'payment': {'amount': payment_links[counter].amount, 'receipt': payment_links[counter].receipt}}
+        counter += 1
+    if len(payment_links)==0:
+        receipt = "Leap "+str(o["id"])
+    else:
+        receipt = "Leap "+str(o["id"])+"-"+str(len(payment_links)+1)
     data = {
         "amount": total_amount*100,
-        "receipt": "Leap "+str(o["id"])+"-"+str(len(payment_links)+1),
+        "receipt": receipt,
         "customer": {
             "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
             "contact": format_mobile(o["billing"]["phone"])
@@ -887,7 +890,7 @@ def gen_payment_link(order_id):
         new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=format_mobile(o["billing"]["phone"]), name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
     db.session.add(new_payment_link)
     db.session.commit()
-    return jsonify({"result": status, 'payment': data, "short_url": short_url, "order_id": order_id})
+    return jsonify({"text": 'Success, Link Generated!',"result": status, 'payment': data, "short_url": short_url, "order_id": order_id})
 
 
 @app.route("/razorpay", methods=["GET", "POST"])

@@ -527,18 +527,24 @@ function sendWMessages(name) {
           }
           trtext += `
               <tr>
-                <td><p>`+ o.order_id + " ( " + o.customer_name + ` ) </p></td>
+                <td><p>`+ o.customer_name + " ( " + o.phone_number + ` ) </p></td>
+                <td><p>`+ o.order_id + `</p></td>
                 <td><p>`+ o.result + `</p></td>
+                <td><p>`+ o.payment_status + `</p></td>
+                <td><button class='btn btn-sm btn-success'>Send Payment Link</button></td>
               </tr>
           `
         }
         Swal.fire({
           html: `
+          <b>Group orders by customer:</b>
             <table class='table'>
               <thead>
               <tr>
-                <th><b>Order ID ( Name )</b></th>  
+                <th><b>Name (Mobile)</b></th>  
+                <th><b>Order IDS</b></th>  
                 <th><b>Result</b></th>  
+                <th><b>Paid/Unpaid</b></th>  
               </tr>  
               </thead>
               <tbody>
@@ -546,7 +552,7 @@ function sendWMessages(name) {
               </tbody>
             </table>
           `,
-          width: 700,
+          width: 1000,
           backdrop: `
             rgba(0,0,123,0.4)
           `
@@ -676,7 +682,7 @@ function CheckOutRequest(url) {
               success: function (res) {
                 if (res.result == "success") {
                   $.nok({
-                    message: "Success, Link Generated!",
+                    message: res.text,
                     type: "success",
                   });
                   var tag = $('#payment-' + res.order_id)
@@ -699,7 +705,7 @@ function CheckOutRequest(url) {
       }
       else if (res.result == "success") {
         $.nok({
-          message: "Success, Link Generated!",
+          message: res.text,
           type: "success",
         });
         var tag = $('#payment-' + res.order_id)
