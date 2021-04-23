@@ -1393,6 +1393,7 @@ def send_whatsapp_messages_m(name):
                     params['vendor_type'] = params['vendor_type']+" (#"+str(o['id'])+")"
                     feedback_list[o['customer_id']]=params
             r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
+            r['phone_number'] = format_mobile(o['billing']['phone'])
             r['button'] = False
             if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
                 r['payment_status'] = "Paid"
