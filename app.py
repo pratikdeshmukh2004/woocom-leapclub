@@ -1393,6 +1393,18 @@ def send_whatsapp_messages_m(name):
                     params['vendor_type'] = params['vendor_type']+" (#"+str(o['id'])+")"
                     feedback_list[o['customer_id']]=params
             r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
+            r['button'] = False
+            if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
+                r['payment_status'] = "Paid"
+            elif o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
+                r['payment_status'] = "Unpaid"
+                if o['payment_method_title'] == 'Pay Online on Delivery':
+                    payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
+                    if len(payment_links)>0:
+                        r['button'] = True
+            else:
+                r['payment_status'] = ""
+                
             results.append(r)
         if name == 'feedback':
             for c in feedback_list:
@@ -1402,6 +1414,8 @@ def send_whatsapp_messages_m(name):
                         if results[rs]['customer_id'] == c:
                             r['customer_name'] = results[rs]['customer_name']
                             r['order_id'] = results[rs]['order_id']
+                            r['payment_status'] = results[rs]['payment_status']
+                            r['button'] = results[rs]['button']
                             results[rs] = r.copy()
         return {'result': 'success', 'results': results}
     else:
@@ -1680,6 +1694,70 @@ def copy_linked_orders():
         text+=ids
     return {'status': 'success', 'text': text}
 
+@app.route("/send_payment_link_wt/<string:id>", methods=['POST'])
+def send_payment_link_wt(id):
+    order = wcapi.get("orders/"+str(id)).json()
+    vendor = ""
+    for item in order["meta_data"]:
+        if item["key"] == "wos_vendor_data":
+            vendor = item["value"]["vendor_name"]
+        elif item["key"] == "_wc_acof_6" and item['value'] != "":
+            vendor = item["value"]
+    if vendor in vendor_type.keys():
+        vendor_t = vendor_type[vendor]
+    else:
+        vendor_t = ""
+    mobile_number = format_mobile(order["billing"]["phone"])
+    payment_links = PaymentLinks.query.filter_by(order_id=order["id"]).all()
+    headers = {
+        'Authorization': app.config["WATI_AUTHORIZATION"],
+        'Content-Type': 'application/json',
+    }
+    url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
+        mobile_number + "?messageText="+payment_links[-1].payment_link_url
+    response = requests.request(
+        "POST", url, headers=headers)
+    url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
+        mobile_number + "?messageText=^ Please pay through this link."
+    response = requests.request(
+        "POST", url, headers=headers)
+    result = json.loads(response.text.encode('utf8'))
+    result["template_name"] = 'payment_link_6'
+    result["order_id"] = id
+    if result["result"] in ["success", "PENDING", "SENT", True]:
+        new_wt = wtmessages(order_id=order["id"], template_name="order_detail",
+                            broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
+        db.session.add(new_wt)
+        db.session.commit()
+        return result
+
+    # Template Message....
+    args = {'order_type': vendor_t + "( #"+str(id)+" )", 'razorpay_link': payment_links[-1].payment_link_url}
+    url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile_number
+    template_name = 'payment_link_6'
+    parameters_s = "["
+    for d in args:
+        parameters_s = parameters_s + \
+            '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
+    parameters_s = parameters_s[:-1]
+    parameters_s = parameters_s+"]"
+    payload = {
+        "template_name": template_name,
+        "broadcast_name": "send_payment_link",
+        "parameters": parameters_s
+    }
+    headers = {
+        'Authorization': app.config["WATI_AUTHORIZATION"],
+        'Content-Type': 'application/json',
+    }
+
+    response = requests.request(
+        "POST", url, headers=headers, data=json.dumps(payload))
+
+    result = json.loads(response.text.encode('utf8'))
+    result["template_name"] = template_name
+    result["order_id"] = id
+    return result
 
 if __name__ == "__main__":
     db.create_all()
