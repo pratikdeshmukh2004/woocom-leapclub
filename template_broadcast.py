@@ -163,4 +163,5 @@ vendor_type = {
     'Kyssa Farms': 'grocery',
     'antarkranti': 'grocery',
     'Antarkranti':'grocery',
+    'thewomanscompany': 'personal_care'
 }

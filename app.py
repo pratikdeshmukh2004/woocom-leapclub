@@ -22,7 +22,7 @@ from slack import WebClient
 from slack_bot import send_slack_message_, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
 from flask_crontab import Crontab
 from slack_chennels import CHANNELS
-from modules.universal import format_mobile, send_slack_message
+from modules.universal import format_mobile, send_slack_message, get_meta_data
 
 
 
@@ -45,7 +45,7 @@ wcapi_write = API(
     consumer_key=app.config["WOOCOMMERCE_API_CUSTOMER_KEY_WRITE"],
     consumer_secret=app.config["WOOCOMMERCE_API_CUSTOMER_SECRET_WRITE"],
     version="wc/v3",
-    timeout=15
+    timeout=30
 )
 
 wcapis = API(
@@ -164,14 +164,7 @@ def get_dairy_condition(o, d):
     delivery_d = datetime.strptime(d, "%Y-%m-%d")
     yesterday = delivery_d - timedelta(days=1)
     yesterday = yesterday.strftime('%Y-%m-%dT')
-    delivery_date = ""
-    for item in o["meta_data"]:
-        if item["key"] == "_delivery_date":
-            if delivery_date == "":
-                delivery_date = item["value"]
-        elif item["key"] == "_wc_acof_2_formatted":
-            if delivery_date == "":
-                delivery_date = item["value"]
+    vendor, manager, delivery_date, order_note,  = get_meta_data(o)
     if o['created_via'] == "subscription":
         if yesterday in o['date_created']:
             return True
@@ -185,19 +178,7 @@ def get_dairy_condition(o, d):
 def filter_orders_for_errors(orders):
     new_orders = []
     for o in orders:
-        delivery_date = ""
-        vendor = ""
-        for item in o["meta_data"]:
-            if item["key"] == "_delivery_date":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-            elif item["key"] == "_wc_acof_2_formatted":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-            elif item["key"] == "wos_vendor_data":
-                vendor = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                vendor = item["value"]
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         if o['status'] in ['processing', 'pending', 'failed']:
             new_orders.append(o)
         elif vendor == "" or delivery_date == "":
@@ -265,7 +246,6 @@ def get_orders_for_home(args, tab):
             orders = orders.json()
     else:
         orders = wcapi.get("order2", params=params).json()
-    print("Time To Fetch Total Orders: "+str(time.time()-t_orders))
     orders = filter_orders(orders, args.copy())
     managers = []
     wtmessages_list = {}
@@ -288,22 +268,7 @@ def get_orders_for_home(args, tab):
             payment_link = ''
         payment_links[o["id"]] = payment_link
         wtmessages_list[o["id"]] = wt_messages
-        vendor, manager, delivery_date, order_note,  = "", "", "", ""
-        for item in o["meta_data"]:
-            if item["key"] == "wos_vendor_data":
-                vendor = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                vendor = item["value"]
-            elif item["key"] == "_wc_acof_3":
-                manager = item["value"]
-            elif item["key"] == "_wc_acof_7":
-                order_note = item["value"]
-            elif item["key"] == "_delivery_date":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-            elif item["key"] == "_wc_acof_2_formatted":
-                if delivery_date == "":
-                    delivery_date = item["value"]
+        vendor, manager, delivery_date, order_note  = get_meta_data(o)
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
@@ -427,6 +392,21 @@ def download_csv():
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
     orders = wcapi.get("orders", params=params).json()
+    delivery_dates = {}
+    status_list = {}
+    for o in orders:
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        if delivery_date not in delivery_dates:
+            delivery_dates[delivery_date] = {"count": 1}
+        else:
+            delivery_dates[delivery_date]['count'] +=1
+        status_t = o['status']
+        if 'tbd' in status_t:
+            status_t = "to-be-delivered"
+        if status_t not in status_list:
+            status_list[status_t] = {'count': 1}
+        else:
+            status_list[status_t]['count'] +=1
     if data["action"][0] == "order_sheet":
         csv_text = get_csv_from_orders(orders, wcapi)
         filename = str(datetime.utcnow())+"-" + \
@@ -435,8 +415,6 @@ def download_csv():
         csv_text = get_csv_from_products(orders, wcapi, 'csv')
         filename = str(datetime.utcnow())+"-" + "Product-Sheet.csv"
     elif data["action"][0] == 'google_sheet':
-        delivery_dates = {}
-        status_list = {}
         for o in orders:
             refunds = []
             if len(o["refunds"]) > 0:
@@ -445,62 +423,18 @@ def download_csv():
                 o["line_items"], refunds, wcapi).replace("&amp;", "&")
             o['total_text'] = get_totals(
                 o["total"], refunds)+get_shipping_total_for_csv(o)
-            delivery_date= ""
-            for item in o["meta_data"]:
-                if item["key"] == "_delivery_date":
-                    if delivery_date == "":
-                        delivery_date = item["value"]
-                elif item["key"] == "_wc_acof_2_formatted":
-                    if delivery_date == "":
-                        delivery_date = item["value"]
-            if delivery_date not in delivery_dates:
-                delivery_dates[delivery_date] = {"count": 1}
-            else:
-                delivery_dates[delivery_date]['count'] +=1
-            status_t = o['status']
-            if 'tbd' in status_t:
-                status_t = "to-be-delivered"
-            if status_t not in status_list:
-                status_list[status_t] = {'count': 1}
-            else:
-                status_list[status_t]['count'] +=1
         response = requests.post(
             app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders)
         sheet_url = "https://docs.google.com/spreadsheets/d/13SJsfwcI2-swCgef1Yg6S-FhFC5TL1YX46n1_c0vp98/edit#gid="+response.json()['ssUrl']
-        return {'result': 'success', 'ssUrl': sheet_url, 'total_o': len(orders), 'ssName': response.json()['ssName'], "delivery_dates": delivery_dates, 'status_list': status_list}
     elif data['action'][0] == 'product_google_sheet':
-        vendor = ""
-        delivery_date = ""
         o = orders[0]
-        for item in o["meta_data"]:
-            if item["key"] == "wos_vendor_data":
-                vendor = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                vendor = item["value"]
-            elif item["key"] == "_delivery_date":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-            elif item["key"] == "_wc_acof_2_formatted":
-                 if delivery_date == "":
-                    delivery_date = item["value"]
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=product_sheet", json={
                                  "products": get_csv_from_products(orders, wcapi, 'google-sheet'), "sheet_name": vendor+"_"+delivery_date})
-        return {'result': 'success'}
+        sheet_url = "https://docs.google.com/spreadsheets/d/13SJsfwcI2-swCgef1Yg6S-FhFC5TL1YX46n1_c0vp98/edit#gid="+response.json()['ssUrl']
     elif data['action'][0] == 'delivery-google-sheet':
-        vendor = ""
-        delivery_date = ""
         o = orders[0]
-        for item in o["meta_data"]:
-            if item["key"] == "wos_vendor_data":
-                vendor = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                vendor = item["value"]
-            elif item["key"] == "_delivery_date":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-            elif item["key"] == "_wc_acof_2_formatted":
-                if delivery_date == "":
-                    delivery_date = item["value"]
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         for order in orders:
             wallet_payment = 0
             if len(order["fee_lines"]) > 0:
@@ -509,19 +443,20 @@ def download_csv():
                         wallet_payment = (-1)*float(item["total"])
             order['total']= float(order['total'])+wallet_payment
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=delivery_sheet", json=orders)
-        return {'result': 'success'}
-
+        sheet_url = "https://docs.google.com/spreadsheets/d/13SJsfwcI2-swCgef1Yg6S-FhFC5TL1YX46n1_c0vp98/edit#gid="+response.json()['ssUrl']
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
         filename = str(datetime.utcnow())+"-" + \
             data["status"][0]+"-Vendor-Order-Sheet.csv"
-    response = make_response(csv_text)
-    if "," in filename:
-        filename = filename.replace(",", "-")
-    cd = 'attachment; filename='+filename
-    response.headers['Content-Disposition'] = cd
-    response.mimetype = 'text/csv'
-    return response
+        response = make_response(csv_text)
+        if "," in filename:
+            filename = filename.replace(",", "-")
+        cd = 'attachment; filename='+filename
+        response.headers['Content-Disposition'] = cd
+        response.mimetype = 'text/csv'
+        return response
+    return {'result': 'success', 'ssUrl': sheet_url, 'total_o': len(orders), 'ssName': response.json()['ssName'], "delivery_dates": delivery_dates, 'status_list': status_list}
+
 
 
 @app.route("/download_vendor_order_csv", methods=["POST"])
@@ -621,12 +556,7 @@ def update_wati_contact_attributs(o):
     mobile_number = format_mobile(o["billing"]["phone"])
     url = app.config["WATI_URL"] + \
         "/api/v1/updateContactAttributes/" + mobile_number
-    vendor = ""
-    for item in o["meta_data"]:
-        if item["key"] == "wos_vendor_data":
-            vendor = item["value"]["vendor_name"]
-        elif item["key"] == "_wc_acof_6" and item['value'] != "":
-            vendor = item["value"]
+    vendor, manager, delivery_date, order_note,  = get_meta_data(o)
     args = {}
     args['last_order_date'] = o["date_created"]
     args['city'] = o["shipping"]["city"]
@@ -666,22 +596,7 @@ def new_order():
     customer_number = format_mobile(o["billing"]["phone"])
     mobile_numbers = [customer_number]
     params = {}
-    vendor = ""
-    delivery_date = ""
-    order_note = ""
-    for item in o["meta_data"]:
-        if item["key"] == "wos_vendor_data":
-            vendor = item["value"]["vendor_name"]
-        elif item["key"] == "_wc_acof_6" and item['value'] != "" and item['value'] != "":
-            vendor = item["value"]
-        elif item["key"] == "_wc_acof_7":
-            order_note = item["value"]
-        elif item["key"] == "_delivery_date":
-            if delivery_date == "":
-                delivery_date = item["value"]
-        elif item["key"] == "_wc_acof_2_formatted":
-            if delivery_date == "":
-                delivery_date = item["value"]
+    vendor, manager, delivery_date, order_note,  = get_meta_data(o)
     if vendor in vendor_type.keys():
         vendor_type1 = vendor_type[vendor]
     else:
@@ -778,10 +693,8 @@ def subscriptions():
     t_orders = time.time()
     subscriptions = wcapis.get(
         "subscriptions", params=get_params_subscriptions(args)).json()
-    print("Time To Fetch Total Subscriptions: "+str(time.time()-t_orders))
     t_orders = time.time()
     subscriptions = get_subscription_wallet_balance(subscriptions)
-    print("Time To Fetch Total Wallet Balance: "+str(time.time()-t_orders))
     subscriptions = sort_subscriptions(subscriptions, args, order)
     return render_template("subscriptions/index.html", user=g.user, subscriptions=subscriptions, page=page, order=order)
 
@@ -819,7 +732,6 @@ def send_session_message(order_id):
     ctime = time.time()
     response = requests.request(
         "POST", url, headers=headers)
-    print("Time To Send Session Message - ", time.time()-ctime)
     result = json.loads(response.text.encode('utf8'))
     if result["result"] in ["success", "PENDING", "SENT", True]:
         new_wt = wtmessages(order_id=order[0]["id"], template_name="order_detail",
@@ -904,6 +816,10 @@ def razorpay():
                 customer_id = e['payload']['order']['entity']['receipt'].split("-")[1]
                 total = e['payload']['order']['entity']['amount_paid']/100
                 customer = wcapi.get("customers/"+str(customer_id)).json()
+                name = customer['first_name']+" "+customer['last_name']
+                mobile = format_mobile(customer['billing']['phone'])
+                msg = send_whatsapp_msg(
+                    {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
                 if 'code' not in customer:
                     refund = wcapiw.post("wallet/"+customer_id, data={'type': 'credit', 'amount': total, 'details': 'Credited by Razorpay'}).json()
                     if refund['response'] == 'success' and refund['id'] != False: 
@@ -925,13 +841,8 @@ def razorpay():
                             {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
                     for order in orders:
                         name = order['billing']['first_name']
-                        vendor_name = ""
+                        vendor_name, manager, delivery_date, order_note,  = get_meta_data(order)
                         vendor_t = 'any'
-                        for item in order["meta_data"]:
-                            if item["key"] == "wos_vendor_data":
-                                vendor_name = item["value"]["vendor_name"]
-                            elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                                vendor_name = item["value"]
                         if vendor_name in vendor_type.keys():
                             vendor_t = vendor_type[vendor_name]
                         status = update_order_status(order, invoice_id, wcapi_write)
@@ -1041,12 +952,7 @@ def send_every_day():
     orders = list_orders_with_status(wcapi, params)
     without_vendors = []
     for o in orders:
-        o['vendor'] = ""
-        for item in o["meta_data"]:
-            if item["key"] == "wos_vendor_data":
-                o["vendor"] = item["value"]["vendor_name"]
-            elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                o["vendor"] = item["value"]
+        o['vendor'], manager, delivery_date, order_note,  = get_meta_data(o)
         if o['vendor'] == "":
             without_vendors.append(o)
     send_every_day_at_9(without_vendors, client,
@@ -1059,14 +965,7 @@ def send_every_day():
     orders = list_orders_with_status(wcapi, params)
     without_date = []
     for o in orders:
-        delivery_date = ""
-        for item in o["meta_data"]:
-            if item["key"] == "_delivery_date":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-            elif item["key"] == "_wc_acof_2_formatted":
-                if delivery_date == "":
-                    delivery_date = item["value"]
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         if delivery_date == "":
             without_date.append(o)
     send_every_day_at_9(without_date, client,
@@ -1078,14 +977,7 @@ def send_every_day():
     orders = list_orders_with_status(wcapi, params)
     tbd_tomorrow = []
     for o in orders:
-        delivery_date = ""
-        for item in o["meta_data"]:
-            if item["key"] == "_delivery_date":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-            elif item["key"] == "_wc_acof_2_formatted":
-                if delivery_date == "":
-                    delivery_date = item["value"]
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         if delivery_date == tomorrow:
             tbd_tomorrow.append(o)
     vendor_wise_tbd_tomorrow(tbd_tomorrow, client)
@@ -1220,7 +1112,6 @@ def multiple_links():
                 db.session.commit()
             results.append({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":customer})
         except Exception as e:
-            print(e)
             results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
     return {'results': results}
 
@@ -1317,148 +1208,126 @@ def send_whatsapp_messages_m(name):
     data = request.form.to_dict(flat=False)
     results = []
     feedback_list = {}
-    if (len(data)) > 0:
-        orders = list_orders_with_status(
-            wcapi, {"include": get_list_to_string(data['order_ids[]'])})
-        for o in orders:
-            wallet_payment = 0
-            refunds = 0
-            for r in o["refunds"]:
-                refunds = refunds + float(r["total"])
-            o["total_refunds"] = refunds*-1
-            o["total"] = float(o["total"])
-            vendor, manager, delivery_date, order_note,  = "", "", "", ""
-            for item in o["meta_data"]:
-                if item["key"] == "wos_vendor_data":
-                    vendor = item["value"]["vendor_name"]
-                elif item["key"] == "_wc_acof_6" and item['value'] != "":
-                    vendor = item["value"]
-                elif item["key"] == "_wc_acof_3":
-                    manager = item["value"]
-                elif item["key"] == "_wc_acof_7":
-                    order_note = item["value"]
-                elif item["key"] == "_delivery_date":
-                    if delivery_date == "":
-                        delivery_date = item["value"]
-                elif item["key"] == "_wc_acof_2_formatted":
-                    if delivery_date == "":
-                        delivery_date = item["value"]   
-            if len(o["fee_lines"]) > 0:
-                for item in o["fee_lines"]:
-                    if "wallet" in item["name"].lower():
-                        wallet_payment = (-1)*float(item["total"])
-            if vendor in vendor_type.keys():
-                o["vendor_type"] = vendor_type[vendor]
+    orders = list_orders_with_status(wcapi, {"include": get_list_to_string(data['order_ids[]'])})
+    for o in orders:
+        wallet_payment = 0
+        refunds = 0
+        for r in o["refunds"]:
+            refunds = refunds + float(r["total"])
+        o["total_refunds"] = refunds*-1
+        o["total"] = float(o["total"])
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment = (-1)*float(item["total"])
+        if vendor in vendor_type.keys():
+            o["vendor_type"] = vendor_type[vendor]
+        else:
+            if vendor == "":
+                r = {'result': "Vendor Error", 'order_id': o['id']}
+                r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
+                results.append(r)
+                continue
             else:
-                if vendor == "":
-                    r = {'result': "Vendor Error", 'order_id': o['id']}
-                    r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
-                    results.append(r)
-                    continue
-                else:
-                    o["vendor_type"] = ""
-            o["wallet_payment"] = wallet_payment
-            o["total"] = float(o["total"]) + float(o["wallet_payment"])
-            # Template Name
-            if name == 'today':
-                td = "today_prepay"
-                if o["date_paid"] == None:
-                    td = 'today_postpay'
-                params = {'c_name': o['billing']['first_name'], 
-                'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
-                    'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
-                r = send_whatsapp_temp_sess(params)
+                o["vendor_type"] = ""
+        o["wallet_payment"] = wallet_payment
+        o["total"] = float(o["total"]) + float(o["wallet_payment"])
+        # Template Name
+        if name == 'today':
+            td = "today_prepay"
+            if o["date_paid"] == None:
+                td = 'today_postpay'
+            params = {'c_name': o['billing']['first_name'], 
+            'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
+                'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
+            r = send_whatsapp_temp_sess(params)
+        else:
+            td = 'feedback_old_prepaid_v2'
+            months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+            if len(delivery_date)>0:
+                dt = datetime.strptime(delivery_date, '%Y-%m-%d')
+                d_date = dt.strftime("%A")+", "+months[dt.month-1]+" " + str(dt.day)
             else:
-                td = 'feedback_old_prepaid_v2'
-                months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-                if len(delivery_date)>0:
-                    dt = datetime.strptime(delivery_date, '%Y-%m-%d')
-                    d_date = dt.strftime("%A")+", "+months[dt.month-1]+" " + str(dt.day)
-                else:
-                    d_date = ""
-                params = {'c_name': o['billing']['first_name'], 
-                'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date_last_order': d_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
-                    'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
-                r = {'customer_id': o['customer_id'], 'order_id': o['id']}
-                if o['customer_id'] in feedback_list:
-                    o_p = feedback_list[o['customer_id']]
-                    ids = o_p['vendor_type'].split(" (")[1][:-1]+", #"+str(o['id'])
-                    vendors = o_p['vendor_type'].split(" (")[0]
-                    if params['vendor_type'] not in o_p['vendor_type']:
-                        vendors = vendors+" + "+params['vendor_type']
-                    o_p['vendor_type'] = vendors+" ("+ids+")"
-                    feedback_list[o['customer_id']]=o_p
-                else:
-                    params['vendor_type'] = params['vendor_type']+" (#"+str(o['id'])+")"
-                    feedback_list[o['customer_id']]=params
-            r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
-            r['phone_number'] = format_mobile(o['billing']['phone'])
-            r['button'] = False
-            if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
-                r['payment_status'] = "Paid"
-            elif o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
-                r['payment_status'] = "Unpaid"
-                if o['payment_method_title'] == 'Pay Online on Delivery':
-                    payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
-                    if len(payment_links)>0:
-                        r['button'] = True
+                d_date = ""
+            params = {'c_name': o['billing']['first_name'], 
+            'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date_last_order': d_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
+                'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
+            r = {'customer_id': o['customer_id'], 'order_id': o['id']}
+            if o['customer_id'] in feedback_list:
+                o_p = feedback_list[o['customer_id']]
+                ids = o_p['vendor_type'].split(" (")[1][:-1]+", #"+str(o['id'])
+                vendors = o_p['vendor_type'].split(" (")[0]
+                if params['vendor_type'] not in o_p['vendor_type']:
+                    vendors = vendors+" + "+params['vendor_type']
+                o_p['vendor_type'] = vendors+" ("+ids+")"
+                feedback_list[o['customer_id']]=o_p
             else:
-                r['payment_status'] = ""
-                
-            results.append(r)
-        if name == 'feedback':
-            for c in feedback_list:
-                r = send_whatsapp_temp(feedback_list[c], feedback_list[c]['name'])
-                for rs in range(len(results)):
-                    if 'result' not in results[rs]:
-                        if results[rs]['customer_id'] == c:
-                            r['customer_name'] = results[rs]['customer_name']
-                            r['order_id'] = results[rs]['order_id']
-                            r['payment_status'] = results[rs]['payment_status']
-                            r['button'] = results[rs]['button']
-                            results[rs] = r.copy()
-        return {'result': 'success', 'results': results}
-    else:
-        return jsonify({"result": "error"})
+                params['vendor_type'] = params['vendor_type']+" (#"+str(o['id'])+")"
+                feedback_list[o['customer_id']]=params
+        r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
+        r['phone_number'] = format_mobile(o['billing']['phone'])
+        r['button'] = False
+        if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
+            r['payment_status'] = "Paid"
+        elif o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
+            r['payment_status'] = "Unpaid"
+            if o['payment_method_title'] == 'Pay Online on Delivery':
+                payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
+                if len(payment_links)>0:
+                    r['button'] = True
+        else:
+            r['payment_status'] = ""
+            
+        results.append(r)
+    if name == 'feedback':
+        for c in feedback_list:
+            r = send_whatsapp_temp(feedback_list[c], feedback_list[c]['name'])
+            for rs in range(len(results)):
+                if 'result' not in results[rs]:
+                    if results[rs]['customer_id'] == c:
+                        r['customer_name'] = results[rs]['customer_name']
+                        r['order_id'] = results[rs]['order_id']
+                        r['payment_status'] = results[rs]['payment_status']
+                        r['button'] = results[rs]['button']
+                        results[rs] = r.copy()
+    return {'result': 'success', 'results': results}
 
-def update_order_status_with_id(order, status):
-    data = {}
-    order_id = order['id']
-    r_list = []
+def update_order_status_with_id(order, status, r):
+    s = ""
+    m = ""
     if status == 'cancel' or status == 'cancel_r':
-        data['status'] = 'cancelled'
-        r_list.append("Mark as cancelled")
+        s = 'cancelled'
+        m = ("Mark as cancelled")
     elif status == 'delivered':
         if order['status'] == 'tbd-unpaid':
-            data['status'] = 'delivered-unpaid'
-            r_list.append("Mark as delivered-unpaid")
+            s = 'delivered-unpaid'
+            m = ("Mark as delivered-unpaid")
         elif order['status'] == 'tbd-paid':
-            data['status'] = 'completed'
-            r_list.append("Mark as delivered-paid")
+            s = 'completed'
+            m = ("Mark as delivered-paid")
         else:
             if order['date_paid'] == None:
-                data['status'] = 'delivered-unpaid'
-                r_list.append("Mark as delivered-unpaid")
+                s = 'delivered-unpaid'
+                m = ("Mark as delivered-unpaid")
             else:
-                data['status'] = 'completed'
-                r_list.append("Mark as delivered-paid")
+                s = 'completed'
+                m = ("Mark as delivered-paid")
     elif status == 'tbd':
         if order['status'] == 'pending':
-            data['status'] = 'tbd-unpaid'
-            r_list.append("Mark as tbd-unpaid")
+            s = 'tbd-unpaid'
+            m = ("Mark as tbd-unpaid")
         elif order['payment_method_title'] not in ['Pre-paid', 'Wallet payment']:
-            data['status'] = 'tbd-unpaid'
-            r_list.append("Mark as tbd-unpaid") 
+            s = 'tbd-unpaid'
+            m = ("Mark as tbd-unpaid") 
         else:
-            data['status'] = 'tbd-paid'
-            r_list.append("Mark as tbd-paid")
-    u_order = wcapi_write.put("orders/"+str(order_id), data).json()
-    if 'id' in u_order.keys():
-        r_list.append("success")
+            s = 'tbd-paid'
+            m = ("Mark as tbd-paid")
+    if r == 'status':
+        return s
     else:
-        r_list.append('error')    
-    return r_list    
+        return m
 
         
 
@@ -1477,35 +1346,40 @@ def change_order_status():
         msg_text = '*These orders are marked as cancelled*\n\n'
     error_text = ""
     success_text = ""
-    if len(data.keys())>1:
-        for i in data['order_ids[]']:
-            order =  wcapi.get("orders/"+str(i)).json()
-            wallet_payment = 0
-            if len(order["fee_lines"]) > 0:
-                for item in order["fee_lines"]:
-                    if "wallet" in item["name"].lower():
-                        wallet_payment = (-1)*float(item["total"])
-            order['total']= float(order['total'])+wallet_payment
-            message, status = update_order_status_with_id(order, data['status'][0])
-            name = order['billing']['first_name']+" "+order['billing']['last_name']
-            refund_s = "NO"
-            if status == "success":
-                success_text+=i+"-"+name+"-"+message+"\n"
-                if order['payment_method'] == 'wallet' and order['created_via'] == 'subscription' and data['status'][0] == 'cancel_r':
-                    refund = wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(order['total']), 'details': 'Refund added for order ID-'+str(order['id'])}).json()
-                    if refund['response'] == 'success' and refund['id'] != False:
-                        refund_s = "YES"
-            else:
-                error_text+=i+"-"+name+"-"+message+"\n"
-            result_list.append({'order_id': i, 'status': status, 'message': message, 'name': name,'refund': refund_s})
-        msg_text+=success_text
-        if len(error_text)>0:
-            msg_text+='\n*These orders gave error*\n\n'
-            msg_text+=error_text
-        response =send_slack_message(client, "VENDOR_WISE", msg_text)
-        return {'result': 'success', 'result_list': result_list}
-    else:
-        return{'result': 'error'}
+    orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
+    update_list = []
+    wallet_refund = []
+    for order in orders:
+        order['status'] = update_order_status_with_id(order, data['status'][0], 'status')
+        update_list.append({'id': order['id'], 'status': order['status']})
+    updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
+    for o in updates['update']:
+        name = o['billing']['first_name']+" "+o['billing']['last_name']
+        message = update_order_status_with_id(o, data['status'][0], 'message')
+        wallet_payment = 0
+        if len(o["fee_lines"]) > 0:
+            for item in oct(i)["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment = (-1)*float(item["total"])
+        o['total']= float(o['total'])+wallet_payment
+        refund_s = "NO"
+        if 'error' in o:
+            error_text+=str(o['id'])+"-"+name+"-"+message+"\n"
+            status = "Failed"
+        else:
+            status = "Success"
+            success_text+=str(o['id'])+"-"+name+"-"+message+"\n"
+            if o['payment_method'] == 'wallet' and o['created_via'] == 'subscription' and data['status'][0] == 'cancel_r':
+                refund = wcapiw.post("wallet/"+str(o['customer_id']), data={'type': 'credit', 'amount': float(o['total']), 'details': 'Refund added for order ID-'+str(o['id'])}).json()
+                if refund['response'] == 'success' and refund['id'] != False:
+                    refund_s = "YES"
+        result_list.append({'order_id': o['id'], 'status': status, 'message': message, 'name': name,'refund': refund_s})
+    msg_text+=success_text
+    if len(error_text)>0:
+        msg_text+='\n*These orders gave error*\n\n'
+        msg_text+=error_text
+    response =send_slack_message(client, "VENDOR_WISE", msg_text)
+    return {'result': 'success', 'result_list': result_list}
 
 @app.route("/get_copy_messages/<string:id>")
 def get_copy_messages(id):
@@ -1518,13 +1392,7 @@ def get_copy_messages(id):
         delivery_date = ""
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        for item in o["meta_data"]:
-            if item["key"] == "_delivery_date":
-                if delivery_date == "":
-                    delivery_date = item["value"]
-            elif item["key"] == "_wc_acof_2_formatted":
-                if delivery_date == "":
-                    delivery_date = item["value"]
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         if delivery_date:
             try:
                 dt = datetime.strptime(delivery_date, '%Y-%m-%d')
@@ -1698,12 +1566,7 @@ def copy_linked_orders():
 @app.route("/send_payment_link_wt/<string:id>", methods=['POST'])
 def send_payment_link_wt(id):
     order = wcapi.get("orders/"+str(id)).json()
-    vendor = ""
-    for item in order["meta_data"]:
-        if item["key"] == "wos_vendor_data":
-            vendor = item["value"]["vendor_name"]
-        elif item["key"] == "_wc_acof_6" and item['value'] != "":
-            vendor = item["value"]
+    vendor, manager, delivery_date, order_note,  = get_meta_data(order)
     if vendor in vendor_type.keys():
         vendor_t = vendor_type[vendor]
     else:

@@ -136,7 +136,6 @@ function sendToGoogleSheet(act, status) {
     data: { 'order_ids': inp_select_v, 'action': [act], 'status': status },
     success: function (res) {
       if (res.result == 'success') {
-        if (act == 'google_sheet') {
           delivery_dates_text = ""
           delivery_date_msg = ""
           for (var d of Object.keys(res.delivery_dates)) {
@@ -172,12 +171,6 @@ function sendToGoogleSheet(act, status) {
               rgba(0,0,123,0.4)
             `
           })
-        } else {
-          $.nok({
-            message: "Success, Sheet Created!",
-            type: "success",
-          });
-        }
       } else {
         $.nok({
           message: "Error, Sheet Not Created!",
