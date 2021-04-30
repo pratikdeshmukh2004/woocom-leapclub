@@ -391,7 +391,9 @@ def download_csv():
         data['action'] = data['action[]']
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
+    c_time = time.time()
     orders = wcapi.get("orders", params=params).json()
+    print("time to fetch orders: ", time.time()-c_time)
     delivery_dates = {}
     status_list = {}
     for o in orders:
@@ -417,14 +419,20 @@ def download_csv():
     elif data["action"][0] == 'google_sheet':
         for o in orders:
             refunds = []
+            c_time = time.time()
             if len(o["refunds"]) > 0:
                 refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
+            print("TIme to fetch refunds: ", time.time()-c_time)
+            c_time = time.time()
             o['line_items_text'] = list_order_items_csv(
                 o["line_items"], refunds, wcapi).replace("&amp;", "&")
+            print("time to get line items: ", time.time()-c_time)
             o['total_text'] = get_totals(
                 o["total"], refunds)+get_shipping_total_for_csv(o)
+        c_time = time.time()
         response = requests.post(
             app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders)
+        print("Time to send to google sheet: ",time.time()- c_time)
         sheet_url = "https://docs.google.com/spreadsheets/d/13SJsfwcI2-swCgef1Yg6S-FhFC5TL1YX46n1_c0vp98/edit#gid="+response.json()['ssUrl']
     elif data['action'][0] == 'product_google_sheet':
         o = orders[0]
@@ -1002,6 +1010,39 @@ def order_details():
     main_text += ("*Total Amount: "+str(total)+"*\n\n")
     return {"result": main_text}
 
+@app.route("/order_details_mini", methods=["POST"])
+def order_details_mini():
+    data = request.form.to_dict(flat=False)
+    data['order_ids'] = data['order_ids[]']
+    params = get_params(data)
+    params["include"] = get_list_to_string(data["order_ids"])
+    orders = wcapi.get("orders", params=params).json()
+    main_text = ""
+    total = 0
+    wallet_payment = 0
+    for o in orders:
+        o["total"] = float(o["total"])
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment = (-1)*float(item["total"])
+        o["total"] = float(o["total"]) + wallet_payment
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        if len(delivery_date)>0:
+            dt = datetime.strptime(delivery_date, '%Y-%m-%d')
+            d_date = dt.strftime("%A")+", "+months[dt.month-1]+" " + str(dt.day)
+        else:
+            d_date = ""
+        main_text += ("Order ID: "+str(o['id'])+" ("+vendor_type[vendor]+")")
+        main_text += ("\nDelivery Date: "+d_date)
+        main_text += ("\n\nTotal Amount: "+str(o['total']))
+        main_text += "\n\n-----------------------------------------\n\n"
+        total +=o['total']
+    main_text += ("*Total Amount: "+str(round(total,1))+"*\n\n")
+    return {"result": main_text}
+
 
 @app.route("/customer_details", methods=["POST"])
 def customer_details():
@@ -1242,6 +1283,16 @@ def send_whatsapp_messages_m(name):
             'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
                 'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
             r = send_whatsapp_temp_sess(params)
+            r['vendor_type'] = o['vendor_type']
+            r['button'] = True
+            if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
+                r['payment_status'] = "Paid"
+            elif o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
+                r['payment_status'] = "Unpaid"
+                if o['payment_method_title'] != 'Pay Online on Delivery':
+                    r['button'] = False
+            else:
+                r['payment_status'] = ""
         else:
             td = 'feedback_old_prepaid_v2'
             months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -1251,7 +1302,16 @@ def send_whatsapp_messages_m(name):
                 d_date = dt.strftime("%A")+", "+months[dt.month-1]+" " + str(dt.day)
             else:
                 d_date = ""
-            params = {'c_name': o['billing']['first_name'], 
+            button = True
+            if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
+                p_s = "Paid"
+            elif o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
+                p_s = "Unpaid"
+                if o['payment_method_title'] != 'Pay Online on Delivery':
+                    button = False
+            else:
+                p_s = ""
+            params = {'payment_status': p_s,'c_name': o['billing']['first_name'], 
             'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date_last_order': d_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
                 'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
             r = {'customer_id': o['customer_id'], 'order_id': o['id']}
@@ -1262,36 +1322,51 @@ def send_whatsapp_messages_m(name):
                 if params['vendor_type'] not in o_p['vendor_type']:
                     vendors = vendors+" + "+params['vendor_type']
                 o_p['vendor_type'] = vendors+" ("+ids+")"
+                o_p['payment_status'] = o_p['payment_status']+", "+p_s
+                if o_p['button'] == True:
+                    o_p['button'] = button
                 feedback_list[o['customer_id']]=o_p
             else:
                 params['vendor_type'] = params['vendor_type']+" (#"+str(o['id'])+")"
+                params['button'] = button
                 feedback_list[o['customer_id']]=params
         r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
         r['phone_number'] = format_mobile(o['billing']['phone'])
-        r['button'] = False
-        if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
-            r['payment_status'] = "Paid"
-        elif o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
-            r['payment_status'] = "Unpaid"
-            if o['payment_method_title'] == 'Pay Online on Delivery':
-                payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
-                if len(payment_links)>0:
-                    r['button'] = True
-        else:
-            r['payment_status'] = ""
-            
         results.append(r)
     if name == 'feedback':
+        results = []
         for c in feedback_list:
             r = send_whatsapp_temp(feedback_list[c], feedback_list[c]['name'])
-            for rs in range(len(results)):
-                if 'result' not in results[rs]:
-                    if results[rs]['customer_id'] == c:
-                        r['customer_name'] = results[rs]['customer_name']
-                        r['order_id'] = results[rs]['order_id']
-                        r['payment_status'] = results[rs]['payment_status']
-                        r['button'] = results[rs]['button']
-                        results[rs] = r.copy()
+            order_ids = feedback_list[c]['order_type'].split(" (")[1][:-1].replace("#", "")
+            feedback_list[c]['result'] = r['result']
+            feedback_list[c]['customer_name'] = feedback_list[c]['c_name']
+            feedback_list[c]['phone_number'] = feedback_list[c]['mobile_number']
+            feedback_list[c]['vendor_type'] = feedback_list[c]['order_type']
+            feedback_list[c]['order_id'] = order_ids
+            results.append(feedback_list[c])
+            if feedback_list[c]['button']:
+                payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+order_ids+"%")).all()
+                if len(payment_links)==0:
+                    feedback_list[c]['button'] = False
+    else:
+        today_list = {}
+        for r in results:
+            if r['phone_number'] not in today_list:
+                r['vendor_type'] = r['vendor_type']+" (#"+str(r['order_id'])+")"
+                r['order_id'] = str(r['order_id'])
+                today_list[r['phone_number']]=r
+            else:
+                t_d = today_list[r['phone_number']]
+                t_d['order_id']+=(", "+str(r['order_id']))
+                t_d['result'] = str(t_d['result'])
+                t_d['result']+=(", "+str(r['result']))
+                t_d['payment_status']+=(", "+r['payment_status'])
+                ids = t_d['vendor_type'].split(" (")[1][:-1]+", #"+str(o['id'])
+                vendors = t_d['vendor_type'].split(" (")[0]
+                if r['vendor_type'] not in t_d['vendor_type']:
+                    vendors = vendors+" + "+r['vendor_type']
+                t_d['vendor_type'] = vendors+" ("+ids+")"
+        results = list(today_list.values())
     return {'result': 'success', 'results': results}
 
 def update_order_status_with_id(order, status, r):
@@ -1565,20 +1640,16 @@ def copy_linked_orders():
 
 @app.route("/send_payment_link_wt/<string:id>", methods=['POST'])
 def send_payment_link_wt(id):
-    order = wcapi.get("orders/"+str(id)).json()
-    vendor, manager, delivery_date, order_note,  = get_meta_data(order)
-    if vendor in vendor_type.keys():
-        vendor_t = vendor_type[vendor]
-    else:
-        vendor_t = ""
-    mobile_number = format_mobile(order["billing"]["phone"])
-    payment_links = PaymentLinks.query.filter_by(order_id=order["id"]).all()
+    args = request.form.to_dict(flat=True)
+    print(args)
+    mobile_number = args['mobile_number']
+    payment_link = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+id+"%")).all()[-1]
     headers = {
         'Authorization': app.config["WATI_AUTHORIZATION"],
         'Content-Type': 'application/json',
     }
     url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
-        mobile_number + "?messageText="+payment_links[-1].payment_link_url
+        mobile_number + "?messageText="+payment_link.payment_link_url
     response = requests.request(
         "POST", url, headers=headers)
     url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
@@ -1587,22 +1658,17 @@ def send_payment_link_wt(id):
         "POST", url, headers=headers)
     result = json.loads(response.text.encode('utf8'))
     result["template_name"] = 'payment_link_6'
-    result["order_id"] = id
     if result["result"] in ["success", "PENDING", "SENT", True]:
-        new_wt = wtmessages(order_id=order["id"], template_name="order_detail",
-                            broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
-        db.session.add(new_wt)
-        db.session.commit()
         return result
 
     # Template Message....
-    args = {'order_type': vendor_t + "( #"+str(id)+" )", 'razorpay_link': payment_links[-1].payment_link_url}
+    args_p = {'order_type': args['order_type'], 'razorpay_link': payment_link.payment_link_url}
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile_number
     template_name = 'payment_link_6'
     parameters_s = "["
-    for d in args:
+    for d in args_p:
         parameters_s = parameters_s + \
-            '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
+            '{"name":"'+str(d)+'", "value":"'+str(args_p[d])+'"},'
     parameters_s = parameters_s[:-1]
     parameters_s = parameters_s+"]"
     payload = {
@@ -1620,7 +1686,6 @@ def send_payment_link_wt(id):
 
     result = json.loads(response.text.encode('utf8'))
     result["template_name"] = template_name
-    result["order_id"] = id
     return result
 
 if __name__ == "__main__":

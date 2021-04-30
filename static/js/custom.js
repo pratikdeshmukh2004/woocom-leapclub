@@ -246,6 +246,65 @@ function copyOrderDetail(status) {
   });
 }
 
+function copyOrderDetailMini(status) {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  $.nok({
+    message: "Processing Your Request Please Wait!",
+    type: "success",
+  });
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/order_details_mini",
+    data: { 'order_ids': inp_select_v, 'status': status },
+    success: function (res) {
+      text = res.result.replace("&amp;", "&")
+      var input = document.body.appendChild(document.createElement("textarea"));
+      input.value = text;
+      input.select();
+      var status = document.execCommand("copy");
+      input.parentNode.removeChild(input);
+      if (status) {
+        $.nok({
+          message: "Success, Message Copied!",
+          type: "success",
+        });
+      } else {
+        if (text.length > 0) {
+          Swal.fire({
+            html: `
+        <pre>
+        <div style='text-align: left;'>
+<b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
+
+`+ text + `
+</pre>
+</div>
+        `,
+            width: 700,
+            backdrop: `
+          rgba(0,0,123,0.4)
+        `
+          })
+        } else {
+          $.nok({
+            message: "Error, Message Not Copied!",
+            type: "error",
+          });
+        }
+      }
+    },
+    error: function (err) {
+      $.nok({
+        message: "API Error, Please Ask To Admin!",
+        type: "error",
+      });
+    },
+  });
+}
+
 function copyCustomerDetail(status) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
@@ -852,106 +911,3 @@ function copyLinkedOrders() {
   });
 }
 
-
-function sendWMessages(name) {
-  var inp_select = $('#select_inps')
-  var inp_select_v = inp_select.val()
-  $.nok({
-    message: "Processing Your Request Please Wait!",
-    type: "success",
-  });
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/send_whatsapp_messages/" + name,
-    data: { 'order_ids': inp_select_v },
-    success: function (res) {
-      if (res.result == 'success') {
-        trtext = ""
-        for (var o of res.results) {
-          if (["success", "PENDING", "SENT", true].includes(o.result)) {
-            updateSpan(o.order_id, o.template_name, 'text-success')
-          } else {
-            updateSpan(o.order_id, o.template_name, 'text-danger')
-          }
-          button = `<td onclick="sendWPaymentLink('`+o.order_id+`')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
-          if (!o.button){
-            button = ""
-          }
-          trtext += `
-              <tr>
-                <td><p>`+ o.customer_name + " ( " + o.phone_number + ` ) </p></td>
-                <td><p>`+ o.order_id + `</p></td>
-                <td><p>`+ o.result + `</p></td>
-                <td><p>`+ o.payment_status + `</p></td>
-                `+button+`
-              </tr>
-          `
-        }
-        Swal.fire({
-          html: `
-          <b>Group orders by customer:</b>
-            <table class='table'>
-              <thead>
-              <tr>
-                <th><b>Name (Mobile)</b></th>  
-                <th><b>Order IDS</b></th>  
-                <th><b>Result</b></th>  
-                <th><b>Paid/Unpaid</b></th>  
-              </tr>  
-              </thead>
-              <tbody>
-              `+ trtext + `
-              </tbody>
-            </table>
-          `,
-          width: 1000,
-          backdrop: `
-            rgba(0,0,123,0.4)
-          `,
-          allowOutsideClick: false
-        })
-      }
-      else {
-        $.nok({
-          message: "Error, Messages not sent!",
-          type: "error",
-        });
-      }
-    }
-  })
-}
-function sendWPaymentLink(id){
-    $.nok({
-    message: "Processing Your Request Please Wait!",
-    type: "success",
-  });
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/send_payment_link_wt/"+id,
-    success: function (res) {
-      if (["success", "PENDING", "SENT", true].includes(res.result)) {
-        $.nok({
-          message: "Success, Payment Link Sent!",
-          type: "success",
-        });
-        updateSpan(res.order_id, res.template_name, 'text-success')
-      } else {
-        $.nok({
-          message: "Error, Message Not Sent!",
-          type: "error",
-        });
-        updateSpan(res.order_id, res.template_name, 'text-danger')
-      }
-    },
-    error: function (res) {
-      $.nok({
-        message: "API Error, Message Not Sent!",
-        type: "error",
-      });
-    },
-  });
-}

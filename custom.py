@@ -178,7 +178,11 @@ def list_order_items_csv(order_items, refunds, wcapi):
     for r in refunds:
         for ri in r["line_items"]:
             total_refunds.append(ri)
+    c_time = time.time()
     order_items = get_line_items_with_product(order_items, wcapi)
+    print("order items: ",len(order_items))
+    print("TIme to fetch product: ", time.time()-c_time)
+    c_time = time.time()
     for order_item in order_items:
         for refund in total_refunds:
             if order_item["id"] == int(refund["meta_data"][0]["value"]):
@@ -215,6 +219,7 @@ def list_order_items_csv(order_items, refunds, wcapi):
                 + str(order_item["total"])
                 + "\n\n"
             )
+    print("Time for loop: ", time.time()-c_time)
     return msg
 
 
