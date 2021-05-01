@@ -241,7 +241,7 @@ def get_orders_for_home(args, tab):
             orders.extend(list_orders_with_status(wcapi, params.copy()))
             tabs_nums['dairy'] = len(orders)
         else:
-            orders = wcapi.get("order2", params=params)
+            orders = wcapi.get("orders", params=params)
             tabs_nums[params['status']] = orders.headers['X-WP-Total']
             orders = orders.json()
     else:
@@ -383,6 +383,7 @@ def send_whatsapp(name):
 
 @app.route('/csv', methods=["POST"])
 def download_csv():
+    # Fetching Orders-------------------
     if not g.user:
         return redirect(url_for('login'))
     data = request.form.to_dict(flat=False)
@@ -394,6 +395,8 @@ def download_csv():
     c_time = time.time()
     orders = wcapi.get("orders", params=params).json()
     print("time to fetch orders: ", time.time()-c_time)
+
+    # Collecting Meta and PopUp ready ---------------
     delivery_dates = {}
     status_list = {}
     for o in orders:
@@ -409,6 +412,8 @@ def download_csv():
             status_list[status_t] = {'count': 1}
         else:
             status_list[status_t]['count'] +=1
+    
+    # Conditions Download buttons........
     if data["action"][0] == "order_sheet":
         csv_text = get_csv_from_orders(orders, wcapi)
         filename = str(datetime.utcnow())+"-" + \
@@ -416,6 +421,7 @@ def download_csv():
     elif data["action"][0] == "product_sheet":
         csv_text = get_csv_from_products(orders, wcapi, 'csv')
         filename = str(datetime.utcnow())+"-" + "Product-Sheet.csv"
+    # Google Sheets................
     elif data["action"][0] == 'google_sheet':
         for o in orders:
             refunds = []
@@ -433,13 +439,13 @@ def download_csv():
         response = requests.post(
             app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders)
         print("Time to send to google sheet: ",time.time()- c_time)
-        sheet_url = "https://docs.google.com/spreadsheets/d/13SJsfwcI2-swCgef1Yg6S-FhFC5TL1YX46n1_c0vp98/edit#gid="+response.json()['ssUrl']
+        sheet_url = app.config["SHEET_URL"]+response.json()['ssUrl']
     elif data['action'][0] == 'product_google_sheet':
         o = orders[0]
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=product_sheet", json={
                                  "products": get_csv_from_products(orders, wcapi, 'google-sheet'), "sheet_name": vendor+"_"+delivery_date})
-        sheet_url = "https://docs.google.com/spreadsheets/d/13SJsfwcI2-swCgef1Yg6S-FhFC5TL1YX46n1_c0vp98/edit#gid="+response.json()['ssUrl']
+        sheet_url = app.config["SHEET_URL"]+response.json()['ssUrl']
     elif data['action'][0] == 'delivery-google-sheet':
         o = orders[0]
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
@@ -451,7 +457,7 @@ def download_csv():
                         wallet_payment = (-1)*float(item["total"])
             order['total']= float(order['total'])+wallet_payment
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=delivery_sheet", json=orders)
-        sheet_url = "https://docs.google.com/spreadsheets/d/13SJsfwcI2-swCgef1Yg6S-FhFC5TL1YX46n1_c0vp98/edit#gid="+response.json()['ssUrl']
+        sheet_url = app.config["SHEET_URL"]+response.json()['ssUrl']
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
         filename = str(datetime.utcnow())+"-" + \
@@ -1284,10 +1290,11 @@ def send_whatsapp_messages_m(name):
                 'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
             r = send_whatsapp_temp_sess(params)
             r['vendor_type'] = o['vendor_type']
-            r['button'] = True
+            r['button'] = False
             if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
                 r['payment_status'] = "Paid"
             elif o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
+                r['button'] = True
                 r['payment_status'] = "Unpaid"
                 if o['payment_method_title'] != 'Pay Online on Delivery':
                     r['button'] = False

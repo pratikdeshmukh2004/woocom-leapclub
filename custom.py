@@ -274,8 +274,10 @@ def get_params(args):
             if 'payment_status' in args and args["status"][0] == "tbd-paid, tbd-unpaid":
                     if args['payment_status'][0] == 'paid':
                         params['status'] = 'tbd-paid'
-                    else:
+                    if args['payment_status'][0] == 'unpaid':
                         params['status'] = 'tbd-unpaid'
+                    else:
+                        params['status'] = 'tbd-paid, tbd-unpaid'
             else:
                 params["status"] = args["status"][0]
     else:
