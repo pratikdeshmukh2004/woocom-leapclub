@@ -5,6 +5,7 @@ import datetime
 import concurrent.futures
 from customselectlist import list_created_via
 from pytz import timezone
+from modules.universal import format_mobile
 
 
 def format_delivery_date(d):
@@ -22,14 +23,16 @@ def filter_orders(orders, params):
     f_orders = []
     for o in orders:
         c = {"payment_status": False, "manager": False}
-
+        if 'status' in params and 'payment_status' in params:
+            if params['status'][0] == 'tbd-paid, tbd-unpaid' and params['payment_status'][0] != "":
+                params['payment_status'][0] = ""
         if "payment_status" in params:
             if params["payment_status"][0] != "":
                 if params["payment_status"][0] == "unpaid":
-                    if o["date_paid"] == None:
+                    if o["payment_method_title"] == "Pay Online on Delivery":
                         c["payment_status"] = True
                 else:
-                    if o["date_paid"] != None:
+                    if o["payment_method_title"] == 'Pre-paid':
                         c["payment_status"] = True
             else:
                 c["payment_status"] = True
@@ -144,11 +147,11 @@ def list_order_items(order_items, refunds, wcapi):
                     msg
                     + name_w
                     + "\n₹"
-                    + str(order_item["price"])
+                    + str(round(order_item["price"],1))
                     + " x "
                     + str(order_item["quantity"])
                     + " = "
-                    + str(order_item["total"])
+                    + str(round(float(order_item["total"]),1))
                     + "\n\n"
                 )
 
@@ -159,11 +162,11 @@ def list_order_items(order_items, refunds, wcapi):
                     + " x "
                     + str(order_item["quantity"])
                     + "\n₹"
-                    + str(order_item["price"])
+                    + str(round(order_item["price"], 1))
                     + " x "
                     + str(order_item["quantity"])
                     + " = "
-                    + str(order_item["total"])
+                    + str(round(float(order_item["total"]),1))
                     + "\n\n"
                 )
     return msg
@@ -175,7 +178,11 @@ def list_order_items_csv(order_items, refunds, wcapi):
     for r in refunds:
         for ri in r["line_items"]:
             total_refunds.append(ri)
+    c_time = time.time()
     order_items = get_line_items_with_product(order_items, wcapi)
+    print("order items: ",len(order_items))
+    print("TIme to fetch product: ", time.time()-c_time)
+    c_time = time.time()
     for order_item in order_items:
         for refund in total_refunds:
             if order_item["id"] == int(refund["meta_data"][0]["value"]):
@@ -212,6 +219,7 @@ def list_order_items_csv(order_items, refunds, wcapi):
                 + str(order_item["total"])
                 + "\n\n"
             )
+    print("Time for loop: ", time.time()-c_time)
     return msg
 
 
@@ -263,7 +271,15 @@ def get_params(args):
                 l_c = list_created_via.copy()
                 l_c.remove("subscription")
                 params["created_via"] = get_list_to_string(l_c)
-            params["status"] = args["status"][0]
+            if 'payment_status' in args and args["status"][0] == "tbd-paid, tbd-unpaid":
+                    if args['payment_status'][0] == 'paid':
+                        params['status'] = 'tbd-paid'
+                    if args['payment_status'][0] == 'unpaid':
+                        params['status'] = 'tbd-unpaid'
+                    else:
+                        params['status'] = 'tbd-paid, tbd-unpaid'
+            else:
+                params["status"] = args["status"][0]
     else:
         l_c = list_created_via.copy()
         l_c.remove("subscription")
@@ -346,7 +362,7 @@ def get_orders_with_messages(orders, wcapi):
         s_msg = ("Order ID: "+str(o["id"])
                  + "\n\nName: "+o["billing"]["first_name"] +
                  " "+o["billing"]["last_name"]
-                 + "\nMobile: "+o["billing"]["phone"]
+                 + "\nMobile: "+format_mobile(o["billing"]["phone"])
                  + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
                  ", "+o["billing"]["address_2"]
                      + "\n\nTotal Amount: " +
@@ -425,7 +441,7 @@ def get_csv_from_orders(orders, wcapi):
             refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
         writer.writerow({
             "Order ID": o["id"],
-            "Customer Detail": "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+o["billing"]["phone"]
+            "Customer Detail": "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+format_mobile(o["billing"]["phone"])
             + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", " +
             o["shipping"]["city"]+", "+o["shipping"]["state"] +
             ", "+o["shipping"]["postcode"],
@@ -477,7 +493,7 @@ def get_csv_from_vendor_orders(orders, wcapi):
             "Date Created": o["date_created"],
             "Delivery Date": delivery_date,
             "Order ID": o["id"],
-            "Customer Detail":  "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+o["billing"]["phone"]
+            "Customer Detail":  "Name: "+o["billing"]["first_name"]+" "+o["billing"]["last_name"]+"\nMobile: "+format_mobile(o["billing"]["phone"])
             + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", " +
             o["shipping"]["city"]+", "+o["shipping"]["state"] +
             ", "+o["shipping"]["postcode"],
@@ -737,7 +753,7 @@ def get_orders_with_customer_detail(orders):
         cnmsg = ""
         if o['payment_method']=='other':
             cnmsg = "\n\nCash on delivery"
-        msg = str(o['id'])+" ("+o['billing']['first_name']+")\n"+o['billing']['phone']+"\n"+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"] + \
+        msg = str(o['id'])+" ("+o['billing']['first_name']+")\n"+format_mobile(o['billing']['phone'])+"\n"+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"] + \
             ", "+o["shipping"]["city"]+", "+o["shipping"]["state"] + ", " + \
             o["shipping"]["postcode"]+"\n\nTotal Amount: " + \
             str(o['total'])+"\n\nCustomer Note: "+o['customer_note']+cnmsg
@@ -757,7 +773,7 @@ def get_orders_with_supplier(orders, wcapi):
         s_msg = ("Order ID: "+str(o["id"])
                  + "\n\nName: "+o["billing"]["first_name"] +
                  " "+o["billing"]["last_name"]
-                 + "\nMobile: "+o["billing"]["phone"]
+                 + "\nMobile: "+format_mobile(o["billing"]["phone"])
                  + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
                  ", "+o["billing"]["address_2"]
                      + "\n\nTotal Amount: " +

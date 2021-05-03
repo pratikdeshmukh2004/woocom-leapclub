@@ -143,6 +143,9 @@ TemplatesBroadcast = {
         'dairy': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
         'any': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"}
 
+    },
+    "payment_link_6":{
+        'any': {"template": "payment_link_6", "broadcast": "send_payment_link"}
     }
 }
 
@@ -160,4 +163,5 @@ vendor_type = {
     'Kyssa Farms': 'grocery',
     'antarkranti': 'grocery',
     'Antarkranti':'grocery',
+    'thewomanscompany': 'personal_care'
 }

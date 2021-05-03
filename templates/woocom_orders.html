@@ -204,10 +204,14 @@
         
       <button data-toggle="tooltip" onclick="copySupplierMessage('{{nav_active}}')" type="button" title="Copy Supplier Message"
         class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
+      <button data-toggle="tooltip" onclick="copyLinkedOrders()" type="button" title="Copy Linked Orders"
+      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
   
     {%elif tab == 'woocom_orders'%}
       <button data-toggle="tooltip" onclick="copyOrderDetail('{{nav_active}}')" type="button" title="Copy Order Details"
       class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
+      <button data-toggle="tooltip" onclick="copyOrderDetailMini('{{nav_active}}')" type="button" title="Copy Mini Order Detail"
+      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button> 
       {%if nav_active == 'subscription'%}
         <button data-toggle="tooltip" onclick="genMulSubscriptionLinks()" type="button" title="Gen Payment Links"
         class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-link" aria-hidden="true"></i></button>
@@ -270,7 +274,7 @@
       {% for o in orders %}
       <tr>
         <td class="{{o.id}}" scope="row">
-          {% if o.vendor_type %}
+          {% if o.vendor_type or nav_active == 'subscription' %}
           <div style="min-width: 162px;">
             <a data-toggle="tooltip" target='blank' href="https://leapclub.in/wp-admin/post.php?post={{o.id}}&action=edit"><i
                 title="Edit Order" class="mdi mdi-18px mdi-pencil-outline btn-sm btn btn-warning"

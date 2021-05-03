@@ -1,7 +1,7 @@
-from custom import get_totals, get_shipping_total, list_order_items, list_orders_with_status, list_orders_with_status_N2
+from custom import get_totals, list_order_items, list_orders_with_status, list_orders_with_status_N2
 from datetime import datetime, timedelta
-from customselectlist import list_created_via
 from slack_chennels import CHANNELS
+from modules.universal import format_mobile, send_slack_message, send_slack_message_thread
 
 
 def get_total_from_params(wcapi, params):
@@ -12,7 +12,7 @@ def get_total_from_params(wcapi, params):
     return total_o
 
 
-def send_slack_message(client, wcapi, o):
+def send_slack_message_(client, wcapi, o):
     params = {'per_page': 100}
     params['status'] = "processing, tbd-unpaid, tbd-paid, delivered-unpaid, completed"
     params['customer'] = int(o['customer_id'])
@@ -49,7 +49,7 @@ def send_slack_message(client, wcapi, o):
     s_msg = (
         "*Order ID: "+str(o["id"])
         + "*\nName: "+o["billing"]["first_name"] + " " +
-        o["billing"]["last_name"] + " | Mobile: "+o["billing"]["phone"]
+        o["billing"]["last_name"] + " | Mobile: "+format_mobile(o["billing"]["phone"])
         + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"] +
         ", "+o["shipping"]["state"]+", " +
         o["shipping"]["postcode"] + ", "+o["billing"]["address_2"]
@@ -69,24 +69,7 @@ def send_slack_message(client, wcapi, o):
     )
     th_s_msg = "*Order Items*\n" + \
         list_order_items(o["line_items"], order_refunds, wcapi)
-    response = client.chat_postMessage(
-        channel=CHANNELS['ORDER_NOTIFICATIONS'],
-        blocks=[
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": s_msg
-                }
-            }
-        ]
-    )
-    t_response = client.chat_postMessage(
-        channel=CHANNELS['ORDER_NOTIFICATIONS'],
-        thread_ts=response["ts"],
-        text=th_s_msg,
-        reply_broadcast=False
-    )
+    response = send_slack_message_thread(client, 'ORDER_NOTIFICATIONS', s_msg, th_s_msg)
     return response
 
 
@@ -127,7 +110,7 @@ def send_slack_message_dairy(client, wcapi, o):
     s_msg = (
         "*Order ID: "+str(o["id"])
         + "*\nName: "+o["billing"]["first_name"] + " " +
-        o["billing"]["last_name"] + " | Mobile: "+o["billing"]["phone"]
+        o["billing"]["last_name"] + " | Mobile: "+format_mobile(o["billing"]["phone"])
         + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"] +
         ", "+o["shipping"]["state"]+", " +
         o["shipping"]["postcode"] + ", "+o["billing"]["address_2"]
@@ -147,24 +130,7 @@ def send_slack_message_dairy(client, wcapi, o):
     )
     th_s_msg = "*Order Items*\n" + \
         list_order_items(o["line_items"], order_refunds, wcapi)
-    response = client.chat_postMessage(
-        channel=CHANNELS['DAIRY_NOTIFICATIONS'],
-        blocks=[
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": s_msg
-                }
-            }
-        ]
-    )
-    t_response = client.chat_postMessage(
-        channel=CHANNELS['DAIRY_NOTIFICATIONS'],
-        thread_ts=response["ts"],
-        text=th_s_msg,
-        reply_broadcast=False
-    )
+    response = send_slack_message_thread(client, 'DAIRY_NOTIFICATIONS', s_msg, th_s_msg)
     return response
 
 
@@ -192,7 +158,7 @@ def send_slack_message_calcelled(client, wcapi, o):
     s_msg = (
         "*Order ID: "+str(o["id"])
         + " HAS BEEN CANCELLED*\nName: "+o["billing"]["first_name"] + " " +
-        o["billing"]["last_name"] + " | Mobile: "+o["billing"]["phone"]
+        o["billing"]["last_name"] + " | Mobile: "+format_mobile(o["billing"]["phone"])
         + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"] +
         ", "+o["shipping"]["state"]+", " +
         o["shipping"]["postcode"] + ", "+o["billing"]["address_2"]
@@ -207,24 +173,7 @@ def send_slack_message_calcelled(client, wcapi, o):
     )
     th_s_msg = "*Order Items*\n" + \
         list_order_items(o["line_items"], order_refunds, wcapi)
-    response = client.chat_postMessage(
-        channel=CHANNELS['ORDER_NOTIFICATIONS'],
-        blocks=[
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": s_msg
-                }
-            }
-        ]
-    )
-    t_response = client.chat_postMessage(
-        channel=CHANNELS['ORDER_NOTIFICATIONS'],
-        thread_ts=response["ts"],
-        text=th_s_msg,
-        reply_broadcast=False
-    )
+    response = send_slack_message_thread(client, 'ORDER_NOTIFICATIONS', s_msg, th_s_msg)
     return response
 
 
@@ -255,7 +204,7 @@ def send_slack_message_calcelled_dairy(client, wcapi, o):
     s_msg = (
         "*Order ID: "+str(o["id"])
         + " HAS BEEN CANCELLED*\nName: "+o["billing"]["first_name"] + " " +
-        o["billing"]["last_name"] + " | Mobile: "+o["billing"]["phone"]
+        o["billing"]["last_name"] + " | Mobile: "+format_mobile(o["billing"]["phone"])
         + " | Payment Method: "+o["payment_method_title"]
         + "\nDelivery Date: "+delivery_date+" | Vendor: "+vendor
         + "\nTotal Amount: " +
@@ -271,24 +220,7 @@ def send_slack_message_calcelled_dairy(client, wcapi, o):
     )
     th_s_msg = "*Order Items*\n" + \
         list_order_items(o["line_items"], order_refunds, wcapi)
-    response = client.chat_postMessage(
-        channel=CHANNELS['DAIRY_NOTIFICATIONS'],
-        blocks=[
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": s_msg
-                }
-            }
-        ]
-    )
-    t_response = client.chat_postMessage(
-        channel=CHANNELS['ORDER_NOTIFICATIONS'],
-        thread_ts=response["ts"],
-        text=th_s_msg,
-        reply_broadcast=False
-    )
+    response = send_slack_message_thread(client, 'DAIRY_NOTIFICATIONS', s_msg, th_s_msg)
     return response
 
 
@@ -313,18 +245,7 @@ def send_slack_for_product(client, product, topic):
         + "\n*Stock Status:* "+product['stock_status']
         + "\n*Vendor:* "
     )
-    response = client.chat_postMessage(
-        channel=CHANNELS['PRODUCT_NOTIFICATIONS'],
-        blocks=[
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": s_msg
-                }
-            }
-        ]
-    )
+    response =send_slack_message(client, "PRODUCT_NOTIFICATIONS", s_msg)
     return response
 
 
@@ -352,21 +273,6 @@ def get_new_customers(wcapi, orders):
 
 
 def send_slack_for_vendor_wise(client, wcapi):
-
-    def send_msg_for_c(main_msg):
-        client.chat_postMessage(
-            channel=CHANNELS['VENDOR_WISE'],
-            blocks=[
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": main_msg
-                    }
-                }
-            ]
-        )
-
     params = {"per_page": 100}
     params["status"] = 'tbd-unpaid, tbd-paid'
     params["delivery_date"] = str(datetime.now().date())
@@ -452,7 +358,7 @@ def send_slack_for_vendor_wise(client, wcapi):
         else:
             main_msg += ("\n"+v+" "+str(total_v[v]['count']) +
                          " [Rs. "+str(total_v[v]['total'])+"]")
-    send_msg_for_c(main_msg)
+    send_slack_message(client, 'VENDOR_WISE', main_msg)
 
 
 def send_every_day_at_9(orders, client, title):
@@ -472,18 +378,7 @@ def send_every_day_at_9(orders, client, title):
         s_msg += str(o['id'])+" - "+o['billing']['first_name']+" " + \
             o['billing']['last_name'] + \
             " (Rs. "+o['total']+")"+customer_note+"\n"
-    response = client.chat_postMessage(
-        channel=CHANNELS['VENDOR_WISE'],
-        blocks=[
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": s_msg
-                }
-            }
-        ]
-    )
+    send_slack_message(client, "VENDOR_WISE", s_msg)
 
 
 def vendor_wise_tbd_tomorrow(orders, client):
@@ -515,16 +410,5 @@ def vendor_wise_tbd_tomorrow(orders, client):
                     " (Rs. "+o['total']+")"+customer_note+"\n"
         main_msg += s_msg
         main_msg += "\n"
-    if len(main_msg)>0:
-        response = client.chat_postMessage(
-            channel=CHANNELS['VENDOR_WISE'],
-            blocks=[
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": main_msg
-                    }
-                }
-            ]
-        )
+        send_slack_message(client, "VENDOR_WISE", main_msg)
+
