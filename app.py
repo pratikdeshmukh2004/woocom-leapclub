@@ -241,7 +241,7 @@ def get_orders_for_home(args, tab):
             orders.extend(list_orders_with_status(wcapi, params.copy()))
             tabs_nums['dairy'] = len(orders)
         else:
-            orders = wcapi.get("orders", params=params)
+            orders = wcapi.get("order2", params=params)
             tabs_nums[params['status']] = orders.headers['X-WP-Total']
             orders = orders.json()
     else:
