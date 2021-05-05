@@ -418,9 +418,23 @@ def download_csv():
         csv_text = get_csv_from_orders(orders, wcapi)
         filename = str(datetime.utcnow())+"-" + \
             data["status"][0]+"-Product-Sheet.csv"
+        response = make_response(csv_text)
+        if "," in filename:
+            filename = filename.replace(",", "-")
+        cd = 'attachment; filename='+filename
+        response.headers['Content-Disposition'] = cd
+        response.mimetype = 'text/csv'
+        return response
     elif data["action"][0] == "product_sheet":
         csv_text = get_csv_from_products(orders, wcapi, 'csv')
         filename = str(datetime.utcnow())+"-" + "Product-Sheet.csv"
+        response = make_response(csv_text)
+        if "," in filename:
+            filename = filename.replace(",", "-")
+        cd = 'attachment; filename='+filename
+        response.headers['Content-Disposition'] = cd
+        response.mimetype = 'text/csv'
+        return response
     # Google Sheets................
     elif data["action"][0] == 'google_sheet':
         for o in orders:
