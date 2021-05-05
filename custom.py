@@ -425,6 +425,7 @@ def get_csv_from_orders(orders, wcapi):
     writer = csv.DictWriter(
         f, fieldnames=["Order ID", "Customer Detail", "Total Amount", "Order Details", "Comments", "Customer Note"])
     writer.writeheader()
+    product_list = list_product_list_form_orders(orders, wcapi)
     for o in orders:
         wallet_payment = 0
         if len(o["fee_lines"]) > 0:
@@ -443,7 +444,7 @@ def get_csv_from_orders(orders, wcapi):
             o["shipping"]["city"]+", "+o["shipping"]["state"] +
             ", "+o["shipping"]["postcode"],
             "Total Amount": get_totals(o["total"], refunds)+get_shipping_total_for_csv(o),
-            "Order Details": list_order_items_csv(o["line_items"], refunds, wcapi),
+            "Order Details": list_order_items_csv(o["line_items"], refunds, wcapi, product_list),
             "Comments": "Payment Status: Paid To Leap",
             "Customer Note": o["customer_note"]
         })
@@ -467,6 +468,7 @@ def get_csv_from_vendor_orders(orders, wcapi):
     writer = csv.DictWriter(
         f, fieldnames=["Date Created", "Delivery Date", "Order ID", "Customer Detail", "Total Order Amount", "Refund Amount", "Delivery Charge", "Order Items", "Payment Method", "Status", "Item Total"])
     writer.writeheader()
+    product_list = list_product_list_form_orders(orders, wcapi)
     for o in orders:
         delivery_date = ""
         for item in o["meta_data"]:
@@ -497,7 +499,7 @@ def get_csv_from_vendor_orders(orders, wcapi):
             "Total Order Amount": o["total"],
             "Refund Amount": get_total_from_line_items(o["refunds"])*-1,
             "Delivery Charge": o["shipping_total"],
-            "Order Items": list_order_items_csv(o["line_items"], refunds, wcapi)+list_order_refunds(refunds, o['line_items']),
+            "Order Items": list_order_items_csv(o["line_items"], refunds, wcapi, product_list)+list_order_refunds(refunds, o['line_items']),
             "Payment Method": o["payment_method_title"],
             "Status": o["status"],
             "Item Total": get_total_from_line_items(o["line_items"])
