@@ -3,3 +3,4 @@
 /.vscode
 /instance
 slack_chennels.py
+/modules/__pycache__
