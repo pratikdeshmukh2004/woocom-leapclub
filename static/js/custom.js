@@ -133,6 +133,7 @@ function sendToGoogleSheet(act, status) {
     crossDomain: true,
     dataType: "json",
     url: "/csv",
+    timeout: 900000,
     data: { 'order_ids': inp_select_v, 'action': [act], 'status': status },
     success: function (res) {
       if (res.result == 'success') {
