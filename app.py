@@ -1015,15 +1015,15 @@ def order_details_mini():
     orders = wcapi.get("orders", params=params).json()
     main_text = ""
     total = 0
-    wallet_payment = 0
     for o in orders:
-        o["total"] = float(o["total"])
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        total_amount = 0
+        wallet_payment = 0
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
                     wallet_payment = (-1)*float(item["total"])
-        o["total"] = float(o["total"]) + wallet_payment
+        total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         if len(delivery_date)>0:
@@ -1031,11 +1031,14 @@ def order_details_mini():
             d_date = dt.strftime("%A")+", "+months[dt.month-1]+" " + str(dt.day)
         else:
             d_date = ""
-        main_text += ("Order ID: "+str(o['id'])+" ("+vendor_type[vendor]+")")
+        vendor_t = ""
+        if vendor in vendor_type:
+            vendor_t = " ("+vendor_type[vendor]+")"
+        main_text += ("Order ID: "+str(o['id'])+vendor_t)
         main_text += ("\nDelivery Date: "+d_date)
-        main_text += ("\n\nTotal Amount: "+str(o['total']))
+        main_text += ("\n\nTotal Amount: "+str(total_amount))
         main_text += "\n\n-----------------------------------------\n\n"
-        total +=o['total']
+        total += total_amount
     main_text += ("*Total Amount: "+str(round(total,1))+"*\n\n")
     return {"result": main_text}
 
