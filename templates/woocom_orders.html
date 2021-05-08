@@ -368,7 +368,7 @@
               class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning" style="cursor: pointer;"
               aria-hidden="true"></i>
             <i data-toggle="tooltip" title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')"
-              class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning ml-1" style="cursor: pointer;"
+              class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning" style="cursor: pointer;"
               aria-hidden="true"></i>
             {%if nav_active == 'subscription'%}
             <button data-toggle="tooltip" class="btn btn-warning btn-sm"
@@ -413,36 +413,18 @@
             {% if nav_active == "tbd-paid, tbd-unpaid" or nav_active == "subscription"%}
             {% if o.vendor_type and o.delivery_date and o.payment_method %}
             {% if o.date_paid != None %}
-            <div class="mb-1" style="min-width: 139px">
-              <button data-toggle="tooltip" title="Delivery Today Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp_msg_with_s', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='today_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
-              ">Today
-              </button>
-            </div>
             <div style="min-width: 120px;">
               <button data-toggle="tooltip" title="Order Detail Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                   ">Order
               </button>
-              <button data-toggle="tooltip" title="Feedback Prepay Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
-               ">
-                Feedback
-              </button>
             </div>
             {%else%}
             <div class="mb-1" style="min-width: 143px">
-              <button data-toggle="tooltip" title="Delivery Today Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp_msg_with_s', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='today_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
-              ">Today
-              </button>
               <button data-toggle="tooltip" title="Send Session Message" class="btn btn-warning btn-sm" onclick="SendWhatsappMessages('{{url_for('send_session_message', order_id=o.id)}}')
-              "><i title="Order Detail Message" class="mdi mdi-12px mdi-whatsapp"></i>
+              "><i title="Order Detail Message" class="mdi mdi-18px mdi-whatsapp"></i>
               </button>
-            </div>
-            <div style="min-width: 120px;">
               <button data-toggle="tooltip" title="Order Detail Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                   ">Order
-              </button>
-              <button data-toggle="tooltip" title="Feedback Postpay Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='feedback_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
-               ">
-                Feedback
               </button>
             </div>
             {%endif%}

@@ -137,28 +137,28 @@ function sendToGoogleSheet(act, status) {
     data: { 'order_ids': inp_select_v, 'action': [act], 'status': status },
     success: function (res) {
       if (res.result == 'success') {
-          delivery_dates_text = ""
-          delivery_date_msg = ""
-          for (var d of Object.keys(res.delivery_dates)) {
-            dt = d
-            if (d == '') {
-              dt = "No Date"
-            }
-            delivery_dates_text += (dt + " : " + res.delivery_dates[d]['count'].toString() + " orders <br>")
+        delivery_dates_text = ""
+        delivery_date_msg = ""
+        for (var d of Object.keys(res.delivery_dates)) {
+          dt = d
+          if (d == '') {
+            dt = "No Date"
           }
-          if (Object.keys(res.delivery_dates).length > 1) {
-            delivery_date_msg = "There are orders with different delivery date or no delivery date. Please change it now."
-          }
-          status_text = ""
-          status_msg = ""
-          for (var d of Object.keys(res.status_list)) {
-            status_text += (d + " : " + res.status_list[d]['count'].toString() + " orders <br>")
-          }
-          if (Object.keys(res.status_list).length > 1) {
-            status_msg = "There are orders with different status. Please change all orders to To Be Delivered. "
-          }
-          Swal.fire({
-            html: `
+          delivery_dates_text += (dt + " : " + res.delivery_dates[d]['count'].toString() + " orders <br>")
+        }
+        if (Object.keys(res.delivery_dates).length > 1) {
+          delivery_date_msg = "There are orders with different delivery date or no delivery date. Please change it now."
+        }
+        status_text = ""
+        status_msg = ""
+        for (var d of Object.keys(res.status_list)) {
+          status_text += (d + " : " + res.status_list[d]['count'].toString() + " orders <br>")
+        }
+        if (Object.keys(res.status_list).length > 1) {
+          status_msg = "There are orders with different status. Please change all orders to To Be Delivered. "
+        }
+        Swal.fire({
+          html: `
 <b>`+ res.total_o + ` orders added to Google Sheet <a target='blank' href='` + res.ssUrl + `'>` + res.ssName + `</a></b><br/><br/>
 <div style='text-align: left'><b>Delivery Dates</b><br/>
 `+ delivery_dates_text + `<br>
@@ -167,11 +167,11 @@ function sendToGoogleSheet(act, status) {
 `+ status_text + `<br>
 `+ status_msg + `</div>
             `,
-            width: 700,
-            backdrop: `
+          width: 700,
+          backdrop: `
               rgba(0,0,123,0.4)
             `
-          })
+        })
       } else {
         $.nok({
           message: "Error, Sheet Not Created!",
@@ -487,10 +487,10 @@ function genMultipleLinks() {
           confirmButtonColor: '#FF3232',
           confirmButtonText: 'Close'
         })
-      }else{
+      } else {
         Swal.fire({
           icon: "warning",
-          html: "<b>Following orders are already paid. Please exclude them from selection: <b>"+res.result
+          html: "<b>Following orders are already paid. Please exclude them from selection: <b>" + res.result
         })
       }
     }
@@ -860,7 +860,7 @@ function copyLinkedOrders() {
     crossDomain: true,
     dataType: "json",
     url: "/copy_linked_orders",
-    data: {'order_ids': inp_select_v},
+    data: { 'order_ids': inp_select_v },
     success: function (res) {
       if (res.status == 'success') {
         var input = document.body.appendChild(document.createElement("textarea"));
@@ -874,28 +874,28 @@ function copyLinkedOrders() {
             type: "success",
           });
         } else {
-          if (res.text.length>0){
+          if (res.text.length > 0) {
             Swal.fire({
-          html: `
+              html: `
           <pre>
           <div style='text-align: left;'>
 <b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
 
-`+res.text+`
+`+ res.text + `
 </pre>
 </div>
           `,
-          width: 700,
-          backdrop: `
+              width: 700,
+              backdrop: `
             rgba(0,0,123,0.4)
           `
-        })
-          }else{
-          $.nok({
-            message: "Error, Message Not Copied!",
-            type: "error",
-          });
-        }
+            })
+          } else {
+            $.nok({
+              message: "Error, Message Not Copied!",
+              type: "error",
+            });
+          }
         }
       } else {
         $.nok({
@@ -918,10 +918,15 @@ function copyLinkedOrders() {
 function sendWMessages(name) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
-  $.nok({
-    message: "Processing Your Request Please Wait!",
-    type: "success",
-  });
+
+  Swal.fire({
+    title: 'Processing Your Request....',
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
   $.ajax({
     type: "POST",
     crossDomain: true,
@@ -938,8 +943,8 @@ function sendWMessages(name) {
           } else {
             updateSpan(o.order_id, o.template_name, 'text-danger')
           }
-          button = `<td onclick="sendWPaymentLink('`+o.order_id+"','"+o.phone_number+"','"+o.vendor_type+`')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
-          if (!o.button){
+          button = `<td onclick="sendWPaymentLink('` + o.order_id + "','" + o.phone_number + "','" + o.vendor_type + `')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
+          if (!o.button) {
             button = ""
           }
           trtext += `
@@ -948,7 +953,7 @@ function sendWMessages(name) {
                 <td><p>`+ o.order_id + `</p></td>
                 <td><p>`+ o.result + `</p></td>
                 <td><p>`+ o.payment_status + `</p></td>
-                `+button+`
+                `+ button + `
               </tr>
           `
         }
@@ -985,9 +990,9 @@ function sendWMessages(name) {
     }
   })
 }
-function sendWPaymentLink(id, phone_number, order_type){
+function sendWPaymentLink(id, phone_number, order_type) {
   console.log(id, phone_number, order_type);
-    $.nok({
+  $.nok({
     message: "Processing Your Request Please Wait!",
     type: "success",
   });
@@ -995,8 +1000,8 @@ function sendWPaymentLink(id, phone_number, order_type){
     type: "POST",
     crossDomain: true,
     dataType: "json",
-    url: "/send_payment_link_wt/"+id,
-    data: {'mobile_number': phone_number, 'order_type': order_type},
+    url: "/send_payment_link_wt/" + id,
+    data: { 'mobile_number': phone_number, 'order_type': order_type },
     success: function (res) {
       if (["success", "PENDING", "SENT", true].includes(res.result)) {
         $.nok({
