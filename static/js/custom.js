@@ -547,6 +547,37 @@ function changeOrderStatus(status) {
           location.reload()
         })
       }
+      else if (res.result == 'paid'){
+        trtext = ""
+        for (var o of res.result_list) {
+          trtext += `
+              <tr>
+                <td><p>`+ o.id + " ( " + o.billing.first_name + ` ) </p></td>
+                <td><p>`+ o.status + `</p></td>
+              </tr>
+          `
+        }
+        Swal.fire({
+          title: "You Selected Paid Orders Please Try Again",
+          html: `
+            <table class='table'>
+              <thead>
+              <tr>
+                <th><b>Order ID ( Name )</b></th>  
+                <th><b>Status</b></th>  
+              </tr>  
+              </thead>
+              <tbody>
+              `+ trtext + `
+              </tbody>
+            </table>
+          `,
+          width: 700,
+          backdrop: `
+            rgba(0,0,123,0.4)
+          `
+        })
+      }
       else {
         $.nok({
           message: "Error, Order Status Not Changed Please Check Order ID!",
@@ -918,75 +949,83 @@ function copyLinkedOrders() {
 function sendWMessages(name) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
-
   Swal.fire({
-    title: 'Processing Your Request....',
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading()
-    },
-  })
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/send_whatsapp_messages/" + name,
-    data: { 'order_ids': inp_select_v },
-    success: function (res) {
-      if (res.result == 'success') {
-        trtext = ""
-        for (var o of res.results) {
-          console.log(o);
-          if (["success", "PENDING", "SENT", true].includes(o.result)) {
-            updateSpan(o.order_id, o.template_name, 'text-success')
-          } else {
-            updateSpan(o.order_id, o.template_name, 'text-danger')
+    title: 'Are You Sure?',
+    showDenyButton: true,
+    confirmButtonText: `Yes`,
+    denyButtonText: `No`,
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: 'Processing Your Request....',
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+      })
+      $.ajax({
+        type: "POST",
+        crossDomain: true,
+        dataType: "json",
+        url: "/send_whatsapp_messages/" + name,
+        data: { 'order_ids': inp_select_v },
+        success: function (res) {
+          if (res.result == 'success') {
+            trtext = ""
+            for (var o of res.results) {
+              console.log(o);
+              if (["success", "PENDING", "SENT", true].includes(o.result)) {
+                updateSpan(o.order_id, o.template_name, 'text-success')
+              } else {
+                updateSpan(o.order_id, o.template_name, 'text-danger')
+              }
+              button = `<td onclick="sendWPaymentLink('` + o.order_id + "','" + o.phone_number + "','" + o.vendor_type + `')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
+              if (!o.button) {
+                button = ""
+              }
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.customer_name + " ( " + o.phone_number + ` ) </p></td>
+                    <td><p>`+ o.order_id + `</p></td>
+                    <td><p>`+ o.result + `</p></td>
+                    <td><p>`+ o.payment_status + `</p></td>
+                    `+ button + `
+                  </tr>
+              `
+            }
+            Swal.fire({
+              html: `
+              <b>Group orders by customer:</b>
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Name (Mobile)</b></th>  
+                    <th><b>Order IDS</b></th>  
+                    <th><b>Result</b></th>  
+                    <th><b>Paid/Unpaid</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `,
+              width: 1000,
+              backdrop: `
+                rgba(0,0,123,0.4)
+              `,
+              allowOutsideClick: false
+            })
           }
-          button = `<td onclick="sendWPaymentLink('` + o.order_id + "','" + o.phone_number + "','" + o.vendor_type + `')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
-          if (!o.button) {
-            button = ""
+          else {
+            $.nok({
+              message: "Error, Messages not sent!",
+              type: "error",
+            });
           }
-          trtext += `
-              <tr>
-                <td><p>`+ o.customer_name + " ( " + o.phone_number + ` ) </p></td>
-                <td><p>`+ o.order_id + `</p></td>
-                <td><p>`+ o.result + `</p></td>
-                <td><p>`+ o.payment_status + `</p></td>
-                `+ button + `
-              </tr>
-          `
         }
-        Swal.fire({
-          html: `
-          <b>Group orders by customer:</b>
-            <table class='table'>
-              <thead>
-              <tr>
-                <th><b>Name (Mobile)</b></th>  
-                <th><b>Order IDS</b></th>  
-                <th><b>Result</b></th>  
-                <th><b>Paid/Unpaid</b></th>  
-              </tr>  
-              </thead>
-              <tbody>
-              `+ trtext + `
-              </tbody>
-            </table>
-          `,
-          width: 1000,
-          backdrop: `
-            rgba(0,0,123,0.4)
-          `,
-          allowOutsideClick: false
-        })
-      }
-      else {
-        $.nok({
-          message: "Error, Messages not sent!",
-          type: "error",
-        });
-      }
+      })
     }
   })
 }
@@ -1024,4 +1063,80 @@ function sendWPaymentLink(id, phone_number, order_type) {
       });
     },
   });
+}
+
+function payByWallet(){
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  Swal.fire({
+      title: 'Processing Your Request....',
+      showConfirmButton: false,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading()
+      },
+  })
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/payByWallet",
+    data: { 'ids': inp_select_v },
+    success: function (res) {
+      var new_tr = ""
+      for (var o of res.results){
+        btn = `<button class='btn btn-sm btn-success'>Button</button>`
+        if (o['result'] != 'success'){
+          btn = ''
+        }
+        new_tr += `
+        <tr>
+          <td><p>`+ o.order_id + `</p></td>
+          <td><p>`+ o.name+" ("+o.mobile + `)</p></td>
+          <td><p>`+ o.result + `</p></td>
+          <td><p>`+ o.amount + `</p></td>
+          <td><p>`+ o.balance + `</p></td>
+          <td>`+btn+`</td>
+        </tr>`
+      }
+      if (res.result == 'success') {
+        Swal.fire({
+          icon: "success",
+          html:
+          `
+          <table class='table'>
+          <thead>
+          <tr>
+            <th><b>Order ID</b></th>
+            <th><b>Name (Number)</b></th>
+            <th><b>Result</b></th>
+            <th><b>Amount</b></th>
+            <th><b>Wallet Balance</b></th>
+            <th></th>
+          </tr>
+          </thead>
+          <tbody>
+          `+ new_tr + `
+          </tbody>
+        </table>
+          `,
+        width: 1000,
+        backdrop: `
+        rgba(0,0,123,0.4)`
+        })
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Got Error Please Recheck Orders!"
+        })
+      }
+    },
+    error: function () {
+      Swal.fire({
+        icon: "error",
+        title: "Got Error Please Recheck Orders!"
+      })
+    }
+  })
+
 }

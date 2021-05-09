@@ -190,7 +190,7 @@ def get_tabs_nums():
     main_dict['failed, pending'] = {'per_page': 1,'status': "failed, pending"}
     main_dict['processing'] = {'per_page': 1,'status': "processing"}
     main_dict['tbd-paid, tbd-unpaid'] = {'per_page': 1,'status': "tbd-paid, tbd-unpaid"}
-    main_dict['delivered-unpaid'] = {'per_page': 1,'status': "delivered-unpaid"}
+    main_dict['delivered-unpaid, completed'] = {'per_page': 1,'status': "delivered-unpaid, completed"}
     main_dict['completed'] = {'per_page': 1,'status': "completed"}
     main_dict['refunded'] = {'per_page': 1,'status': "refunded"}
     main_dict['cancelled'] = {'per_page': 1,'status': "cancelled"}
@@ -300,6 +300,9 @@ def get_orders_for_home(args, tab):
             params['status'] = 'errors'
         elif params['status'] in ['tbd-paid', 'tbd-unpaid']:
             params['status'] = 'tbd-paid, tbd-unpaid'
+        elif params['status'] in ['delivered-unpaid', 'completed']:
+            params['status'] = 'delivered-unpaid, completed'
+
     args['payment_status'] = p_s
     return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
 
@@ -370,10 +373,9 @@ def send_whatsapp(name):
         mobile_number = format_mobile(args["mobile_number"])
         result = send_whatsapp_msg(args, mobile_number, name)
         if result["result"] in ["success", "PENDING", "SENT", True]:
-            new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
-                                "broadcast_name"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+            new_wt = wtmessages(order_id=int(args["order_id"]), template_name=result["template_name"], broadcast_name=result["broadcast_name"], status="success", time_sent=datetime.utcnow())
         else:
-            new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
+            new_wt = wtmessages(order_id=int(args["order_id"]), template_name=result["template_name"], broadcast_name=result[
                                 "broadcast_name"], status="failed", time_sent=datetime.utcnow())
         db.session.add(new_wt)
         db.session.commit()
@@ -1265,7 +1267,7 @@ def send_whatsapp_messages_m(name):
             o["vendor_type"] = vendor_type[vendor]
         else:
             if vendor == "":
-                r = {'result': "Vendor Error", 'order_id': o['id']}
+                r = {'result': "Vendor Error", 'order_id': o['id'], 'phone_number': format_mobile(o['billing']['phone'])}
                 r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
                 results.append(r)
                 continue
@@ -1302,11 +1304,12 @@ def send_whatsapp_messages_m(name):
                 d_date = dt.strftime("%A")+", "+months[dt.month-1]+" " + str(dt.day)
             else:
                 d_date = ""
-            button = True
+            button = False
             if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
                 p_s = "Paid"
             elif o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
                 p_s = "Unpaid"
+                button=True
                 if o['payment_method_title'] != 'Pay Online on Delivery':
                     button = False
             else:
@@ -1399,6 +1402,19 @@ def update_order_status_with_id(order, status, r):
         else:
             s = 'tbd-paid'
             m = ("Mark as tbd-paid")
+    elif status == 'paid':
+        if order['status'] == 'tbd-unpaid':
+            s = 'tbd-paid'
+            m = ("Mark as tbd-paid")
+        elif order['status'] == 'delivered-unpaid':
+            s = 'completed'
+            m = ("Mark as completed")
+        else:
+            s = 'pre-paid'
+            m = ("Mark as pre-paid")
+    else:
+        s = order['status']
+        m = "N/A"
     if r == 'status':
         return s
     else:
@@ -1412,21 +1428,31 @@ def change_order_status():
     data = request.form.to_dict(flat=False)
     result_list = []
     if data['status'][0] == 'cancel':
-        msg_text = '*These orders are marked as cancelled*\n\n'
-    if data['status'][0] == 'tbd':
-        msg_text = '*These orders are marked as to-be-delivered*\n\n'
-    if data['status'][0] == 'delivered':
+        msg_text = '*These orders are marked as Cancelled*\n\n'
+    elif data['status'][0] == 'tbd':
+        msg_text = '*These orders are marked as To-be-delivered*\n\n'
+    elif data['status'][0] == 'delivered':
         msg_text = '*These orders are marked as Delivered*\n\n'
-    if data['status'][0] == 'cancel_r':
-        msg_text = '*These orders are marked as cancelled*\n\n'
+    elif data['status'][0] == 'cancel_r':
+        msg_text = '*These orders are marked as Cancelled*\n\n'
+    else:
+        msg_text = "*These orders are marked as Paid*\n\n"
     error_text = ""
     success_text = ""
     orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
+    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] == 'pre-paid', orders))
+    if len(paid_orders)>0:
+        return {'result': 'paid', 'result_list': paid_orders}
     update_list = []
     wallet_refund = []
     for order in orders:
+        o_s = order['status']
         order['status'] = update_order_status_with_id(order, data['status'][0], 'status')
-        update_list.append({'id': order['id'], 'status': order['status']})
+        if o_s == 'processing':
+            update_list.append({'id': order['id'], 'payment_method': order['status'], 'payment_method_title': "Pre-paid"})
+        else:
+            update_list.append({'id': order['id'], 'status': order['status']})
+    print(update_list)
     updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
     for o in updates['update']:
         name = o['billing']['first_name']+" "+o['billing']['last_name']
