@@ -273,7 +273,7 @@ def get_params(args):
                         params['status'] = 'tbd-unpaid'
                     else:
                         params['status'] = 'tbd-paid, tbd-unpaid'
-            if 'payment_status' in args and args["status"][0] == "delivered-unpaid, completed":
+            elif 'payment_status' in args and args["status"][0] == "delivered-unpaid, completed":
                     if args['payment_status'][0] == 'paid':
                         params['status'] = 'completed'
                     elif args['payment_status'][0] == 'unpaid':
