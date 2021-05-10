@@ -1,0 +1,85 @@
+{% extends "layout.html" %} {% block content %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand font-weight-bold" href="#">
+      Wallet
+    </a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+      aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+            <a class="nav-link" href="{{url_for('woocom_orders')}}">
+                Orders
+            </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{url_for('vendor_orders')}}">
+            Vendor-Orders</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{url_for('subscriptions')}}">
+            Subscriptions</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{url_for('products')}}">
+            Products</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{url_for('logout')}}">
+            <i class="mdi mdi-logout" aria-hidden="true"></i>
+            Logout</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<div class="pt-3 mr-5 ml-5 d-flex justify-content-center">
+    <table style="width: 60%;" class="table table-bordered">
+        <tbody>
+          <tr>
+            <th scope="row">Name: </th>
+            <td>{{customer.first_name}} {{customer.last_name}}</td>
+          </tr>
+          <tr>
+            <th scope="row">Mobile</th>
+            <td>{{customer.billing.phone}}</td>
+          </tr>
+          <tr>
+            <th scope="row">Balance</th>
+            <td>{{(transactions | first).balance}}</td>
+          </tr>
+
+        </tbody>
+      </table>
+</div>
+<div class="mt-3 ml-5 mr-5 text-center">
+  <div><h4>Wallet Transactions</h4></div>
+</div>
+
+<div class="ml-5 mr-5 pt-3">
+    <table class="table">
+        <thread>
+            <tr class="bg-info text-white">
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Details</th>
+            </tr>
+        </thread>
+        <tbody>
+            {%for t in transactions%}
+            <tr>
+                <td>{{t.type}}</td>
+                <td>₹ {{t.amount}}</td>
+                <td>{{t.date}}</td>
+                <td>{{t.details}}</td>
+            </tr>
+            {%endfor%}
+
+        </tbody>
+    </table>
+</div>
+{%endblock%}

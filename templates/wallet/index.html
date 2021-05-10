@@ -64,6 +64,7 @@
             {%for c in customers%}
             <tr>
                 <td>
+                    <a class="btn btn-sm btn-warning mr-1" href="{{url_for('wallet_show', id=c.id)}}"><i style="font-size: 20px;" class="mdi mdi-eye"></i></a>
                     <button onclick="MoneyToWallet('{{c.id}}', 'credit')" data-toggle="tooltip" title="Add Money To Wallet" class="btn btn-success btn-sm font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-plus mr-1"></i></button>
                     <button onclick="MoneyToWallet('{{c.id}}', 'debit')" data-toggle="tooltip" title="Reduce Money From Wallet" class="btn btn-success btn-sm font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-minus mr-1"></i></button>
                     <button onclick="genPaymentLinkWallet('{{c.id}}')" data-toggle="tooltip" title="Generate Payment Link" class="btn btn-success btn-sm font-weight-bold"><i class="mdi mdi-18px mdi-link-plus mr-1"></i></button>

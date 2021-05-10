@@ -994,6 +994,15 @@ def order_details():
     params["include"] = get_list_to_string(data["order_ids"])
     c_time = time.time()
     orders = wcapi.get("orders", params=params).json()
+    missing = {'delivery_date': False, 'vendor': False}
+    for o in orders:
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        if vendor == "":
+            missing['vendor'] = True
+        if delivery_date == "":
+            missing['delivery_date'] = True
+    if True in list(missing.values()):
+        return {'result': 'missing', 'missings': missing}
     print("Time to fetch orders: ", time.time()-c_time)
     c_time = time.time()
     orders = get_orders_with_messages_without(orders, wcapi)
@@ -1491,10 +1500,11 @@ def get_copy_messages(id):
         order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
     msg = ""
     if 'c_msg' in id:
-        delivery_date = ""
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        if vendor == "" or delivery_date == "":
+            return {'status': 'missing', 'missings': {'vendor': False if vendor !="" else True, 'delivery_date': False if delivery_date != "" else True}}
         if delivery_date:
             try:
                 dt = datetime.strptime(delivery_date, '%Y-%m-%d')
@@ -1729,6 +1739,11 @@ def wallet():
     print("Total time: ", time.time()-m_time)
     return render_template('wallet/index.html', page=page, customers=customers, format_mobile = format_mobile, query=args)
 
+@app.route("/wallet/<string:id>")
+def wallet_show(id):
+    customer = wcapi.get("customers/"+id).json()
+    transactions = wcapiw.get('wallet/'+id).json()
+    return render_template('wallet/show.html', customer=customer, transactions=transactions)
 
 @app.route("/wallet", methods=['POST'])
 def handelWallet():

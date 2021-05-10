@@ -202,6 +202,25 @@ function copyOrderDetail(status) {
     url: "/order_details",
     data: { 'order_ids': inp_select_v, 'status': status },
     success: function (res) {
+      if (res.result == 'missing'){
+        if (res.missings.delivery_date && res.missings.vendor){
+          Swal.fire({
+            icon:"warning",
+            title: "Vendor and Delivery date is missing. Please add it before copying order details."
+          })
+        }else if(res.missings.delivery_date){
+          Swal.fire({
+            icon:"warning",
+            title: "Delivery date is missing. Please add it before copying order derails"
+          })
+        }else{
+          Swal.fire({
+            icon:"warning",
+            title: "Vendor is missing. Please add it before copying order details."
+          })
+        }
+        return ""
+      }
       text = res.result.replace("&amp;", "&")
       var input = document.body.appendChild(document.createElement("textarea"));
       input.value = text;
@@ -608,7 +627,26 @@ function copyToClipboard(id) {
     dataType: "json",
     url: "/get_copy_messages/" + id.toString(),
     success: function (res) {
-      if (res.status == 'success') {
+      if (res.status == 'missing'){
+        if (res.missings.delivery_date && res.missings.vendor){
+          Swal.fire({
+            icon:"warning",
+            title: "Vendor and Delivery date is missing. Please add it before copying order details."
+          })
+        }else if(res.missings.delivery_date){
+          Swal.fire({
+            icon:"warning",
+            title: "Delivery date is missing. Please add it before copying order derails"
+          })
+        }else{
+          Swal.fire({
+            icon:"warning",
+            title: "Vendor is missing. Please add it before copying order details."
+          })
+        }
+        return ""
+      }
+      else if (res.status == 'success') {
         var input = document.body.appendChild(document.createElement("textarea"));
         input.value = res.text;
         input.select();
