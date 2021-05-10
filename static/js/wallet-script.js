@@ -1,11 +1,15 @@
 function MoneyToWallet(id, action) {
+  acc = 'Reduce'
+  if (action == 'credit'){
+    acc = 'Add'
+  }
   Swal.mixin({
     input: 'text',
     confirmButtonText: 'Next &rarr;',
     showCancelButton: true,
     progressSteps: ['1', '2']
   }).queue([
-    'Enter Amount: ',
+    'Enter Amount to '+acc+': ',
     'Enter Details: '
   ]).then((result) => {
     if (result.value) {

@@ -500,90 +500,99 @@ function genMultipleLinks() {
 function changeOrderStatus(status) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
-  $.nok({
-    message: "Processing Your Request Please Wait!",
-    type: "success",
-  });
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/change_order_status",
-    data: { 'order_ids': inp_select_v, "status": status },
-    success: function (res) {
-      if (res.result == 'success') {
-        trtext = ""
-        for (var o of res.result_list) {
-          trtext += `
-              <tr>
-                <td><p>`+ o.order_id + " ( " + o.name + ` ) </p></td>
-                <td><p>`+ o.status + `</p></td>
-                <td><p>`+ o.message + `</p></td>
-                <td><p>`+ o.refund + `</p></td>
-              </tr>
-          `
+  Swal.fire({
+    title: `Do you want to change order status to `+status+` for `+inp_select_v.length.toString()+` orders? (Yes / No)`,
+    showDenyButton: true,
+    confirmButtonText: `Yes`,
+    denyButtonText: `No`,
+  }).then((result) => {
+    if (result.isConfirmed) {
+      $.nok({
+        message: "Processing Your Request Please Wait!",
+        type: "success",
+      });
+      $.ajax({
+        type: "POST",
+        crossDomain: true,
+        dataType: "json",
+        url: "/change_order_status",
+        data: { 'order_ids': inp_select_v, "status": status },
+        success: function (res) {
+          if (res.result == 'success') {
+            trtext = ""
+            for (var o of res.result_list) {
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.order_id + " ( " + o.name + ` ) </p></td>
+                    <td><p>`+ o.status + `</p></td>
+                    <td><p>`+ o.message + `</p></td>
+                    <td><p>`+ o.refund + `</p></td>
+                  </tr>
+              `
+            }
+            Swal.fire({
+              html: `
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Order ID ( Name )</b></th>  
+                    <th><b>Result</b></th>  
+                    <th><b>Message</b></th>  
+                    <th><b>Refund</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `,
+              width: 700,
+              backdrop: `
+                rgba(0,0,123,0.4)
+              `
+            }).then(() => {
+              location.reload()
+            })
+          }
+          else if (res.result == 'paid'){
+            trtext = ""
+            for (var o of res.result_list) {
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.id + " ( " + o.billing.first_name + ` ) </p></td>
+                    <td><p>`+ o.status + `</p></td>
+                  </tr>
+              `
+            }
+            Swal.fire({
+              title: "You Selected Paid Orders Please Try Again",
+              html: `
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Order ID ( Name )</b></th>  
+                    <th><b>Status</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `,
+              width: 700,
+              backdrop: `
+                rgba(0,0,123,0.4)
+              `
+            })
+          }
+          else {
+            $.nok({
+              message: "Error, Order Status Not Changed Please Check Order ID!",
+              type: "error",
+            });
+          }
         }
-        Swal.fire({
-          html: `
-            <table class='table'>
-              <thead>
-              <tr>
-                <th><b>Order ID ( Name )</b></th>  
-                <th><b>Result</b></th>  
-                <th><b>Message</b></th>  
-                <th><b>Refund</b></th>  
-              </tr>  
-              </thead>
-              <tbody>
-              `+ trtext + `
-              </tbody>
-            </table>
-          `,
-          width: 700,
-          backdrop: `
-            rgba(0,0,123,0.4)
-          `
-        }).then(() => {
-          location.reload()
-        })
-      }
-      else if (res.result == 'paid'){
-        trtext = ""
-        for (var o of res.result_list) {
-          trtext += `
-              <tr>
-                <td><p>`+ o.id + " ( " + o.billing.first_name + ` ) </p></td>
-                <td><p>`+ o.status + `</p></td>
-              </tr>
-          `
-        }
-        Swal.fire({
-          title: "You Selected Paid Orders Please Try Again",
-          html: `
-            <table class='table'>
-              <thead>
-              <tr>
-                <th><b>Order ID ( Name )</b></th>  
-                <th><b>Status</b></th>  
-              </tr>  
-              </thead>
-              <tbody>
-              `+ trtext + `
-              </tbody>
-            </table>
-          `,
-          width: 700,
-          backdrop: `
-            rgba(0,0,123,0.4)
-          `
-        })
-      }
-      else {
-        $.nok({
-          message: "Error, Order Status Not Changed Please Check Order ID!",
-          type: "error",
-        });
-      }
+      })
     }
   })
 }
@@ -950,7 +959,7 @@ function sendWMessages(name) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
   Swal.fire({
-    title: 'Are You Sure?',
+    title: `Do you want to send `+name+` message for `+inp_select_v.length.toString()+` orders? (Yes / No)`,
     showDenyButton: true,
     confirmButtonText: `Yes`,
     denyButtonText: `No`,

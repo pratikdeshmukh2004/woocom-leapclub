@@ -43,7 +43,6 @@
     <!-- Default Search -->
     <input style="display: none;" name="page" value="{{page}}">
 
-    <input class="form-control mr-2" type="name" placeholder="Customer IDs" {% if "include" in query %} {% if query["include"] !="" %} value="{{query["include"]}}" {% endif %} {% endif %} name="include">
     <input class="form-control mr-2" type="name" placeholder="Name" {% if "name" in query %} {% if query["name"] !=""%} value="{{query["name"]}}" {% endif %} {% endif %} name="name">
     <button class="btn btn-info ml-1"><i class="uil uil-search-alt" aria-hidden="true"></i>
     </button>

@@ -1411,7 +1411,7 @@ def update_order_status_with_id(order, status, r):
             m = ("Mark as completed")
         else:
             s = 'pre-paid'
-            m = ("Mark as pre-paid")
+            m = ("Mark as Paid")
     else:
         s = order['status']
         m = "N/A"
@@ -1719,10 +1719,9 @@ def wallet():
     m_time = time.time()
     args = request.args.to_dict(flat=True)
     page = 1 if 'page' not in args else int(args['page'])
-    include = '' if 'include' not in args else args['include']
     search = '' if 'name' not in args else args['name']
     c_time = time.time()
-    customers = wcapi.get("customers", params={'page': page, 'per_page': 25, 'orderby': "id", 'role': 'all', 'include': include, 'search': search}).json()
+    customers = wcapi.get("customers", params={'page': page, 'per_page': 25, 'orderby': "id", 'role': 'all', 'search': search}).json()
     print("Time to fetch customers: ", time.time()-c_time)
     c_time = time.time()
     customers = list_customers_with_wallet_balance(customers, wcapiw)
