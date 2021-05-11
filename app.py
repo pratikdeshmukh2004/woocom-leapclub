@@ -1457,7 +1457,7 @@ def change_order_status():
     for order in orders:
         o_s = order['status']
         order['status'] = update_order_status_with_id(order, data['status'][0], 'status')
-        if o_s == 'processing':
+        if o_s == 'processing' and data['status'][0] == 'paid':
             update_list.append({'id': order['id'], 'payment_method': order['status'], 'payment_method_title': "Pre-paid"})
         else:
             update_list.append({'id': order['id'], 'status': order['status']})
@@ -1724,8 +1724,17 @@ def send_payment_link_wt(id):
     result["template_name"] = template_name
     return result
 
-@app.route("/wallet")
-def wallet():
+def list_unpaid_amounts(customers):
+    def _get_unpaid_orders(c):
+        params = {'customer': c['id'], 'status': 'tbd-unpaid, delivered-unpaid', 'per_page': 100}
+        orders = wcapi.get("orders", params=params).json()
+        return {str(c['id']): orders}
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(_get_unpaid_orders, customers)
+    return list(result)
+
+@app.route("/customers")
+def customers():
     m_time = time.time()
     args = request.args.to_dict(flat=True)
     page = 1 if 'page' not in args else int(args['page'])
@@ -1734,16 +1743,33 @@ def wallet():
     customers = wcapi.get("customers", params={'page': page, 'per_page': 25, 'orderby': "id", 'role': 'all', 'search': search}).json()
     print("Time to fetch customers: ", time.time()-c_time)
     c_time = time.time()
-    customers = list_customers_with_wallet_balance(customers, wcapiw)
-    print("Time to fetch wallet balance: ", time.time()-c_time)
+    def _get_in_less_time(s):
+        if s == 'wallet':
+            return list_customers_with_wallet_balance(customers, wcapiw)
+        else:
+            return list_unpaid_amounts(customers)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(_get_in_less_time, ['wallet', 'unpaid_orders'])
+    customers, unpaid_list = list(result)
+    main_unpaid_list = {}
+    for c in unpaid_list:
+        total_amount = 0
+        for o in list(c.values())[0]:
+            wallet_payment = 0
+            if len(o["fee_lines"]) > 0:
+                for item in o["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment = (-1)*float(item["total"])
+            total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+        main_unpaid_list[list(c.keys())[0]] = total_amount
     print("Total time: ", time.time()-m_time)
-    return render_template('wallet/index.html', page=page, customers=customers, format_mobile = format_mobile, query=args)
+    return render_template('customers/index.html', page=page, customers=customers, format_mobile = format_mobile, query=args, unpaid_list=main_unpaid_list)
 
-@app.route("/wallet/<string:id>")
-def wallet_show(id):
+@app.route("/customers/<string:id>")
+def customers_show(id):
     customer = wcapi.get("customers/"+id).json()
     transactions = wcapiw.get('wallet/'+id).json()
-    return render_template('wallet/show.html', customer=customer, transactions=transactions)
+    return render_template('customers/show.html', customer=customer, transactions=transactions)
 
 @app.route("/wallet", methods=['POST'])
 def handelWallet():
@@ -1791,7 +1817,6 @@ def genPaymentLinkWallet():
         db.session.commit()
         return {'result': 'success', 'link': short_url}
     except Exception as e:
-        print(e)
         return {'result': 'error'}
 
 @app.route("/payByWallet", methods=['POST'])

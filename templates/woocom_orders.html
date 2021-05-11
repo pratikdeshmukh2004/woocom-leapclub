@@ -27,8 +27,8 @@
         </li>
         {%endif%}
         <li class="nav-item">
-          <a class="nav-link" href="{{url_for('wallet')}}">
-            Wallet</a>
+          <a class="nav-link" href="{{url_for('customers')}}">
+            Customers</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="{{url_for('subscriptions')}}">
@@ -244,7 +244,7 @@
       class="btn btn-info ml-2">Mark as Paid</button>
     {%endif%}
 
-    {%if nav_active in ['delivered-unpaid, completed']%}
+    {%if nav_active in ['delivered-unpaid, completed', 'processing', 'tbd-paid, tbd-unpaid']%}
       <button onclick="payByWallet()" type="button"
         class="btn btn-info ml-2">Pay By Wallet</button>
     {%endif%}
@@ -284,7 +284,6 @@
       {% for o in orders %}
       <tr>
         <td class="{{o.id}}" scope="row">
-          {% if o.vendor_type or nav_active == 'subscription' %}
           <div style="min-width: 216px;">
             <a data-toggle="tooltip" target='blank' href="https://leapclub.in/wp-admin/post.php?post={{o.id}}&action=edit"><i
                 title="Edit Order" class="mdi mdi-18px mdi-pencil-outline btn-sm btn btn-warning"
@@ -295,18 +294,23 @@
             <i data-toggle="tooltip" title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')"
               class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning" style="cursor: pointer;"
               aria-hidden="true"></i>
-              <button data-toggle="tooltip" class="btn btn-warning btn-sm"
-                onclick="genSubscriptionLink('{{o.id}}')">
-                <i title="Generate Payment Link" class="mdi mdi-18px mdi-link mr-1"></i>W
-              </button>
             {%if nav_active != 'subscription'%}
             <button data-toggle="tooltip" class="btn btn-warning btn-sm"
               onclick="CheckOutRequest('{{url_for('gen_payment_link', order_id=o.id)}}')">
               <i title="Generate Payment Link" class="mdi mdi-18px mdi-link"></i>
             </button>
+            <button data-toggle="tooltip" class="btn btn-warning btn-sm"
+            onclick="genSubscriptionLink2('{{o.id}}', '{{ o.total-o.total_refunds}}')">
+            <i title="Generate Payment Link" class="mdi mdi-18px mdi-link mr-1"></i>W
+          </button>
+          {%else%}
+          <button data-toggle="tooltip" class="btn btn-warning btn-sm"
+          onclick="genSubscriptionLink('{{o.id}}')">
+          <i title="Generate Payment Link" class="mdi mdi-18px mdi-link mr-1"></i>W
+        </button>
+
             {%endif%}
           </div>
-          {% endif %}
           <div class="mt-1">
             {% if nav_active == "processing"%}
             {% if o.vendor_type %}

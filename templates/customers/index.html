@@ -2,7 +2,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
   <div class="container">
     <a class="navbar-brand font-weight-bold" href="#">
-      Wallet
+      Customers
     </a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
       aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,13 +58,14 @@
                 <th>Name</th>
                 <th>Mobile</th>
                 <th>Current Balance</th>
+                <th>Total Unpaid Amount</th>
             </tr>
         </thread>
         <tbody>
             {%for c in customers%}
             <tr>
                 <td>
-                    <a class="btn btn-sm btn-warning mr-1" href="{{url_for('wallet_show', id=c.id)}}"><i style="font-size: 20px;" class="mdi mdi-eye"></i></a>
+                    <a class="btn btn-sm btn-warning mr-1" href="{{url_for('customers_show', id=c.id)}}"><i style="font-size: 20px;" class="mdi mdi-eye"></i></a>
                     <button onclick="MoneyToWallet('{{c.id}}', 'credit')" data-toggle="tooltip" title="Add Money To Wallet" class="btn btn-success btn-sm font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-plus mr-1"></i></button>
                     <button onclick="MoneyToWallet('{{c.id}}', 'debit')" data-toggle="tooltip" title="Reduce Money From Wallet" class="btn btn-success btn-sm font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-minus mr-1"></i></button>
                     <button onclick="genPaymentLinkWallet('{{c.id}}')" data-toggle="tooltip" title="Generate Payment Link" class="btn btn-success btn-sm font-weight-bold"><i class="mdi mdi-18px mdi-link-plus mr-1"></i></button>
@@ -72,6 +73,7 @@
                 <td>{{c.first_name}} {{c.last_name}}</td>
                 <td>{{format_mobile(c.billing.phone)}}</td>
                 <td id="balance-{{c.id}}">₹ {{c.wallet_balance}}</td>
+                <td>₹ {{unpaid_list[c.id | string]}}</td>
             </tr>
             {%endfor%}
         </tbody>
@@ -82,7 +84,7 @@
 <nav aria-label="Page navigation">
   <ul class="pagination justify-content-center">
     <li class="page-item {% if page == 1%} disabled {%endif%}">
-      <a class="page-link" href="{{url_for('wallet', page=page-1, include=query['include'], name=query['name'])}}" tabindex="-1"
+      <a class="page-link" href="{{url_for('customers', page=page-1, include=query['include'], name=query['name'])}}" tabindex="-1"
         >Previous</a
       >
     </li>
@@ -90,7 +92,7 @@
       <a class="page-link">{{page}}</a>
     </li>
     <li class="page-item {% if customers | length < 25%} disabled {%endif%}">
-      <a class="page-link" href="{{url_for('wallet', page=page+1, include=query['include'], name=query['name'])}}">Next</a>
+      <a class="page-link" href="{{url_for('customers', page=page+1, include=query['include'], name=query['name'])}}">Next</a>
     </li>
   </ul>
 </nav>

@@ -859,6 +859,43 @@ function genSubscriptionLink(id) {
   })
 }
 
+function genSubscriptionLink2(id, amount) {
+  Swal.fire({
+    title: 'Processing Your Request....',
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+
+  $.ajax({
+    type: "GET",
+    crossDomain: true,
+    dataType: "json",
+    url: "/genSubscriptionLink/" + id + "/" + parseInt(amount).toString(),
+    success: function (res) {
+      if (res.result == "success") {
+        Swal.fire({
+          title: "Success, Link Generated!",
+          icon: "success",
+        });
+        var tag = $('#payment-' + res.data.id)
+        tag.text(res.data.receipt + " | " + (res.data.amount / 100).toString())
+        tag.attr('onclick', "copyText('" + res.data.short_url + "')")
+        tag.attr('class', 'text-success')
+      } else {
+        Swal.fire({
+          title: "Error, Link Not Generated!",
+          icon: "error",
+        });
+        var tag = $('#payment-' + res.data.id)
+        tag.text(res.data.receipt)
+        tag.attr('class', 'text-danger')
+      }
+    }
+  })
+}
 
 function genMulSubscriptionLinks() {
   var inp_select = $('#select_inps')
