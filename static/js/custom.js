@@ -137,28 +137,28 @@ function sendToGoogleSheet(act, status) {
     data: { 'order_ids': inp_select_v, 'action': [act], 'status': status },
     success: function (res) {
       if (res.result == 'success') {
-          delivery_dates_text = ""
-          delivery_date_msg = ""
-          for (var d of Object.keys(res.delivery_dates)) {
-            dt = d
-            if (d == '') {
-              dt = "No Date"
-            }
-            delivery_dates_text += (dt + " : " + res.delivery_dates[d]['count'].toString() + " orders <br>")
+        delivery_dates_text = ""
+        delivery_date_msg = ""
+        for (var d of Object.keys(res.delivery_dates)) {
+          dt = d
+          if (d == '') {
+            dt = "No Date"
           }
-          if (Object.keys(res.delivery_dates).length > 1) {
-            delivery_date_msg = "There are orders with different delivery date or no delivery date. Please change it now."
-          }
-          status_text = ""
-          status_msg = ""
-          for (var d of Object.keys(res.status_list)) {
-            status_text += (d + " : " + res.status_list[d]['count'].toString() + " orders <br>")
-          }
-          if (Object.keys(res.status_list).length > 1) {
-            status_msg = "There are orders with different status. Please change all orders to To Be Delivered. "
-          }
-          Swal.fire({
-            html: `
+          delivery_dates_text += (dt + " : " + res.delivery_dates[d]['count'].toString() + " orders <br>")
+        }
+        if (Object.keys(res.delivery_dates).length > 1) {
+          delivery_date_msg = "There are orders with different delivery date or no delivery date. Please change it now."
+        }
+        status_text = ""
+        status_msg = ""
+        for (var d of Object.keys(res.status_list)) {
+          status_text += (d + " : " + res.status_list[d]['count'].toString() + " orders <br>")
+        }
+        if (Object.keys(res.status_list).length > 1) {
+          status_msg = "There are orders with different status. Please change all orders to To Be Delivered. "
+        }
+        Swal.fire({
+          html: `
 <b>`+ res.total_o + ` orders added to Google Sheet <a target='blank' href='` + res.ssUrl + `'>` + res.ssName + `</a></b><br/><br/>
 <div style='text-align: left'><b>Delivery Dates</b><br/>
 `+ delivery_dates_text + `<br>
@@ -167,11 +167,11 @@ function sendToGoogleSheet(act, status) {
 `+ status_text + `<br>
 `+ status_msg + `</div>
             `,
-            width: 700,
-            backdrop: `
+          width: 700,
+          backdrop: `
               rgba(0,0,123,0.4)
             `
-          })
+        })
       } else {
         $.nok({
           message: "Error, Sheet Not Created!",
@@ -202,6 +202,25 @@ function copyOrderDetail(status) {
     url: "/order_details",
     data: { 'order_ids': inp_select_v, 'status': status },
     success: function (res) {
+      if (res.result == 'missing'){
+        if (res.missings.delivery_date && res.missings.vendor){
+          Swal.fire({
+            icon:"warning",
+            title: "Vendor and Delivery date is missing. Please add it before copying order details."
+          })
+        }else if(res.missings.delivery_date){
+          Swal.fire({
+            icon:"warning",
+            title: "Delivery date is missing. Please add it before copying order derails"
+          })
+        }else{
+          Swal.fire({
+            icon:"warning",
+            title: "Vendor is missing. Please add it before copying order details."
+          })
+        }
+        return ""
+      }
       text = res.result.replace("&amp;", "&")
       var input = document.body.appendChild(document.createElement("textarea"));
       input.value = text;
@@ -424,6 +443,7 @@ function copySupplierMessage(status) {
   });
 }
 
+
 function genMultipleLinks() {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
@@ -486,10 +506,10 @@ function genMultipleLinks() {
           confirmButtonColor: '#FF3232',
           confirmButtonText: 'Close'
         })
-      }else{
+      } else {
         Swal.fire({
           icon: "warning",
-          html: "<b>Following orders are already paid. Please exclude them from selection: <b>"+res.result
+          html: "<b>Following orders are already paid. Please exclude them from selection: <b>" + res.result
         })
       }
     }
@@ -499,59 +519,99 @@ function genMultipleLinks() {
 function changeOrderStatus(status) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
-  $.nok({
-    message: "Processing Your Request Please Wait!",
-    type: "success",
-  });
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/change_order_status",
-    data: { 'order_ids': inp_select_v, "status": status },
-    success: function (res) {
-      if (res.result == 'success') {
-        trtext = ""
-        for (var o of res.result_list) {
-          trtext += `
-              <tr>
-                <td><p>`+ o.order_id + " ( " + o.name + ` ) </p></td>
-                <td><p>`+ o.status + `</p></td>
-                <td><p>`+ o.message + `</p></td>
-                <td><p>`+ o.refund + `</p></td>
-              </tr>
-          `
+  Swal.fire({
+    title: `Do you want to change order status to `+status+` for `+inp_select_v.length.toString()+` orders? (Yes / No)`,
+    showDenyButton: true,
+    confirmButtonText: `Yes`,
+    denyButtonText: `No`,
+  }).then((result) => {
+    if (result.isConfirmed) {
+      $.nok({
+        message: "Processing Your Request Please Wait!",
+        type: "success",
+      });
+      $.ajax({
+        type: "POST",
+        crossDomain: true,
+        dataType: "json",
+        url: "/change_order_status",
+        data: { 'order_ids': inp_select_v, "status": status },
+        success: function (res) {
+          if (res.result == 'success') {
+            trtext = ""
+            for (var o of res.result_list) {
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.order_id + " ( " + o.name + ` ) </p></td>
+                    <td><p>`+ o.status + `</p></td>
+                    <td><p>`+ o.message + `</p></td>
+                    <td><p>`+ o.refund + `</p></td>
+                  </tr>
+              `
+            }
+            Swal.fire({
+              html: `
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Order ID ( Name )</b></th>  
+                    <th><b>Result</b></th>  
+                    <th><b>Message</b></th>  
+                    <th><b>Refund</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `,
+              width: 700,
+              backdrop: `
+                rgba(0,0,123,0.4)
+              `
+            }).then(() => {
+              location.reload()
+            })
+          }
+          else if (res.result == 'paid'){
+            trtext = ""
+            for (var o of res.result_list) {
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.id + " ( " + o.billing.first_name + ` ) </p></td>
+                    <td><p>`+ o.status + `</p></td>
+                  </tr>
+              `
+            }
+            Swal.fire({
+              title: "You Selected Paid Orders Please Try Again",
+              html: `
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Order ID ( Name )</b></th>  
+                    <th><b>Status</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `,
+              width: 700,
+              backdrop: `
+                rgba(0,0,123,0.4)
+              `
+            })
+          }
+          else {
+            $.nok({
+              message: "Error, Order Status Not Changed Please Check Order ID!",
+              type: "error",
+            });
+          }
         }
-        Swal.fire({
-          html: `
-            <table class='table'>
-              <thead>
-              <tr>
-                <th><b>Order ID ( Name )</b></th>  
-                <th><b>Result</b></th>  
-                <th><b>Message</b></th>  
-                <th><b>Refund</b></th>  
-              </tr>  
-              </thead>
-              <tbody>
-              `+ trtext + `
-              </tbody>
-            </table>
-          `,
-          width: 700,
-          backdrop: `
-            rgba(0,0,123,0.4)
-          `
-        }).then(() => {
-          location.reload()
-        })
-      }
-      else {
-        $.nok({
-          message: "Error, Order Status Not Changed Please Check Order ID!",
-          type: "error",
-        });
-      }
+      })
     }
   })
 }
@@ -567,7 +627,26 @@ function copyToClipboard(id) {
     dataType: "json",
     url: "/get_copy_messages/" + id.toString(),
     success: function (res) {
-      if (res.status == 'success') {
+      if (res.status == 'missing'){
+        if (res.missings.delivery_date && res.missings.vendor){
+          Swal.fire({
+            icon:"warning",
+            title: "Vendor and Delivery date is missing. Please add it before copying order details."
+          })
+        }else if(res.missings.delivery_date){
+          Swal.fire({
+            icon:"warning",
+            title: "Delivery date is missing. Please add it before copying order derails"
+          })
+        }else{
+          Swal.fire({
+            icon:"warning",
+            title: "Vendor is missing. Please add it before copying order details."
+          })
+        }
+        return ""
+      }
+      else if (res.status == 'success') {
         var input = document.body.appendChild(document.createElement("textarea"));
         input.value = res.text;
         input.select();
@@ -780,6 +859,43 @@ function genSubscriptionLink(id) {
   })
 }
 
+function genSubscriptionLink2(id, amount) {
+  Swal.fire({
+    title: 'Processing Your Request....',
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+
+  $.ajax({
+    type: "GET",
+    crossDomain: true,
+    dataType: "json",
+    url: "/genSubscriptionLink/" + id + "/" + parseInt(amount).toString(),
+    success: function (res) {
+      if (res.result == "success") {
+        Swal.fire({
+          title: "Success, Link Generated!",
+          icon: "success",
+        });
+        var tag = $('#payment-' + res.data.id)
+        tag.text(res.data.receipt + " | " + (res.data.amount / 100).toString())
+        tag.attr('onclick', "copyText('" + res.data.short_url + "')")
+        tag.attr('class', 'text-success')
+      } else {
+        Swal.fire({
+          title: "Error, Link Not Generated!",
+          icon: "error",
+        });
+        var tag = $('#payment-' + res.data.id)
+        tag.text(res.data.receipt)
+        tag.attr('class', 'text-danger')
+      }
+    }
+  })
+}
 
 function genMulSubscriptionLinks() {
   var inp_select = $('#select_inps')
@@ -859,7 +975,7 @@ function copyLinkedOrders() {
     crossDomain: true,
     dataType: "json",
     url: "/copy_linked_orders",
-    data: {'order_ids': inp_select_v},
+    data: { 'order_ids': inp_select_v },
     success: function (res) {
       if (res.status == 'success') {
         var input = document.body.appendChild(document.createElement("textarea"));
@@ -873,28 +989,28 @@ function copyLinkedOrders() {
             type: "success",
           });
         } else {
-          if (res.text.length>0){
+          if (res.text.length > 0) {
             Swal.fire({
-          html: `
+              html: `
           <pre>
           <div style='text-align: left;'>
 <b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
 
-`+res.text+`
+`+ res.text + `
 </pre>
 </div>
           `,
-          width: 700,
-          backdrop: `
+              width: 700,
+              backdrop: `
             rgba(0,0,123,0.4)
           `
-        })
-          }else{
-          $.nok({
-            message: "Error, Message Not Copied!",
-            type: "error",
-          });
-        }
+            })
+          } else {
+            $.nok({
+              message: "Error, Message Not Copied!",
+              type: "error",
+            });
+          }
         }
       } else {
         $.nok({
@@ -917,6 +1033,88 @@ function copyLinkedOrders() {
 function sendWMessages(name) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
+  Swal.fire({
+    title: `Do you want to send `+name+` message for `+inp_select_v.length.toString()+` orders? (Yes / No)`,
+    showDenyButton: true,
+    confirmButtonText: `Yes`,
+    denyButtonText: `No`,
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: 'Processing Your Request....',
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+      })
+      $.ajax({
+        type: "POST",
+        crossDomain: true,
+        dataType: "json",
+        url: "/send_whatsapp_messages/" + name,
+        data: { 'order_ids': inp_select_v },
+        success: function (res) {
+          if (res.result == 'success') {
+            trtext = ""
+            for (var o of res.results) {
+              console.log(o);
+              if (["success", "PENDING", "SENT", true].includes(o.result)) {
+                updateSpan(o.order_id, o.template_name, 'text-success')
+              } else {
+                updateSpan(o.order_id, o.template_name, 'text-danger')
+              }
+              button = `<td onclick="sendWPaymentLink('` + o.order_id + "','" + o.phone_number + "','" + o.vendor_type + `')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
+              if (!o.button) {
+                button = ""
+              }
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.customer_name + " ( " + o.phone_number + ` ) </p></td>
+                    <td><p>`+ o.order_id + `</p></td>
+                    <td><p>`+ o.result + `</p></td>
+                    <td><p>`+ o.payment_status + `</p></td>
+                    `+ button + `
+                  </tr>
+              `
+            }
+            Swal.fire({
+              html: `
+              <b>Group orders by customer:</b>
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Name (Mobile)</b></th>  
+                    <th><b>Order IDS</b></th>  
+                    <th><b>Result</b></th>  
+                    <th><b>Paid/Unpaid</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `,
+              width: 1000,
+              backdrop: `
+                rgba(0,0,123,0.4)
+              `,
+              allowOutsideClick: false
+            })
+          }
+          else {
+            $.nok({
+              message: "Error, Messages not sent!",
+              type: "error",
+            });
+          }
+        }
+      })
+    }
+  })
+}
+function sendWPaymentLink(id, phone_number, order_type) {
+  console.log(id, phone_number, order_type);
   $.nok({
     message: "Processing Your Request Please Wait!",
     type: "success",
@@ -925,77 +1123,8 @@ function sendWMessages(name) {
     type: "POST",
     crossDomain: true,
     dataType: "json",
-    url: "/send_whatsapp_messages/" + name,
-    data: { 'order_ids': inp_select_v },
-    success: function (res) {
-      if (res.result == 'success') {
-        trtext = ""
-        for (var o of res.results) {
-          console.log(o);
-          if (["success", "PENDING", "SENT", true].includes(o.result)) {
-            updateSpan(o.order_id, o.template_name, 'text-success')
-          } else {
-            updateSpan(o.order_id, o.template_name, 'text-danger')
-          }
-          button = `<td onclick="sendWPaymentLink('`+o.order_id+"','"+o.phone_number+"','"+o.vendor_type+`')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
-          if (!o.button){
-            button = ""
-          }
-          trtext += `
-              <tr>
-                <td><p>`+ o.customer_name + " ( " + o.phone_number + ` ) </p></td>
-                <td><p>`+ o.order_id + `</p></td>
-                <td><p>`+ o.result + `</p></td>
-                <td><p>`+ o.payment_status + `</p></td>
-                `+button+`
-              </tr>
-          `
-        }
-        Swal.fire({
-          html: `
-          <b>Group orders by customer:</b>
-            <table class='table'>
-              <thead>
-              <tr>
-                <th><b>Name (Mobile)</b></th>  
-                <th><b>Order IDS</b></th>  
-                <th><b>Result</b></th>  
-                <th><b>Paid/Unpaid</b></th>  
-              </tr>  
-              </thead>
-              <tbody>
-              `+ trtext + `
-              </tbody>
-            </table>
-          `,
-          width: 1000,
-          backdrop: `
-            rgba(0,0,123,0.4)
-          `,
-          allowOutsideClick: false
-        })
-      }
-      else {
-        $.nok({
-          message: "Error, Messages not sent!",
-          type: "error",
-        });
-      }
-    }
-  })
-}
-function sendWPaymentLink(id, phone_number, order_type){
-  console.log(id, phone_number, order_type);
-    $.nok({
-    message: "Processing Your Request Please Wait!",
-    type: "success",
-  });
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/send_payment_link_wt/"+id,
-    data: {'mobile_number': phone_number, 'order_type': order_type},
+    url: "/send_payment_link_wt/" + id,
+    data: { 'mobile_number': phone_number, 'order_type': order_type },
     success: function (res) {
       if (["success", "PENDING", "SENT", true].includes(res.result)) {
         $.nok({

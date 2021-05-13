@@ -24,7 +24,7 @@ def filter_orders(orders, params):
     for o in orders:
         c = {"payment_status": False, "manager": False}
         if 'status' in params and 'payment_status' in params:
-            if params['status'][0] == 'tbd-paid, tbd-unpaid' and params['payment_status'][0] != "":
+            if params['status'][0] in ['tbd-paid, tbd-unpaid', 'delivered-unpaid, completed']:
                 params['payment_status'][0] = ""
         if "payment_status" in params:
             if params["payment_status"][0] != "":
@@ -273,6 +273,13 @@ def get_params(args):
                         params['status'] = 'tbd-unpaid'
                     else:
                         params['status'] = 'tbd-paid, tbd-unpaid'
+            elif 'payment_status' in args and args["status"][0] == "delivered-unpaid, completed":
+                    if args['payment_status'][0] == 'paid':
+                        params['status'] = 'completed'
+                    elif args['payment_status'][0] == 'unpaid':
+                        params['status'] = 'delivered-unpaid'
+                    else:
+                        params['status'] = 'delivered-unpaid, completed'
             else:
                 params["status"] = args["status"][0]
     else:

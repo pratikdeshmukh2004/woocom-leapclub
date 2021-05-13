@@ -22,7 +22,7 @@ from slack import WebClient
 from slack_bot import send_slack_message_, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
 from flask_crontab import Crontab
 from slack_chennels import CHANNELS
-from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders
+from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance
 
 
 
@@ -190,7 +190,7 @@ def get_tabs_nums():
     main_dict['failed, pending'] = {'per_page': 1,'status': "failed, pending"}
     main_dict['processing'] = {'per_page': 1,'status': "processing"}
     main_dict['tbd-paid, tbd-unpaid'] = {'per_page': 1,'status': "tbd-paid, tbd-unpaid"}
-    main_dict['delivered-unpaid'] = {'per_page': 1,'status': "delivered-unpaid"}
+    main_dict['delivered-unpaid, completed'] = {'per_page': 1,'status': "delivered-unpaid, completed"}
     main_dict['completed'] = {'per_page': 1,'status': "completed"}
     main_dict['refunded'] = {'per_page': 1,'status': "refunded"}
     main_dict['cancelled'] = {'per_page': 1,'status': "cancelled"}
@@ -300,6 +300,9 @@ def get_orders_for_home(args, tab):
             params['status'] = 'errors'
         elif params['status'] in ['tbd-paid', 'tbd-unpaid']:
             params['status'] = 'tbd-paid, tbd-unpaid'
+        elif params['status'] in ['delivered-unpaid', 'completed']:
+            params['status'] = 'delivered-unpaid, completed'
+
     args['payment_status'] = p_s
     return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
 
@@ -370,10 +373,9 @@ def send_whatsapp(name):
         mobile_number = format_mobile(args["mobile_number"])
         result = send_whatsapp_msg(args, mobile_number, name)
         if result["result"] in ["success", "PENDING", "SENT", True]:
-            new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
-                                "broadcast_name"]["broadcastName"], status="success", time_sent=datetime.utcnow())
+            new_wt = wtmessages(order_id=int(args["order_id"]), template_name=result["template_name"], broadcast_name=result["broadcast_name"], status="success", time_sent=datetime.utcnow())
         else:
-            new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
+            new_wt = wtmessages(order_id=int(args["order_id"]), template_name=result["template_name"], broadcast_name=result[
                                 "broadcast_name"], status="failed", time_sent=datetime.utcnow())
         db.session.add(new_wt)
         db.session.commit()
@@ -992,6 +994,15 @@ def order_details():
     params["include"] = get_list_to_string(data["order_ids"])
     c_time = time.time()
     orders = wcapi.get("orders", params=params).json()
+    missing = {'delivery_date': False, 'vendor': False}
+    for o in orders:
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        if vendor == "":
+            missing['vendor'] = True
+        if delivery_date == "":
+            missing['delivery_date'] = True
+    if True in list(missing.values()):
+        return {'result': 'missing', 'missings': missing}
     print("Time to fetch orders: ", time.time()-c_time)
     c_time = time.time()
     orders = get_orders_with_messages_without(orders, wcapi)
@@ -1265,7 +1276,7 @@ def send_whatsapp_messages_m(name):
             o["vendor_type"] = vendor_type[vendor]
         else:
             if vendor == "":
-                r = {'result': "Vendor Error", 'order_id': o['id']}
+                r = {'result': "Vendor Error", 'order_id': o['id'], 'phone_number': format_mobile(o['billing']['phone'])}
                 r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
                 results.append(r)
                 continue
@@ -1302,11 +1313,12 @@ def send_whatsapp_messages_m(name):
                 d_date = dt.strftime("%A")+", "+months[dt.month-1]+" " + str(dt.day)
             else:
                 d_date = ""
-            button = True
+            button = False
             if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
                 p_s = "Paid"
             elif o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
                 p_s = "Unpaid"
+                button=True
                 if o['payment_method_title'] != 'Pay Online on Delivery':
                     button = False
             else:
@@ -1399,6 +1411,19 @@ def update_order_status_with_id(order, status, r):
         else:
             s = 'tbd-paid'
             m = ("Mark as tbd-paid")
+    elif status == 'paid':
+        if order['status'] == 'tbd-unpaid':
+            s = 'tbd-paid'
+            m = ("Mark as tbd-paid")
+        elif order['status'] == 'delivered-unpaid':
+            s = 'completed'
+            m = ("Mark as completed")
+        else:
+            s = 'pre-paid'
+            m = ("Mark as Paid")
+    else:
+        s = order['status']
+        m = "N/A"
     if r == 'status':
         return s
     else:
@@ -1412,21 +1437,31 @@ def change_order_status():
     data = request.form.to_dict(flat=False)
     result_list = []
     if data['status'][0] == 'cancel':
-        msg_text = '*These orders are marked as cancelled*\n\n'
-    if data['status'][0] == 'tbd':
-        msg_text = '*These orders are marked as to-be-delivered*\n\n'
-    if data['status'][0] == 'delivered':
+        msg_text = '*These orders are marked as Cancelled*\n\n'
+    elif data['status'][0] == 'tbd':
+        msg_text = '*These orders are marked as To-be-delivered*\n\n'
+    elif data['status'][0] == 'delivered':
         msg_text = '*These orders are marked as Delivered*\n\n'
-    if data['status'][0] == 'cancel_r':
-        msg_text = '*These orders are marked as cancelled*\n\n'
+    elif data['status'][0] == 'cancel_r':
+        msg_text = '*These orders are marked as Cancelled*\n\n'
+    else:
+        msg_text = "*These orders are marked as Paid*\n\n"
     error_text = ""
     success_text = ""
     orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
+    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] == 'pre-paid', orders))
+    if len(paid_orders)>0:
+        return {'result': 'paid', 'result_list': paid_orders}
     update_list = []
     wallet_refund = []
     for order in orders:
+        o_s = order['status']
         order['status'] = update_order_status_with_id(order, data['status'][0], 'status')
-        update_list.append({'id': order['id'], 'status': order['status']})
+        if o_s == 'processing' and data['status'][0] == 'paid':
+            update_list.append({'id': order['id'], 'payment_method': order['status'], 'payment_method_title': "Pre-paid"})
+        else:
+            update_list.append({'id': order['id'], 'status': order['status']})
+    print(update_list)
     updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
     for o in updates['update']:
         name = o['billing']['first_name']+" "+o['billing']['last_name']
@@ -1465,10 +1500,11 @@ def get_copy_messages(id):
         order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
     msg = ""
     if 'c_msg' in id:
-        delivery_date = ""
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        if vendor == "" or delivery_date == "":
+            return {'status': 'missing', 'missings': {'vendor': False if vendor !="" else True, 'delivery_date': False if delivery_date != "" else True}}
         if delivery_date:
             try:
                 dt = datetime.strptime(delivery_date, '%Y-%m-%d')
@@ -1687,6 +1723,101 @@ def send_payment_link_wt(id):
     result = json.loads(response.text.encode('utf8'))
     result["template_name"] = template_name
     return result
+
+def list_unpaid_amounts(customers):
+    def _get_unpaid_orders(c):
+        params = {'customer': c['id'], 'status': 'tbd-unpaid, delivered-unpaid', 'per_page': 100}
+        orders = wcapi.get("orders", params=params).json()
+        return {str(c['id']): orders}
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(_get_unpaid_orders, customers)
+    return list(result)
+
+@app.route("/customers")
+def customers():
+    m_time = time.time()
+    args = request.args.to_dict(flat=True)
+    page = 1 if 'page' not in args else int(args['page'])
+    search = '' if 'name' not in args else args['name']
+    c_time = time.time()
+    customers = wcapi.get("customers", params={'page': page, 'per_page': 25, 'orderby': "id", 'role': 'all', 'search': search}).json()
+    print("Time to fetch customers: ", time.time()-c_time)
+    c_time = time.time()
+    def _get_in_less_time(s):
+        if s == 'wallet':
+            return list_customers_with_wallet_balance(customers, wcapiw)
+        else:
+            return list_unpaid_amounts(customers)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(_get_in_less_time, ['wallet', 'unpaid_orders'])
+    customers, unpaid_list = list(result)
+    main_unpaid_list = {}
+    for c in unpaid_list:
+        total_amount = 0
+        for o in list(c.values())[0]:
+            wallet_payment = 0
+            if len(o["fee_lines"]) > 0:
+                for item in o["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment = (-1)*float(item["total"])
+            total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+        main_unpaid_list[list(c.keys())[0]] = total_amount
+    print("Total time: ", time.time()-m_time)
+    return render_template('customers/index.html', page=page, customers=customers, format_mobile = format_mobile, query=args, unpaid_list=main_unpaid_list)
+
+@app.route("/customers/<string:id>")
+def customers_show(id):
+    customer = wcapi.get("customers/"+id).json()
+    transactions = wcapiw.get('wallet/'+id).json()
+    return render_template('customers/show.html', customer=customer, transactions=transactions)
+
+@app.route("/wallet", methods=['POST'])
+def handelWallet():
+    data = request.form.to_dict(flat=True)
+    customer = wcapi.get("customers/"+data['id']).json()
+    if 'code' not in customer:
+        response = wcapiw.post("wallet/"+str(customer['id']), data={'type': data['action'], 'amount': float(data['amount']), 'details': data['details']}).json()
+        if response['response'] == 'success' and response['id'] != False: 
+            balance = wcapiw.get("current_balance/"+str(customer["id"])).text[1:-1]
+            return {'result': 'success', 'balance': balance}
+    return {"result": 'error'}
+
+@app.route("/wallet/genlink", methods=['POST'])
+def genPaymentLinkWallet():
+    data = request.form.to_dict(flat=True)
+    customer = wcapi.get("customers/"+data['id']).json()
+    payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%Wallet-"+str(customer['id'])+"%")).all()
+    if len(payment_links)==0:
+        reciept = "Wallet-" + str(customer['id'])
+    else:
+        reciept = "Wallet-" + str(customer['id'])+"-"+str(len(payment_links)+1)
+    data = {
+            "amount": float(data['amount'])*100,
+            "receipt": reciept,
+            "customer": {
+                "name": customer["first_name"] + " " + customer["last_name"],
+                "contact": format_mobile(customer['billing']['phone'])
+            },
+            "type": "link",
+            "view_less": 1,
+            "currency": "INR",
+            "description": "Thank you for making a healthy and sustainable choice",
+            "reminder_enable": False,
+            "callback_url": "https://leapclub.in/",
+            "callback_method": "get",
+            "sms_notify": False,
+            'email_notify': False
+        }
+    try:
+        invoice = razorpay_client.invoice.create(data=data)
+        status = "success"
+        short_url = invoice['short_url']
+        new_payment_link = PaymentLinks(order_id=1111, receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=format_mobile(customer["billing"]["phone"]), name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
+        db.session.add(new_payment_link)
+        db.session.commit()
+        return {'result': 'success', 'link': short_url}
+    except Exception as e:
+        return {'result': 'error'}
 
 if __name__ == "__main__":
     db.create_all()
