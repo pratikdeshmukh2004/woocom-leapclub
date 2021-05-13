@@ -212,8 +212,6 @@
       class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
       <button data-toggle="tooltip" onclick="copyOrderDetailMini('{{nav_active}}')" type="button" title="Copy Mini Order Detail"
       class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
-      <button data-toggle="tooltip" onclick="genMulSubscriptionLinks()" type="button" title="Gen Payment Links"
-      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-link mr-1" aria-hidden="true"></i>W</button>
       {%if nav_active != 'subscription'%}
         <button data-toggle="tooltip" onclick="genMultipleLinks()" type="button" title="Gen Payment Links"
         class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-link" aria-hidden="true"></i></button>
@@ -242,11 +240,6 @@
     {%if nav_active in ['tbd-paid, tbd-unpaid', 'processing', 'delivered-unpaid, completed']%}
     <button onclick="changeOrderStatus('paid')" type="button"
       class="btn btn-info ml-2">Mark as Paid</button>
-    {%endif%}
-
-    {%if nav_active in ['delivered-unpaid, completed', 'processing', 'tbd-paid, tbd-unpaid']%}
-      <button onclick="payByWallet()" type="button"
-        class="btn btn-info ml-2">Pay By Wallet</button>
     {%endif%}
   </form>
   {%if nav_active == 'any'%}
@@ -299,10 +292,6 @@
               onclick="CheckOutRequest('{{url_for('gen_payment_link', order_id=o.id)}}')">
               <i title="Generate Payment Link" class="mdi mdi-18px mdi-link"></i>
             </button>
-            <button data-toggle="tooltip" class="btn btn-warning btn-sm"
-            onclick="genSubscriptionLink2('{{o.id}}', '{{ o.total-o.total_refunds}}')">
-            <i title="Generate Payment Link" class="mdi mdi-18px mdi-link mr-1"></i>W
-          </button>
           {%else%}
           <button data-toggle="tooltip" class="btn btn-warning btn-sm"
           onclick="genSubscriptionLink('{{o.id}}')">
