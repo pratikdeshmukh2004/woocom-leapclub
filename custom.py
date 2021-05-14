@@ -710,9 +710,8 @@ def get_csv_from_products(orders, wcapi, format):
                         i['Quantity'] += p['quantity']
                         i['orders'] +=1
                         break
-                    else:
-                        product_list.append({"Product ID": product_id, "Product Name": p['name'], "Quantity": p['quantity'], 'orders': 1})
-                        break
+            else:
+                product_list.append({"Product ID": product_id, "Product Name": p['name'], "Quantity": p['quantity'], 'orders': 1})
         else:
             is_include.append(product_id)
             product_list.append(
