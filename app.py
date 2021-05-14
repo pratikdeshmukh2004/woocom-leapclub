@@ -1450,7 +1450,7 @@ def change_order_status():
     success_text = ""
     orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
     paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] == 'pre-paid', orders))
-    if len(paid_orders)>0:
+    if len(paid_orders)>0 and data['status'][0] == 'paid':
         return {'result': 'paid', 'result_list': paid_orders}
     update_list = []
     wallet_refund = []

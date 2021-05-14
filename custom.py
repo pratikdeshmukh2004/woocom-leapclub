@@ -134,7 +134,7 @@ def list_order_items(order_items, refunds, wcapi, product_list):
         if order_item["quantity"] > 0:
             name_w = order_item['name'].split("(")
             print(order_item['name'], order_item['product']['name'])
-            if order_item['product']['weight'] != "" and len(name_w) == 2:
+            if order_item['product']['weight'] != "" and len(name_w) == 2 and order_item['name'] == order_item['product']['name']:
                 name_w_g = name_w[1].split(" ")
                 f_q = float(order_item['product']['weight'])*float(order_item['quantity'])
                 if f_q<1:
