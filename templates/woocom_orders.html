@@ -430,15 +430,25 @@
 </div>
 <script>
   function CheckOutRequest(url) {
-  $.nok({
-    message: "Processing Your Request Please Wait!",
-    type: "success",
-  });
+  Swal.fire({
+      title: 'Processing Your Request....',
+      showConfirmButton: false,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading()
+      },
+    })
   $.ajax({
     type: "GET",
     crossDomain: true,
     dataType: "json",
     url: url,
+    error: function (){
+      Swal.fire({
+      title: 'Something went wrong..',
+      icon: 'error'
+    })
+    },
     success: function (res) {
       if (res.result == 'check') {
         o_str = ""
@@ -474,7 +484,11 @@
           cancelButtonText: 'No'
         }).then((result) => {
           if (result.isConfirmed) {
-           CheckOutRequest(url + "?check=true")
+            if (url.includes('?')){
+              CheckOutRequest(url + "&check=true")
+            }else{
+              CheckOutRequest(url + "?check=true")
+            }
           }
         })
       }
@@ -501,7 +515,59 @@
           confirmButtonText: 'Generate Payment Link',
           cancelButtonText: 'Pay By Wallet',
           showCancelButton: true,
-          cancelButtonColor: '#4BB543'
+          cancelButtonColor: '#4BB543',
+          confirmButtonColor: '#4BB543',
+          width: 700
+        }).then((result) => {
+          if (result.isConfirmed) {
+           console.log("gen link");
+          }else{
+            console.log('pay by wallet');
+          }
+        })
+      } 
+      else if (res.result == 'wallet') {
+        Swal.fire({
+          html: '<h4>Wallet balance is '+res.balance+'. Total payable amount is '+res.total+'. Do you want to deduct '+res.balance+' from wallet and generate payment link of '+(parseFloat(res.total)-parseFloat(res.balance)).toString()+'?</h4>',
+          icon: 'warning',
+          confirmButtonText: 'Generate Payment Link Of '+(parseFloat(res.total)-parseFloat(res.balance)).toString(),
+          cancelButtonText: 'Generate Payment Link Of '+res.total,
+          showCancelButton: true,
+          cancelButtonColor: '#4BB543',
+          confirmButtonColor: '#4BB543',
+          width: 700
+        }).then((result) => {
+          if (result.isConfirmed) {
+           console.log("gen link y-x");
+          }else{
+            console.log('gen link y');
+          }
+        })
+      } 
+      else if (res.result == 'wallet_add') {
+        Swal.fire({
+          html: '<h4>Wallet balance is - '+res.balance+'. Total payable amount is '+res.total+'. Do you want to generate payment link of '+(parseFloat(res.total)-parseFloat(res.balance)).toString()+'?</h4>',
+          icon: 'warning',
+          confirmButtonText: 'Generate Payment Link Of '+(parseFloat(res.total)-parseFloat(res.balance)).toString(),
+          cancelButtonText: 'Generate Payment Link Of '+res.total,
+          showCancelButton: true,
+          cancelButtonColor: '#4BB543',
+          confirmButtonColor: '#4BB543',
+          width: 700
+        }).then((result) => {
+          if (result.isConfirmed) {
+            if (url.includes('?')){
+              CheckOutRequest(url + "&wallet_add=add")
+            }else{
+              CheckOutRequest(url + "?wallet_add=add")
+            }
+          }else{
+            if (url.includes('?')){
+              CheckOutRequest(url + "&wallet_add=no")
+            }else{
+              CheckOutRequest(url + "?wallet_add=no")
+            }
+          }
         })
       } 
       else {

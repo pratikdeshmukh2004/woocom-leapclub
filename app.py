@@ -786,6 +786,7 @@ def gen_payment_link(order_id):
     args = request.args.to_dict(flat=True)
     o = wcapi.get("orders/"+order_id).json()
     orders = list_orders_with_status_N2(wcapi, {'status': 'tbd-unpaid, delivered-unpaid', 'customer': o['customer_id']})
+    print(o)
     balance = wcapiw.get("current_balance/"+str(o["customer_id"])).text[1:-1]
     if len(orders)>1 and 'check' not in args:
         return jsonify({"result": 'check', 'orders':orders})
@@ -800,6 +801,14 @@ def gen_payment_link(order_id):
     total_amount = round(total_amount, 1)
     if float(balance)>total_amount:
         return jsonify({'result': 'balance', 'balance': balance, 'total': str(total_amount)})
+    elif float(balance)<total_amount and float(balance)>0:
+        return jsonify({'result': 'wallet', 'balance': balance, 'total': str(total_amount)})
+    elif float(balance)<0 and 'wallet_add' not in args:
+        return jsonify({'result': 'wallet_add', 'balance': balance, 'total': str(total_amount)})
+    else:
+        if args['wallet_add'] == 'add':
+            total_amount -=float(balance)
+    print(total_amount)
     # payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
     # counter = 0
     # while counter<len(payment_links):
@@ -1522,6 +1531,9 @@ def get_copy_messages(id):
         msg = msg + \
             list_order_refunds(order_refunds, o['line_items']) + \
             list_only_refunds(order_refunds)
+        if o['payment_method_title'] == "Wallet payment":
+            balance = wcapiw.get("current_balance/"+str(o["customer_id"])).text[1:-1]
+            msg+="\nWallet balance: RS."+balance
     else:
         payment_status = "Paid To LeapClub."
         if o['payment_method'] == 'other':
