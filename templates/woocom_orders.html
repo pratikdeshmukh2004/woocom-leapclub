@@ -295,7 +295,7 @@
           {%else%}
           <button data-toggle="tooltip" class="btn btn-warning btn-sm"
           onclick="genSubscriptionLink('{{o.id}}')">
-          <i title="Generate Payment Link" class="mdi mdi-18px mdi-link mr-1"></i>W
+          <i title="Generate Payment Link" class="mdi mdi-18px mdi-link mr-1"></i>
         </button>
 
             {%endif%}
@@ -487,12 +487,23 @@
         tag.text(res.payment.receipt + " | " + (res.payment.amount / 100).toString())
         tag.attr('onclick', "copyText('" + res.short_url + "')")
         tag.attr('class', 'text-success')
-      } else if (res.result == 'paid') {
+      } 
+      else if (res.result == 'paid') {
         Swal.fire({
           title: 'The order is already paid. Payment link cannot be generated.',
-          icon: 'warning',
+          icon: 'warning'
         })
-      } else {
+      }
+      else if (res.result == 'balance') {
+        Swal.fire({
+          html: '<h4>Wallet balance is '+res.balance+'. Total payable amount is '+res.total+'. Do you want to pay by wallet instead of generating payment link?</h4>',
+          icon: 'warning',
+          confirmButtonText: 'Generate Payment Link',
+          cancelButtonText: 'Pay By Wallet',
+          showCancelButton: true,
+        })
+      } 
+      else {
         $.nok({
           message: "Error, Link Not Generated!",
           type: "error",

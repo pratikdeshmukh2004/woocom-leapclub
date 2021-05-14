@@ -786,9 +786,10 @@ def gen_payment_link(order_id):
     args = request.args.to_dict(flat=True)
     o = wcapi.get("orders/"+order_id).json()
     orders = list_orders_with_status_N2(wcapi, {'status': 'tbd-unpaid, delivered-unpaid', 'customer': o['customer_id']})
+    balance = wcapiw.get("current_balance/"+str(o["customer_id"])).text[1:-1]
     if len(orders)>1 and 'check' not in args:
         return jsonify({"result": 'check', 'orders':orders})
-    if o['status'] in ['tbd-paid', 'completed']:
+    elif o['status'] in ['tbd-paid', 'completed']:
         return jsonify({'result': 'paid'})
     wallet_payment = 0
     if len(o["fee_lines"]) > 0:
@@ -797,45 +798,47 @@ def gen_payment_link(order_id):
                 wallet_payment = (-1)*float(item["total"])
     total_amount = float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1)
     total_amount = round(total_amount, 1)
-    payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
-    counter = 0
-    while counter<len(payment_links):
-        if float(payment_links[counter].amount) == float(total_amount)*100 and 'Leap' in payment_links[counter].receipt:
-            return {"text": "Link is already exists","result": "success", 'order_id': o['id'], 'short_url': payment_links[counter].payment_link_url, 'payment': {'amount': payment_links[counter].amount, 'receipt': payment_links[counter].receipt}}
-        counter += 1
-    if len(payment_links)==0:
-        receipt = "Leap "+str(o["id"])
-    else:
-        receipt = "Leap "+str(o["id"])+"-"+str(len(payment_links)+1)
-    data = {
-        "amount": total_amount*100,
-        "receipt": receipt,
-        "customer": {
-            "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
-            "contact": format_mobile(o["billing"]["phone"])
-        },
-        "type": "link",
-        "view_less": 1,
-        "currency": "INR",
-        "description": "Thank you for making a healthy and sustainable choice",
-        "reminder_enable": False,
-        "callback_url": "https://leapclub.in/",
-        "callback_method": "get",
-        "sms_notify": False,
-        'email_notify': False
-    }
-    try:
-        invoice = razorpay_client.invoice.create(data=data)
-        status = "success"
-        short_url = invoice['short_url']
-        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=format_mobile(o["billing"]["phone"]), name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
-    except Exception as e:
-        status = "failed"
-        short_url = ""
-        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=format_mobile(o["billing"]["phone"]), name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
-    db.session.add(new_payment_link)
-    db.session.commit()
-    return jsonify({"text": 'Success, Link Generated!',"result": status, 'payment': data, "short_url": short_url, "order_id": order_id})
+    if float(balance)>total_amount:
+        return jsonify({'result': 'balance', 'balance': balance, 'total': str(total_amount)})
+    # payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
+    # counter = 0
+    # while counter<len(payment_links):
+    #     if float(payment_links[counter].amount) == float(total_amount)*100 and 'Leap' in payment_links[counter].receipt:
+    #         return {"text": "Link is already exists","result": "success", 'order_id': o['id'], 'short_url': payment_links[counter].payment_link_url, 'payment': {'amount': payment_links[counter].amount, 'receipt': payment_links[counter].receipt}}
+    #     counter += 1
+    # if len(payment_links)==0:
+    #     receipt = "Leap "+str(o["id"])
+    # else:
+    #     receipt = "Leap "+str(o["id"])+"-"+str(len(payment_links)+1)
+    # data = {
+    #     "amount": total_amount*100,
+    #     "receipt": receipt,
+    #     "customer": {
+    #         "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
+    #         "contact": format_mobile(o["billing"]["phone"])
+    #     },
+    #     "type": "link",
+    #     "view_less": 1,
+    #     "currency": "INR",
+    #     "description": "Thank you for making a healthy and sustainable choice",
+    #     "reminder_enable": False,
+    #     "callback_url": "https://leapclub.in/",
+    #     "callback_method": "get",
+    #     "sms_notify": False,
+    #     'email_notify': False
+    # }
+    # try:
+    #     invoice = razorpay_client.invoice.create(data=data)
+    #     status = "success"
+    #     short_url = invoice['short_url']
+    #     new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=format_mobile(o["billing"]["phone"]), name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
+    # except Exception as e:
+    #     status = "failed"
+    #     short_url = ""
+    #     new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=format_mobile(o["billing"]["phone"]), name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
+    # db.session.add(new_payment_link)
+    # db.session.commit()
+    # return jsonify({"text": 'Success, Link Generated!',"result": status, 'payment': data, "short_url": short_url, "order_id": order_id})
 
 
 @app.route("/razorpay", methods=["GET", "POST"])
