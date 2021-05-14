@@ -706,8 +706,13 @@ def get_csv_from_products(orders, wcapi, format):
         if product_id in is_include:
             for i in product_list:
                 if i['Product ID'] == product_id:
-                    i['Quantity'] += p['quantity']
-                    i['orders'] +=1
+                    if i['Product Name'] == p['name']:
+                        i['Quantity'] += p['quantity']
+                        i['orders'] +=1
+                        break
+                    else:
+                        product_list.append({"Product ID": product_id, "Product Name": p['name'], "Quantity": p['quantity'], 'orders': 1})
+                        break
         else:
             is_include.append(product_id)
             product_list.append(
