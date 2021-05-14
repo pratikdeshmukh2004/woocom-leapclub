@@ -470,8 +470,8 @@
           rgba(0,0,123,0.4)
         `,
           confirmButtonText: 'Yes',
-          cancelButtonText: 'No',
           showCancelButton: true,
+          cancelButtonText: 'No'
         }).then((result) => {
           if (result.isConfirmed) {
            CheckOutRequest(url + "?check=true")
@@ -501,6 +501,7 @@
           confirmButtonText: 'Generate Payment Link',
           cancelButtonText: 'Pay By Wallet',
           showCancelButton: true,
+          cancelButtonColor: '#4BB543'
         })
       } 
       else {
