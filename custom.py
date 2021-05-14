@@ -133,6 +133,7 @@ def list_order_items(order_items, refunds, wcapi, product_list):
                     order_item["total"]) + float(refund["total"])
         if order_item["quantity"] > 0:
             name_w = order_item['name'].split("(")
+            print(order_item['name'], order_item['product']['name'])
             if order_item['product']['weight'] != "" and len(name_w) == 2:
                 name_w_g = name_w[1].split(" ")
                 f_q = float(order_item['product']['weight'])*float(order_item['quantity'])
@@ -188,7 +189,7 @@ def list_order_items_csv(order_items, refunds, wcapi, product_list):
                     order_item["total"]) + float(refund["total"])
         if order_item["quantity"] > 0:
             name_w = order_item['name'].split("(")
-            if order_item['product']['weight'] != "" and len(name_w) == 2:
+            if order_item['product']['weight'] != "" and len(name_w) == 2 and order_item['name'] == order_item['product']['name']:
                 name_w_g = name_w[1].split(" ")
                 f_q = float(order_item['product']['weight'])*float(order_item['quantity'])
                 if f_q<1:
@@ -718,11 +719,11 @@ def get_csv_from_products(orders, wcapi, format):
     writer.writeheader()
     for p in product_list:
         p['Product Name'] = p['Product Name'].replace("amp;", " ")
-        weight = list(filter(lambda pi: (pi['id'] == p['Product ID']), products))[
-            0]['weight']
+        p_d = list(filter(lambda pi: (pi['id'] == p['Product ID']), products))[0]
+        weight = p_d['weight']
         is_weight = "NO"
         total_quantity = p['Quantity']
-        if weight != "":
+        if weight != "" and p['Product Name'] == p_d['name']:
             is_weight = "YES"
             total_quantity = float(p['Quantity'])*float(weight)
             name_w = p['Product Name'].split("(")
