@@ -800,7 +800,7 @@ def gen_payment_link(order_id):
     payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
     counter = 0
     while counter<len(payment_links):
-        if float(payment_links[counter].amount) == float(total_amount)*100:
+        if float(payment_links[counter].amount) == float(total_amount)*100 and 'Leap' in payment_links[counter].receipt:
             return {"text": "Link is already exists","result": "success", 'order_id': o['id'], 'short_url': payment_links[counter].payment_link_url, 'payment': {'amount': payment_links[counter].amount, 'receipt': payment_links[counter].receipt}}
         counter += 1
     if len(payment_links)==0:
