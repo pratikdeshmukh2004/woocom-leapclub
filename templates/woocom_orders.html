@@ -443,12 +443,6 @@
     crossDomain: true,
     dataType: "json",
     url: url,
-    error: function (){
-      Swal.fire({
-      title: 'Something went wrong..',
-      icon: 'error'
-    })
-    },
     success: function (res) {
       if (res.result == 'check') {
         o_str = ""
@@ -493,10 +487,10 @@
         })
       }
       else if (res.result == "success") {
-        $.nok({
-          message: res.text,
-          type: "success",
-        });
+        Swal.fire({
+          title: res.text,
+          icon: 'success'
+        })
         var tag = $('#payment-' + res.order_id)
         tag.text(res.payment.receipt + " | " + (res.payment.amount / 100).toString())
         tag.attr('onclick', "copyText('" + res.short_url + "')")
@@ -519,10 +513,18 @@
           confirmButtonColor: '#4BB543',
           width: 700
         }).then((result) => {
-          if (result.isConfirmed) {
-           console.log("gen link");
+          if (!result.isConfirmed) {
+            if (url.includes('?')){
+              CheckOutRequest(url + "&balance=add")
+            }else{
+              CheckOutRequest(url + "?balance=add")
+            }
           }else{
-            console.log('pay by wallet');
+            if (url.includes('?')){
+              CheckOutRequest(url + "&balance=no")
+            }else{
+              CheckOutRequest(url + "?balance=no")
+            }
           }
         })
       } 
@@ -538,9 +540,17 @@
           width: 700
         }).then((result) => {
           if (result.isConfirmed) {
-           console.log("gen link y-x");
+            if (url.includes('?')){
+              CheckOutRequest(url + "&wallet_remove=add")
+            }else{
+              CheckOutRequest(url + "?wallet_remove=add")
+            }
           }else{
-            console.log('gen link y');
+            if (url.includes('?')){
+              CheckOutRequest(url + "&wallet_remove=no")
+            }else{
+              CheckOutRequest(url + "?wallet_remove=no")
+            }
           }
         })
       } 
@@ -570,21 +580,30 @@
           }
         })
       } 
+      else if (res.result == 'success_s') {
+        Swal.fire({
+          title: 'Success!',
+          icon: 'success'
+        })
+        var tag = $('#payment-' + res.order_id)
+        tag.text(res.payment.receipt)
+        tag.attr('class', 'text-danger')
+      }
       else {
-        $.nok({
-          message: "Error, Link Not Generated!",
-          type: "error",
-        });
+        Swal.fire({
+          title: 'Something went wrong..',
+          icon: 'error'
+        })
         var tag = $('#payment-' + res.order_id)
         tag.text(res.payment.receipt)
         tag.attr('class', 'text-danger')
       }
     },
     error: function (res) {
-      $.nok({
-        message: "API Error, Please Try Again!",
-        type: "error",
-      });
+      Swal.fire({
+      title: 'Something went wrong..',
+      icon: 'error'
+    })
     },
   });
 }
