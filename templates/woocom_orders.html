@@ -585,9 +585,12 @@
           title: 'Success!',
           icon: 'success'
         })
-        var tag = $('#payment-' + res.order_id)
-        tag.text(res.payment.receipt)
-        tag.attr('class', 'text-danger')
+      }
+      else if (res.result == 'error_s') {
+        Swal.fire({
+          title: res.error,
+          icon: 'error'
+        })
       }
       else {
         Swal.fire({

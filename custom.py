@@ -681,7 +681,7 @@ def update_order_status(order, invoice_id, wcapi):
         else:
             return False
     else:
-        False
+        return 'already'
     
 
 

@@ -792,6 +792,7 @@ def gen_payment_link(order_id):
     elif o['status'] in ['tbd-paid', 'completed']:
         return jsonify({'result': 'paid'})
     wallet_payment = 0
+    s_for_r = ""
     if len(o["fee_lines"]) > 0:
         for item in o["fee_lines"]:
             if "wallet" in item["name"].lower():
@@ -808,24 +809,42 @@ def gen_payment_link(order_id):
         if 'wallet_add' in args:
             if args['wallet_add'] == 'add':
                 total_amount -=float(balance)
+                s_for_r = '-W_'+balance[1:]
         elif 'wallet_remove' in args:
             if args['wallet_remove'] == 'add':
                 refund = wcapiw.post("wallet/"+str(o['customer_id']), data={'type': 'debit', 'amount': float(balance), 'details': 'Debited for  Order ID: #'+str(o['id'])}).json()
                 if refund['response'] == 'success' and refund['id'] != False: 
                     total_amount -=float(balance)
+                    data = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(balance)*-1)}]}
+                    u_order = wcapi.put("orders/"+str(o['id']), data).json()
+                    print(u_order)
+                    if 'id' not in u_order.keys():
+                        return {'result': 'error_s','error': 'error while adding fee!'}
+
                 else:
-                    return {'error': 'error'}
+                    return {'error_s': 'error while debiting amount from wallet!'}
         elif 'balance' in args:
             if args['balance'] =='add':
                 refund = wcapiw.post("wallet/"+str(o['customer_id']), data={'type': 'debit', 'amount': total_amount, 'details': 'Debited for  Order ID: #'+str(o['id'])}).json()
-                if refund['response'] == 'success' and refund['id'] != False: 
-                    return {'result': 'success_s'}
+                if refund['response'] == 'success' and refund['id'] != False:
+                    data = {}
+                    data['payment_method'] = 'wallet'
+                    data['payment_method_title'] = 'Wallet payment'
+                    if o['status'] == 'tbd-unpaid':
+                        data['status'] = 'tbd-paid'
+                    elif o['status'] == 'delivered-unpaid':
+                        data['status'] = 'completed'
+                    u_order = wcapi.put("orders/"+str(o['id']), data).json()
+                    if 'id' in u_order.keys():
+                        return {'result': 'success_s'}
+                    else:
+                        return {'result': 'error_s','error': 'error while changing order status!'}
                 else:
-                    return {'error': 'error'}
+                    return {'result': 'error_s','error': 'error while debiting amount from wallet!'}
     payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
     counter = 0
     while counter<len(payment_links):
-        if float(payment_links[counter].amount) == float(total_amount)*100 and 'Leap' in payment_links[counter].receipt:
+        if float(payment_links[counter].amount) == float(total_amount)*100 and 'Leap' in payment_links[counter].receipt and s_for_r == "":
             return {"text": "Link is already exists","result": "success", 'order_id': o['id'], 'short_url': payment_links[counter].payment_link_url, 'payment': {'amount': payment_links[counter].amount, 'receipt': payment_links[counter].receipt}}
         counter += 1
     if len(payment_links)==0:
@@ -834,7 +853,7 @@ def gen_payment_link(order_id):
         receipt = "Leap "+str(o["id"])+"-"+str(len(payment_links)+1)
     data = {
         "amount": total_amount*100,
-        "receipt": receipt,
+        "receipt": receipt+s_for_r,
         "customer": {
             "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
             "contact": format_mobile(o["billing"]["phone"])
@@ -898,6 +917,9 @@ def razorpay():
                     if order['status'] in ['tbd-unpaid', 'delivered-unpaid']:
                         msg = send_whatsapp_msg(
                             {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
+                        if "W_" in e['payload']['order']['entity']['receipt']:
+                            b = e['payload']['order']['entity']['receipt'][5:].split("_")[1]
+                            wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(b), 'details': 'Credited from razorpay'}).json()
                     for order in orders:
                         name = order['billing']['first_name']
                         vendor_name, manager, delivery_date, order_note,  = get_meta_data(order)
@@ -905,7 +927,9 @@ def razorpay():
                         if vendor_name in vendor_type.keys():
                             vendor_t = vendor_type[vendor_name]
                         status = update_order_status(order, invoice_id, wcapi_write)
-                        if status:
+                        if status == 'already':
+                            txt_msg = "These orders are already marked as paid in admin panel: "+order_id
+                        elif status:
                             txt_msg = "These orders are marked as paid in admin panel: "+order_id
                         else:
                             txt_msg = "These orders gave an error while marking them as paid: "+order_id
