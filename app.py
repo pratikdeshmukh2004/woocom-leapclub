@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
-from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv, get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier, list_order_refunds, get_shipping_total, list_only_refunds, list_orders_with_status_N2
+from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_order_items_without_refunds, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv, get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier, list_order_refunds, get_shipping_total, list_only_refunds, list_orders_with_status_N2
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
 from customselectlist import list_created_via, list_vendor
@@ -272,7 +272,7 @@ def get_orders_for_home(args, tab):
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
-                    wallet_payment = (-1)*float(item["total"])
+                    wallet_payment += (-1)*float(item["total"])
         if manager not in managers:
             managers.append(manager)
         if vendor in vendor_type.keys():
@@ -286,7 +286,7 @@ def get_orders_for_home(args, tab):
         o["wallet_payment"] = wallet_payment
         o["total"] = float(o["total"]) + float(o["wallet_payment"])
         o["checkout_url"] = get_checkout_url(o)
-        total_payble += (o['total']-o['total_refunds'])
+        total_payble += (o['total']-o['total_refunds']-o['wallet_payment'])
         vendor_payble[o['vendor_type']] += (o['total']-o['total_refunds'])
     if 'status_f' in args:
         params['status'] = args['status'][0]
@@ -473,7 +473,7 @@ def download_csv():
             if len(order["fee_lines"]) > 0:
                 for item in order["fee_lines"]:
                     if "wallet" in item["name"].lower():
-                        wallet_payment = (-1)*float(item["total"])
+                        wallet_payment += (-1)*float(item["total"])
             order['total']= float(order['total'])+wallet_payment
         response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=delivery_sheet", json=orders)
         sheet_url = app.config["SHEET_URL"]+response.json()['ssUrl']
@@ -817,7 +817,6 @@ def gen_payment_link(order_id):
                     total_amount -=float(balance)
                     data = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(balance)*-1)}]}
                     u_order = wcapi.put("orders/"+str(o['id']), data).json()
-                    print(u_order)
                     if 'id' not in u_order.keys():
                         return {'result': 'error_s','error': 'error while adding fee!'}
 
@@ -1162,7 +1161,7 @@ def multiple_links():
             if len(o["fee_lines"]) > 0:
                 for item in o["fee_lines"]:
                     if "wallet" in item["name"].lower():
-                        wallet_payment = (-1)*float(item["total"])
+                        wallet_payment += (-1)*float(item["total"])
             total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
                 o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
         o_ids = list(map(lambda o: str(o['id']), customers[customer]))
@@ -1511,7 +1510,6 @@ def change_order_status():
             update_list.append({'id': order['id'], 'payment_method': order['status'], 'payment_method_title': "Pre-paid"})
         else:
             update_list.append({'id': order['id'], 'status': order['status']})
-    print(update_list)
     updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
     for o in updates['update']:
         name = o['billing']['first_name']+" "+o['billing']['last_name']
@@ -1673,7 +1671,7 @@ def genMulSubscriptionLink():
             if len(o["fee_lines"]) > 0:
                 for item in o["fee_lines"]:
                     if "wallet" in item["name"].lower():
-                        wallet_payment = (-1)*float(item["total"])
+                        wallet_payment += (-1)*float(item["total"])
             total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
                 o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
             mobile_number = format_mobile(o['billing']["phone"])
@@ -1812,7 +1810,7 @@ def customers():
             if len(o["fee_lines"]) > 0:
                 for item in o["fee_lines"]:
                     if "wallet" in item["name"].lower():
-                        wallet_payment = (-1)*float(item["total"])
+                        wallet_payment += (-1)*float(item["total"])
             total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
         main_unpaid_list[list(c.keys())[0]] = total_amount
     print("Total time: ", time.time()-m_time)
@@ -1871,6 +1869,74 @@ def genPaymentLinkWallet():
         return {'result': 'success', 'link': short_url}
     except Exception as e:
         return {'result': 'error'}
+
+@app.route("/payByWallet", methods=['POST'])
+def payByWallet():
+    data = request.form.to_dict(flat=False)
+    args = request.args.to_dict(flat=True)
+    orders = wcapi.get("orders", params={'include': ", ".join(data['ids[]']), 'per_page': 50}).json()
+    paid_orders = list(filter(lambda o: o['status'] in ['tbd-paid', 'completed'] or o['payment_method'] == 'pre-paid', orders))
+    if len(paid_orders)>0:
+        return {'result': 'paid','orders': paid_orders}
+    customer_orders = {}
+    customers = []
+    for o in orders:
+        o['customer_id'] = str(o['customer_id'])
+        if o['customer_id'] not in customer_orders:
+            customer_orders[o['customer_id']] = [o]
+            customers.append({'customer_id': o['customer_id'], 'name': o['billing']['first_name']+" "+o['billing']['last_name'], 'mobile': format_mobile(o['billing']['phone'])})
+        else:
+            customer_orders[o['customer_id']].append(o)
+
+    customers = get_orders_with_wallet_balance(customers, wcapiw)
+    low_balance = []
+    for c in customer_orders:
+        c_d = list(filter(lambda cd: cd['customer_id'] == c, customers))[0]
+        total_payble = 0
+        for o in customer_orders[c]:
+            total_amount = 0
+            wallet_payment = 0
+            if len(o["fee_lines"]) > 0:
+                for item in o["fee_lines"]:
+                    if "wallet" in item["name"].lower():
+                        wallet_payment += (-1)*float(item["total"])
+            total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+            total_payble+=total_amount
+        for c in customers:
+            if c['customer_id'] == c['customer_id']:
+                c['total'] = total_payble
+                c['order_ids'] = ", ".join(list(map(lambda o: str(o['id']), customer_orders[c['customer_id']])))
+        if float(c_d['wallet_balance'])<total_payble:
+            low_balance.append(c_d)
+    if len(low_balance)>0:
+        return {'result': 'balance', 'customers': customers}
+    if 'check' in args:
+        for c in customers:
+            response = wcapiw.post("wallet/"+c['customer_id'], data={'type': 'debit', 'amount': c['total'], 'details': "Paid for these orders: "+c['order_ids']}).json()
+            if response['response'] == 'success' and response['id'] != False:
+                data = {}
+                data['payment_method'] = 'wallet'
+                data['payment_method_title'] = 'Wallet payment'
+                if o['status'] == 'tbd-unpaid':
+                    data['status'] = 'tbd-paid'
+                elif o['status'] == 'delivered-unpaid':
+                    data['status'] = 'completed'
+                update_list = []
+                for id in c['order_ids'].split(", "):
+                    data['id'] = id
+                    update_list.append(data.copy())
+                updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
+                if 'update' in updates.keys():
+                    c['status'] = 'success'
+                else:
+                    c['status'] = 'error to update order status'
+            else:
+                c['status'] = 'error while adding debitiong amount from walet'
+        customers = get_orders_with_wallet_balance(customers, wcapiw)
+        return {'result': 'success', 'customers': customers}
+    else:
+        return {'result': 'check', 'customers': customers}
+
 
 if __name__ == "__main__":
     db.create_all()

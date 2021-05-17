@@ -1148,3 +1148,364 @@ function sendWPaymentLink(id, phone_number, order_type) {
     },
   });
 }
+
+function CheckOutRequest(url) {
+  Swal.fire({
+      title: 'Processing Your Request....',
+      showConfirmButton: false,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading()
+      },
+    })
+  $.ajax({
+    type: "GET",
+    crossDomain: true,
+    dataType: "json",
+    url: url,
+    success: function (res) {
+      if (res.result == 'check') {
+        o_str = ""
+        for (var o of res.orders) {
+          o_str += '<tr>'
+          o_str += '<td>' + o['id'] + '</td>'
+          o_str += '<td>' + o['status'] + '</td>'
+          o_str += '<td>' + o['total'] + '</td>'
+          o_str += '</tr>'
+        }
+        Swal.fire({
+          html: `
+        <b>Follow orders of `+ res.orders[0]['billing']['first_name'] + " " + res.orders[0]['billing']['last_name'] + ` are unpaid. Do you want to generate payment for a single order?</b>
+          <table class='table'>
+            <thead>
+            <tr>
+              <th><b>Order ID</b></th>  
+              <th><b>Status</b></th>  
+              <th><b>Amount</b></th>  
+            </tr>  
+            </thead>
+            <tbody>
+            `+ o_str + `
+            </tbody>
+          </table>
+        `,
+          width: 700,
+          backdrop: `
+          rgba(0,0,123,0.4)
+        `,
+          confirmButtonText: 'Yes',
+          showCancelButton: true,
+          cancelButtonText: 'No'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            if (url.includes('?')){
+              CheckOutRequest(url + "&check=true")
+            }else{
+              CheckOutRequest(url + "?check=true")
+            }
+          }
+        })
+      }
+      else if (res.result == "success") {
+        Swal.fire({
+          title: res.text,
+          icon: 'success'
+        })
+        var tag = $('#payment-' + res.order_id)
+        tag.text(res.payment.receipt + " | " + (res.payment.amount / 100).toString())
+        tag.attr('onclick', "copyText('" + res.short_url + "')")
+        tag.attr('class', 'text-success')
+      } 
+      else if (res.result == 'paid') {
+        Swal.fire({
+          title: 'The order is already paid. Payment link cannot be generated.',
+          icon: 'warning'
+        })
+      }
+      else if (res.result == 'balance') {
+        Swal.fire({
+          html: '<h4>Wallet balance is '+res.balance+'. Total payable amount is '+res.total+'. Do you want to pay by wallet instead of generating payment link?</h4>',
+          icon: 'warning',
+          confirmButtonText: 'Generate Payment Link',
+          cancelButtonText: 'Pay By Wallet',
+          showCancelButton: true,
+          cancelButtonColor: '#4BB543',
+          confirmButtonColor: '#4BB543',
+          width: 700
+        }).then((result) => {
+          if (!result.isConfirmed) {
+            if (url.includes('?')){
+              CheckOutRequest(url + "&balance=add")
+            }else{
+              CheckOutRequest(url + "?balance=add")
+            }
+          }else{
+            if (url.includes('?')){
+              CheckOutRequest(url + "&balance=no")
+            }else{
+              CheckOutRequest(url + "?balance=no")
+            }
+          }
+        })
+      } 
+      else if (res.result == 'wallet') {
+        Swal.fire({
+          html: '<h4>Wallet balance is '+res.balance+'. Total payable amount is '+res.total+'. Do you want to deduct '+res.balance+' from wallet and generate payment link of '+(parseFloat(res.total)-parseFloat(res.balance)).toString()+'?</h4>',
+          icon: 'warning',
+          confirmButtonText: 'Generate Payment Link Of '+(parseFloat(res.total)-parseFloat(res.balance)).toString(),
+          cancelButtonText: 'Generate Payment Link Of '+res.total,
+          showCancelButton: true,
+          cancelButtonColor: '#4BB543',
+          confirmButtonColor: '#4BB543',
+          width: 700
+        }).then((result) => {
+          if (result.isConfirmed) {
+            if (url.includes('?')){
+              CheckOutRequest(url + "&wallet_remove=add")
+            }else{
+              CheckOutRequest(url + "?wallet_remove=add")
+            }
+          }else{
+            if (url.includes('?')){
+              CheckOutRequest(url + "&wallet_remove=no")
+            }else{
+              CheckOutRequest(url + "?wallet_remove=no")
+            }
+          }
+        })
+      } 
+      else if (res.result == 'wallet_add') {
+        Swal.fire({
+          html: '<h4>Wallet balance is - '+res.balance+'. Total payable amount is '+res.total+'. Do you want to generate payment link of '+(parseFloat(res.total)-parseFloat(res.balance)).toString()+'?</h4>',
+          icon: 'warning',
+          confirmButtonText: 'Generate Payment Link Of '+(parseFloat(res.total)-parseFloat(res.balance)).toString(),
+          cancelButtonText: 'Generate Payment Link Of '+res.total,
+          showCancelButton: true,
+          cancelButtonColor: '#4BB543',
+          confirmButtonColor: '#4BB543',
+          width: 700
+        }).then((result) => {
+          if (result.isConfirmed) {
+            if (url.includes('?')){
+              CheckOutRequest(url + "&wallet_add=add")
+            }else{
+              CheckOutRequest(url + "?wallet_add=add")
+            }
+          }else{
+            if (url.includes('?')){
+              CheckOutRequest(url + "&wallet_add=no")
+            }else{
+              CheckOutRequest(url + "?wallet_add=no")
+            }
+          }
+        })
+      } 
+      else if (res.result == 'success_s') {
+        Swal.fire({
+          title: 'Success!',
+          icon: 'success'
+        })
+      }
+      else if (res.result == 'error_s') {
+        Swal.fire({
+          title: res.error,
+          icon: 'error'
+        })
+      }
+      else {
+        Swal.fire({
+          title: 'Something went wrong..',
+          icon: 'error'
+        })
+        var tag = $('#payment-' + res.order_id)
+        tag.text(res.payment.receipt)
+        tag.attr('class', 'text-danger')
+      }
+    },
+    error: function (res) {
+      Swal.fire({
+      title: 'Something went wrong..',
+      icon: 'error'
+    })
+    },
+  });
+}
+
+
+function payByWallet(inp_s_v){
+  var inp_select = $('#select_inps')
+  var ischecked = ''
+  if (inp_s_v == undefined){
+    var inp_select_v = inp_select.val()
+  }else{
+    var inp_select_v = inp_s_v
+    ischecked = "?check=true"
+  }
+  Swal.fire({
+      title: 'Processing Your Request....',
+      showConfirmButton: false,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading()
+      },
+  })
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/payByWallet"+ischecked,
+    data: { 'ids': inp_select_v },
+    success: function (res) {
+      if (res.result == 'paid'){
+        trs = ""
+        for (var o of res.orders) {
+          trs += '<tr>'
+          trs += '<td>' + o['id'] + '</td>'
+          trs += '<td>' + o['billing']['first_name'] + '</td>'
+          trs += '<td>' + o['total'] + '</td>'
+          trs += '<td>' + o['status'] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          html: `
+          <h4>Following orders are already paid. Please remove them from selection:</h4>
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Name</th>
+              <th>Amount</th>
+              <th>Status</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+trs+`
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
+      }
+      else if (res.result == 'balance'){
+        trs = ""
+        for (var c of res.customers) {
+          trs += '<tr>'
+          trs += '<td>' + c['name']+" (" +c['mobile']+ ')</td>'
+          trs += '<td>' + c['order_ids'] + '</td>'
+          trs += '<td>' + c['total'] + '</td>'
+          trs += '<td>' + c['wallet_balance'] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          html: `
+          <h4>Following customers have insufficient balance. Please remove them from selection:</h4>
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Name (Mobile)</th>
+              <th>Order IDS</th>
+              <th>Amount</th>
+              <th>Wallet Balance</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+trs+`
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
+      }
+      else if (res.result == 'success'){
+        trs = ""
+        for (var c of res.customers) {
+          trs += '<tr>'
+          trs += '<td>' + c['name']+" (" +c['mobile']+ ')</td>'
+          trs += '<td>' + c['order_ids'] + '</td>'
+          trs += '<td>' + c['total'] + '</td>'
+          trs += '<td>' + c['wallet_balance'] + '</td>'
+          trs += '<td>' + c['status'] + '</td>'
+          if (c['status'] =='success'){
+            trs += '<td><button class="btn btn-sm btn-success">button</button></td>'
+          }
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "success",
+          html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Name (Mobile)</th>
+              <th>Order ID</th>
+              <th>Amount Paid</th>
+              <th>Current Balance</th>
+              <th>Result</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+trs+`
+            </tbody>
+          <table>
+          `,
+          width: 1100
+        }).then(()=>{
+          location.reload()
+        })
+      }
+      else if (res.result == 'check'){
+        trs = ""
+        for (var c of res.customers) {
+          trs += '<tr>'
+          trs += '<td>' + c['name']+" (" +c['mobile']+ ')</td>'
+          trs += '<td>' + c['order_ids'] + '</td>'
+          trs += '<td>' + c['total'] + '</td>'
+          trs += '<td>' + c['wallet_balance'] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          html: `
+          <h4>Do you want to pay for these orders by wallet? (Yes / No)</h4>
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Name (Mobile)</th>
+              <th>Order ID</th>
+              <th>Total Amount</th>
+              <th>Current Balance</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+trs+`
+            </tbody>
+          <table>
+          `,
+          width: 1100,
+          confirmButtonText: 'Yes &rarr;',
+          cancelButtonText: 'No',
+          showCancelButton: true,
+        }).then((result) => {
+          if (result.isConfirmed) {
+            payByWallet(inp_select_v)
+          }
+        })
+      }else{
+        Swal.fire({
+          icon: "error",
+          title: "Got Error Please Recheck Orders!"
+        })
+      }
+    },
+    error: function () {
+      Swal.fire({
+        icon: "error",
+        title: "Got Error Please Recheck Orders!"
+      })
+    }
+  })
+
+}
+

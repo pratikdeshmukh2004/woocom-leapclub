@@ -796,3 +796,5 @@ def get_orders_with_supplier(orders, wcapi):
                      + "\nCustomer Note: "+o["customer_note"])
         o["s_msg"] = s_msg
     return orders
+
+
