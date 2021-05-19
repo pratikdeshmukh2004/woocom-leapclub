@@ -344,6 +344,7 @@
           trs += '<td>' + o['name']+' ('+o['phone'] + ')</td>'
           trs += '<td>' + o['order_id'] + '</td>'
           trs += '<td>' + o['total'] + '</td>'
+          trs += '<td>' + o['wallet_balance'] + '</td>'
           trs += `<td><button onclick="gen_multipayment('`+o.order_id+`','`+o.customer_id+`', '`+o.total+`','`+o.name+`','`+o.phone+`')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of `+o.total+`</button>`+btns+`</td>`
           trs += '<td style="display: flex;" id="status-'+o.customer_id+'"></td>'
           trs += '</tr>'
