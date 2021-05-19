@@ -99,6 +99,9 @@ def before_request():
         if len(user) > 0:
             g.user = user[0]
 
+@app.route("/")
+def take_me():
+    return redirect('login')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
