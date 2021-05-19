@@ -254,6 +254,135 @@
 </div>
 </div>
 <script>
+  function gen_multipayment(id, c_id, amount, name, phone){
+    $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/gen_multipayment",
+    data: { 'order_ids': id, 'amount': amount, 'name': name, 'phone': phone },
+    success: function (res){
+      if (res.result == 'success' || res.result == 'already'){
+        $('#status-'+c_id).append('<b class="text-success ml-2 mr-1">'+res.result+'</b>')
+        $('#status-'+c_id).append(`<b>Link: '`+res.short_url+`'</b>`)
+
+      }else{
+        $('#status-'+c_id).append('<b class="text-danger ml-2">Error</b>')
+
+      }
+
+    },
+    error: function (){
+      $('#status-'+c_id).append('<b class="text-danger ml-2">Error</b>')
+    }
+  })
+  }
+
+  function genMultipleLinks() {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })  
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/multiple_links",
+    data: { 'order_ids': inp_select_v },
+    success: function (res) {
+      if (res.status == 'paid'){
+        trs = ""
+        for (var o of res.orders) {
+          trs += '<tr>'
+          trs += '<td>' + o['id'] + '</td>'
+          trs += '<td>' + o['billing']['first_name'] + '</td>'
+          trs += '<td>' + o['total'] + '</td>'
+          trs += '<td>' + o['status'] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          html: `
+          <h4>Following orders are already paid. Please remove them from selection:</h4>
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Name</th>
+              <th>Amount</th>
+              <th>Status</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+trs+`
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
+      }
+      else if (res.status == 'popup'){
+        trs = ""
+        for (var o of res.customers) {
+          btns = ''
+          var o_ids = "["+o.order_id+"]"
+          if (o.pbw){
+            btns = '<button onclick="payByWallet('+o_ids+')" class="btn btn-success btn-sm mr-1 mt-2">Pay by wallet</button>'
+          }else if (o.genl || o.genm){
+            btns = `<button onclick="gen_multipayment('`+o.order_id+`','`+o.customer_id+`', '`+(parseFloat(o.total)-parseFloat(o.wallet_balance))+`','`+o.name+`','`+o.phone+`')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of `+(parseFloat(o.total)-parseFloat(o.wallet_balance)).toString()+`</button>`
+          }
+          trs += '<tr>'
+          trs += '<td>' + o['name']+' ('+o['phone'] + ')</td>'
+          trs += '<td>' + o['order_id'] + '</td>'
+          trs += '<td>' + o['total'] + '</td>'
+          trs += `<td><button onclick="gen_multipayment('`+o.order_id+`','`+o.customer_id+`', '`+o.total+`','`+o.name+`','`+o.phone+`')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of `+o.total+`</button>`+btns+`</td>`
+          trs += '<td style="display: flex;" id="status-'+o.customer_id+'"></td>'
+          trs += '</tr>'
+        }
+      $('#exampleModal').modal({
+        show: true
+      })
+      $(".modal-body").html(`
+      <table class='table'>
+            <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Order ID</th>
+              <th>Amount</th>
+              <th>Wallet Balance</th>
+              <th></th>
+              <th>Status</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+trs+`
+            </tbody>
+          <table>
+      `)
+      Swal.fire({
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+        timer: 500
+      })
+      }
+    },
+    error: function (err){
+      Swal.fire({
+        title: "Error in Flask Panel. Or Please Select Correct Orders.",
+        icon: "error"
+      })
+    }
+  })
+}
+
 </script>
 <div style="overflow-x: auto;" class="ml-1 mr-1 pt-3">
   <table class="table">
@@ -449,4 +578,17 @@
     </li>
   </ul>
 </nav>
+<div data-backdrop="static" data-keyboard="false" class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="min-width: 80%;" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

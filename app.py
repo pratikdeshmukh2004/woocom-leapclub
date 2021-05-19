@@ -88,7 +88,7 @@ users.append(User(email=app.config["ADMIN_EMAIL"],
 
 @app.errorhandler(404)
 def invalid_route(e):
-    return redirect(url_for("woocom_orders"))
+    return render_template("404found.html")
 
 
 @app.before_request
@@ -1136,84 +1136,87 @@ def supplier_messages():
 @app.route("/multiple_links", methods=["POST"])
 def multiple_links():
     data = request.form.to_dict(flat=False)
-    data['order_ids'] = data['order_ids[]']
-    params = get_params(data)
-    params["include"] = get_list_to_string(data["order_ids"])
-    del params['status']
-    orders = wcapi.get("orders", params=params).json()
-    customers = {}
-    results = []
-    paid_orders = []
-    for o in orders:
-        mobile_number = format_mobile(o['billing']['phone'])
-        if mobile_number in customers:
-            customers[mobile_number].append(o)
-        else:
-            customers[mobile_number] = [o]
-        if o['status'] in ['tbd-paid', 'completed']:
-            paid_orders.append(str(o['id']))
+    order_id = data['order_ids[]']
+    if len(order_id) == 0:
+        return ""
+    orders = wcapi.get("orders", params={'include': ", ".join(order_id)}).json()
+    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] == 'pre-paid', orders))
     if len(paid_orders)>0:
-        return jsonify({'status': 'paid', 'result': ",".join(paid_orders)})
-    for customer in customers:
+        return {'status': 'paid', 'orders': paid_orders}
+    customers = []
+    customer_list = {}
+    for o in orders:
         total_amount = 0
-        for o in customers[customer]:
-            wallet_payment = 0
-            if len(o["fee_lines"]) > 0:
-                for item in o["fee_lines"]:
-                    if "wallet" in item["name"].lower():
-                        wallet_payment += (-1)*float(item["total"])
-            total_amount += (float(get_total_from_line_items(o["line_items"]))+float(
-                o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
-        o_ids = list(map(lambda o: str(o['id']), customers[customer]))
-        reciept = "Leap " + \
-            get_list_to_string(o_ids)
-        payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
-        isexists = False
-        if len(payment_links) > 0:
-            counter = 1
-            while True:
-                if len(payment_links) == 0:
-                    break
-                else:
-                    if float(payment_links[0].amount) == float(total_amount)*100:
-                        results.append({"result": "success", 'order_ids': o_ids, 'short_url': payment_links[0].payment_link_url, 'amount': payment_links[0].amount, 'receipt': reciept, "mobile":customer})
-                        isexists = True
-                        break
-                reciept = "Leap " + \
-                    get_list_to_string(o_ids)+"-"+str(counter)
-                payment_links = PaymentLinks.query.filter_by(receipt=reciept).all()
-                counter += 1
-        if isexists:
-            continue
-        data1 = {
-            "amount": total_amount*100,
-            "receipt": reciept,
-            "customer": {
-                "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
-                "contact": customer
-            },
-            "type": "link",
-            "view_less": 1,
-            "currency": "INR",
-            "description": "Thank you for making a healthy and sustainable choice",
-            "reminder_enable": False,
-            "callback_url": "https://leapclub.in/",
-            "callback_method": "get",
-            "sms_notify": False,
-            'email_notify': False
-        }
-        try:
-            invoice = razorpay_client.invoice.create(data=data1)
-            status = "success"
-            short_url = invoice['short_url']
-            for i in o_ids:
-                new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=customer, name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
-                db.session.add(new_payment_link)
-                db.session.commit()
-            results.append({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":customer})
-        except Exception as e:
-            results.append({"result": "error", 'mobile': customer, 'receipt':reciept, 'amount': data1['amount']})
-    return {'results': results}
+        wallet_payment = 0
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment += (-1)*float(item["total"])
+        total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+        customer = str(o['customer_id'])
+        if customer in customer_list:
+            customer_list[customer].append(o)
+            for c_d in customers:
+                if c_d['customer_id'] == customer:
+                    c_d['total']+=total_amount
+        else:
+            customer_list[customer] = [o]
+            customers.append({'name': o['billing']['first_name']+" "+o['billing']['last_name'], 'phone': o['billing']['phone'], 'customer_id': customer, 'total': total_amount, 'pbw': False, 'genl': False, 'genm': False})
+    customers = get_orders_with_wallet_balance(customers, wcapiw)
+    for c_d in customers:
+        c_d['order_id'] = ", ".join(list(map(lambda o: str(o['id']), customer_list[c_d['customer_id']])))
+        if float(c_d['wallet_balance'])>=c_d['total']:
+            c_d['pbw']=True
+        elif float(c_d['wallet_balance'])>0:
+            c_d['genm']=True
+        elif float(c_d['wallet_balance'])<0:
+            c_d['genl'] = True
+    return {'status':'popup', 'customers':customers}
+
+@app.route("/gen_multipayment", methods=['POST'])
+def gen_multipayment():
+    data = request.form.to_dict(flat=True)
+    reciept = data['order_ids']
+    payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+reciept+"%")).all()
+    if len(payment_links)>0:
+        p_l = payment_links.copy()
+        p_l.reverse()
+        for p in p_l:
+            if float(p.amount)/100 == float(data['amount']):
+                return {'result': 'already', 'short_url': p.payment_link_url}
+    reciept = reciept if len(payment_links)<=0 else reciept+"-"+str(len(payment_links))
+    data['phone'] = format_mobile(data['phone'])
+    data1 = {
+        "amount": float(data['amount'])*100,
+        "receipt": reciept,
+        "customer": {
+            "name": data['name'],
+            "contact": data['phone']
+        },
+        "type": "link",
+        "view_less": 1,
+        "currency": "INR",
+        "description": "Thank you for making a healthy and sustainable choice",
+        "reminder_enable": False,
+        "callback_url": "https://leapclub.in/",
+        "callback_method": "get",
+        "sms_notify": False,
+        'email_notify': False
+    }
+    # try:
+    #     invoice = razorpay_client.invoice.create(data=data1)
+    #     status = "success"
+    #     short_url = invoice['short_url']
+    #     o_ids = data['order_ids'].split(", ")
+    #     for i in o_ids:
+    #         new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=data['phone'], name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
+    #         db.session.add(new_payment_link)
+    #         db.session.commit()
+    #     return ({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":data['phone']})
+    # except Exception as e:
+    #     print(e)
+    #     return ({"result": "error", 'mobile': data['phone'], 'receipt':reciept, 'amount': data1['amount']})
+
 
 
 def send_session_m_st(order_id, vendor, order_note):
