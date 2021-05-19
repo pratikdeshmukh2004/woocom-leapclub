@@ -254,13 +254,13 @@
 </div>
 </div>
 <script>
-  function gen_multipayment(id, c_id, amount, name, phone){
+  function gen_multipayment(id, c_id, amount, name, phone, balance, type){
     $.ajax({
     type: "POST",
     crossDomain: true,
     dataType: "json",
     url: "/gen_multipayment",
-    data: { 'order_ids': id, 'amount': amount, 'name': name, 'phone': phone },
+    data: { 'order_ids': id, 'amount': amount, 'name': name, 'phone': phone,'balance': balance, 'type': type , 'customer_id': c_id},
     success: function (res){
       if (res.result == 'success' || res.result == 'already'){
         $('#status-'+c_id).append('<b class="text-success ml-2 mr-1">'+res.result+'</b>')
@@ -334,7 +334,11 @@
           if (o.pbw){
             btns = '<button onclick="payByWallet('+o_ids+')" class="btn btn-success btn-sm mr-1 mt-2">Pay by wallet</button>'
           }else if (o.genl || o.genm){
-            btns = `<button onclick="gen_multipayment('`+o.order_id+`','`+o.customer_id+`', '`+(parseFloat(o.total)-parseFloat(o.wallet_balance))+`','`+o.name+`','`+o.phone+`')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of `+(parseFloat(o.total)-parseFloat(o.wallet_balance)).toString()+`</button>`
+            var type = 'add'
+            if (o.genm){
+              type = 'remove'
+            }
+            btns = `<button onclick="gen_multipayment('`+o.order_id+`','`+o.customer_id+`', '`+(parseFloat(o.total)-parseFloat(o.wallet_balance))+`','`+o.name+`','`+o.phone+`','`+o.wallet_balance+`','`+type+`')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of `+(parseFloat(o.total)-parseFloat(o.wallet_balance)).toString()+`</button>`
           }
           trs += '<tr>'
           trs += '<td>' + o['name']+' ('+o['phone'] + ')</td>'

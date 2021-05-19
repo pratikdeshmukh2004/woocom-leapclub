@@ -1176,7 +1176,15 @@ def multiple_links():
 @app.route("/gen_multipayment", methods=['POST'])
 def gen_multipayment():
     data = request.form.to_dict(flat=True)
-    reciept = data['order_ids']
+    wstr = ""
+    if 'type' in data:
+        if data['type'] == 'remove':
+            refund = wcapiw.post("wallet/"+str(data['customer_id']), data={'type': 'debit', 'amount': float(data['balance']), 'details': 'Debited for order ID-'+data['order_ids']}).json()
+            if refund['response'] != 'success' and refund['id'] == False:
+                return {'result': 'error'}
+        elif data['type'] == 'add':
+            wstr="-W_"+str(float(data['balance'])*-1)
+    reciept = data['order_ids']+wstr
     payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+reciept+"%")).all()
     if len(payment_links)>0:
         p_l = payment_links.copy()
@@ -1203,19 +1211,19 @@ def gen_multipayment():
         "sms_notify": False,
         'email_notify': False
     }
-    # try:
-    #     invoice = razorpay_client.invoice.create(data=data1)
-    #     status = "success"
-    #     short_url = invoice['short_url']
-    #     o_ids = data['order_ids'].split(", ")
-    #     for i in o_ids:
-    #         new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=data['phone'], name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
-    #         db.session.add(new_payment_link)
-    #         db.session.commit()
-    #     return ({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":data['phone']})
-    # except Exception as e:
-    #     print(e)
-    #     return ({"result": "error", 'mobile': data['phone'], 'receipt':reciept, 'amount': data1['amount']})
+    try:
+        invoice = razorpay_client.invoice.create(data=data1)
+        status = "success"
+        short_url = invoice['short_url']
+        o_ids = data['order_ids'].split(", ")
+        for i in o_ids:
+            new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=data['phone'], name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
+            db.session.add(new_payment_link)
+            db.session.commit()
+        return ({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":data['phone']})
+    except Exception as e:
+        print(e)
+        return ({"result": "error", 'mobile': data['phone'], 'receipt':reciept, 'amount': data1['amount']})
 
 
 
