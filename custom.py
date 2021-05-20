@@ -679,6 +679,15 @@ def update_order_status(order, invoice_id, wcapi):
             return True
         else:
             return False
+    elif order['status'] in ['processing'] and order['payment_method_title'] == 'Pay Online on Delivery':
+        data['date_completed_gmt'] = utc_time.strftime(format)
+        data['payment_method'] = 'pre-paid'
+        data['payment_method_title'] = 'Pre-paid'
+        u_order = wcapi.put("orders/"+str(order_id), data).json()
+        if 'id' in u_order.keys():
+            return True
+        else:
+            return False
     else:
         return 'already'
     

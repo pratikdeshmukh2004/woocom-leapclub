@@ -626,113 +626,6 @@ function copyToClipboard(id) {
   });
 }
 
-function CheckOutRequest(url) {
-  $.nok({
-    message: "Processing Your Request Please Wait!",
-    type: "success",
-  });
-  $.ajax({
-    type: "GET",
-    crossDomain: true,
-    dataType: "json",
-    url: url,
-    success: function (res) {
-      if (res.result == 'check') {
-        o_str = ""
-        for (var o of res.orders) {
-          o_str += '<tr>'
-          o_str += '<td>' + o['id'] + '</td>'
-          o_str += '<td>' + o['status'] + '</td>'
-          o_str += '<td>' + o['total'] + '</td>'
-          o_str += '</tr>'
-        }
-        Swal.fire({
-          html: `
-        <b>Follow orders of `+ res.orders[0]['billing']['first_name'] + " " + res.orders[0]['billing']['last_name'] + ` are unpaid. Do you want to generate payment for a single order?</b>
-          <table class='table'>
-            <thead>
-            <tr>
-              <th><b>Order ID</b></th>  
-              <th><b>Status</b></th>  
-              <th><b>Amount</b></th>  
-            </tr>  
-            </thead>
-            <tbody>
-            `+ o_str + `
-            </tbody>
-          </table>
-        `,
-          width: 700,
-          backdrop: `
-          rgba(0,0,123,0.4)
-        `,
-          confirmButtonText: 'Yes',
-          cancelButtonText: 'No',
-          showCancelButton: true,
-        }).then((result) => {
-          if (result.isConfirmed) {
-            $.ajax({
-              type: "GET",
-              crossDomain: true,
-              dataType: "json",
-              url: url + "?check=true",
-              success: function (res) {
-                if (res.result == "success") {
-                  $.nok({
-                    message: res.text,
-                    type: "success",
-                  });
-                  var tag = $('#payment-' + res.order_id)
-                  tag.text(res.payment.receipt + " | " + (res.payment.amount / 100).toString())
-                  tag.attr('onclick', "copyText('" + res.short_url + "')")
-                  tag.attr('class', 'text-success')
-                } else {
-                  $.nok({
-                    message: "Error, Link Not Generated!",
-                    type: "error",
-                  });
-                  var tag = $('#payment-' + res.order_id)
-                  tag.text(res.payment.receipt)
-                  tag.attr('class', 'text-danger')
-                }
-              }
-            })
-          }
-        })
-      }
-      else if (res.result == "success") {
-        $.nok({
-          message: res.text,
-          type: "success",
-        });
-        var tag = $('#payment-' + res.order_id)
-        tag.text(res.payment.receipt + " | " + (res.payment.amount / 100).toString())
-        tag.attr('onclick', "copyText('" + res.short_url + "')")
-        tag.attr('class', 'text-success')
-      } else if (res.result == 'paid') {
-        Swal.fire({
-          title: 'The order is already paid. Payment link cannot be generated.',
-          icon: 'warning',
-        })
-      } else {
-        $.nok({
-          message: "Error, Link Not Generated!",
-          type: "error",
-        });
-        var tag = $('#payment-' + res.order_id)
-        tag.text(res.payment.receipt)
-        tag.attr('class', 'text-danger')
-      }
-    },
-    error: function (res) {
-      $.nok({
-        message: "API Error, Please Try Again!",
-        type: "error",
-      });
-    },
-  });
-}
-
 
 function genSubscriptionLink(id) {
   Swal.fire({
@@ -1148,6 +1041,11 @@ function CheckOutRequest(url) {
       else if (res.result == 'paid') {
         Swal.fire({
           title: 'The order is already paid. Payment link cannot be generated.',
+          icon: 'warning'
+        })
+      }else if (res.result == 'vendor') {
+        Swal.fire({
+          title: 'In this order vendor is missing. Payment link cannot be generated.',
           icon: 'warning'
         })
       }

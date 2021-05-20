@@ -788,6 +788,9 @@ def gen_payment_link(order_id):
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=True)
     o = wcapi.get("orders/"+order_id).json()
+    vendor, manager, delivery_date, order_note  = get_meta_data(o)
+    if vendor == "":
+        return {'result': 'vendor'}
     orders = list_orders_with_status_N2(wcapi, {'status': 'tbd-unpaid, delivered-unpaid', 'customer': o['customer_id']})
     balance = wcapiw.get("current_balance/"+str(o["customer_id"])).text[1:-1]
     if len(orders)>1 and 'check' not in args:
@@ -916,7 +919,7 @@ def razorpay():
                     orders = orders.json()
                     order = orders[0]
                     name = order['billing']['first_name']
-                    if order['status'] in ['tbd-unpaid', 'delivered-unpaid']:
+                    if (order['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (order['status'] == 'processing' and order['payment_method_title'] == 'Pay Online on Delivery')):
                         msg = send_whatsapp_msg(
                             {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
                         if "W_" in e['payload']['order']['entity']['receipt']:
