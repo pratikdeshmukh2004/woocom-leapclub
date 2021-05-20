@@ -1148,7 +1148,11 @@ def multiple_links():
         return {'status': 'paid', 'orders': paid_orders}
     customers = []
     customer_list = {}
+    without_vendor = []
     for o in orders:
+        vendor, manager, delivery_date, order_note  = get_meta_data(o)
+        if vendor == "":
+            without_vendor.append(o)
         total_amount = 0
         wallet_payment = 0
         if len(o["fee_lines"]) > 0:
@@ -1165,6 +1169,8 @@ def multiple_links():
         else:
             customer_list[customer] = [o]
             customers.append({'name': o['billing']['first_name']+" "+o['billing']['last_name'], 'phone': o['billing']['phone'], 'customer_id': customer, 'total': total_amount, 'pbw': False, 'genl': False, 'genm': False})
+    if len(without_vendor)>0:
+        return {'status': 'vendor', 'orders': without_vendor}
     customers = get_orders_with_wallet_balance(customers, wcapiw)
     for c_d in customers:
         c_d['order_id'] = ", ".join(list(map(lambda o: str(o['id']), customer_list[c_d['customer_id']])))
