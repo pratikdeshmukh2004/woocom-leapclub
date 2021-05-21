@@ -133,7 +133,6 @@ def list_order_items(order_items, refunds, wcapi, product_list):
                     order_item["total"]) + float(refund["total"])
         if order_item["quantity"] > 0:
             name_w = order_item['name'].split("(")
-            print(order_item['name'], order_item['product']['name'])
             if order_item['product']['weight'] != "" and len(name_w) == 2 and order_item['name'] == order_item['product']['name']:
                 name_w_g = name_w[1].split(" ")
                 f_q = float(order_item['product']['weight'])*float(order_item['quantity'])
@@ -680,8 +679,17 @@ def update_order_status(order, invoice_id, wcapi):
             return True
         else:
             return False
+    elif order['status'] in ['processing'] and order['payment_method_title'] == 'Pay Online on Delivery':
+        data['date_completed_gmt'] = utc_time.strftime(format)
+        data['payment_method'] = 'pre-paid'
+        data['payment_method_title'] = 'Pre-paid'
+        u_order = wcapi.put("orders/"+str(order_id), data).json()
+        if 'id' in u_order.keys():
+            return True
+        else:
+            return False
     else:
-        False
+        return 'already'
     
 
 
@@ -796,3 +804,5 @@ def get_orders_with_supplier(orders, wcapi):
                      + "\nCustomer Note: "+o["customer_note"])
         o["s_msg"] = s_msg
     return orders
+
+
