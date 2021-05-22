@@ -533,6 +533,37 @@ function changeOrderStatus(status) {
               `
             })
           }
+          else if (res.result == 'vendor'){
+            trtext = ""
+            for (var o of res.result_list) {
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.id + " ( " + o.billing.first_name + ` ) </p></td>
+                    <td><p>`+ o.status + `</p></td>
+                  </tr>
+              `
+            }
+            Swal.fire({
+              title: "You have selected orders without vendor. Please assign vendor and try again.",
+              html: `
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Order ID ( Name )</b></th>  
+                    <th><b>Status</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `,
+              width: 700,
+              backdrop: `
+                rgba(0,0,123,0.4)
+              `
+            })
+          }
           else {
             $.nok({
               message: "Error, Order Status Not Changed Please Check Order ID!",

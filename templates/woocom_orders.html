@@ -388,7 +388,7 @@
         <td scope="row">{{ o.date_created}}</td>
         <td scope="row">{{ o.delivery_date}}</td>
         <td scope="row">{{o.vendor}}</td>
-        {% if o['status'] in ['tbd-paid', 'completed'] or o['payment_method_title'] == 'Pre-paid' %}
+        {% if o['status'] in ['tbd-paid', 'completed'] or o['payment_method_title'] in ['Pre-paid', "Wallet payment"] %}
         <td scope="row">Paid ({{ o.payment_method_title}})</td>
         {% else %}
         <td scope="row">Unpaid ({{ o.payment_method_title}})</td>

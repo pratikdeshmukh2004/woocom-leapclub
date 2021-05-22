@@ -791,18 +791,19 @@ def gen_payment_link(order_id):
     vendor, manager, delivery_date, order_note  = get_meta_data(o)
     if vendor == "":
         return {'result': 'vendor'}
-    orders = list_orders_with_status_N2(wcapi, {'status': 'tbd-unpaid, delivered-unpaid', 'customer': o['customer_id']})
+    orders = list_orders_with_status_N2(wcapi, {'status': 'tbd-unpaid, delivered-unpaid, processing', 'customer': o['customer_id']})
+    orders = list(filter(lambda x: x['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (x['status'] == 'processing' and x['payment_method_title'] == 'Pay Online on Delivery'), orders))
     balance = wcapiw.get("current_balance/"+str(o["customer_id"])).text[1:-1]
     if len(orders)>1 and 'check' not in args:
         return jsonify({"result": 'check', 'orders':orders})
-    elif o['status'] in ['tbd-paid', 'completed']:
+    elif o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] in ['Pre-paid', 'Wallet payment']) :
         return jsonify({'result': 'paid'})
     wallet_payment = 0
     s_for_r = ""
     if len(o["fee_lines"]) > 0:
         for item in o["fee_lines"]:
             if "wallet" in item["name"].lower():
-                wallet_payment = (-1)*float(item["total"])
+                wallet_payment += (-1)*float(item["total"])
     total_amount = float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1)
     total_amount = round(total_amount, 1)
     if float(balance)>total_amount and 'balance' not in args:
@@ -1146,7 +1147,7 @@ def multiple_links():
     if len(order_id) == 0:
         return ""
     orders = wcapi.get("orders", params={'include': ", ".join(order_id)}).json()
-    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] == 'pre-paid', orders))
+    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] in  ['pre-paid', 'wallet'], orders))
     if len(paid_orders)>0:
         return {'status': 'paid', 'orders': paid_orders}
     customers = []
@@ -1163,6 +1164,7 @@ def multiple_links():
                 if "wallet" in item["name"].lower():
                     wallet_payment += (-1)*float(item["total"])
         total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+        total_amount = round(total_amount, 1)
         customer = str(o['customer_id'])
         if customer in customer_list:
             customer_list[customer].append(o)
@@ -1367,7 +1369,7 @@ def send_whatsapp_messages_m(name):
             r = send_whatsapp_temp_sess(params)
             r['vendor_type'] = o['vendor_type']
             r['button'] = False
-            if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pre-paid'):
+            if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] in ['Pre-paid','Wallet payment']):
                 r['payment_status'] = "Paid"
             elif o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
                 r['button'] = True
@@ -1521,7 +1523,10 @@ def change_order_status():
     error_text = ""
     success_text = ""
     orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
-    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] == 'pre-paid', orders))
+    without_payment = list(filter(lambda x: x['status'] in ['processing'] and x['payment_method'] == '', orders))
+    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] in ['pre-paid', 'wallet'], orders))
+    if len(without_payment)>0:
+        return {'result': 'vendor', 'orders': without_payment}
     if len(paid_orders)>0 and data['status'][0] == 'paid':
         return {'result': 'paid', 'result_list': paid_orders}
     update_list = []
