@@ -77,6 +77,7 @@ def list_order_refunds(order_refunds, line_item):
     msg = ""
     line_items = []
     m_list = []
+    print(len(line_item))
     for r in order_refunds:
         for ri in r["line_items"]:
             if ri["meta_data"][0]["value"] in m_list:
@@ -88,22 +89,24 @@ def list_order_refunds(order_refunds, line_item):
                 m_list.append(ri["meta_data"][0]["value"])
     for order_item in line_items:
         item_id = list(filter(lambda x: x['key'] == '_refunded_item_id', order_item['meta_data']))[0]['value']
+        print(item_id, 'item id')
         o_i = list(filter(lambda oi: int(oi["id"]) == int(item_id), line_item))
-        if int(o_i[0]['quantity']) == 0:
-            msg = (
-                msg
-                + order_item["name"]
-                + " x "
-                + str(order_item["quantity"]*-1)
-                + "\n"
-                + "₹"
-                + str(order_item["price"])
-                + " x "
-                + str(order_item["quantity"]*-1)
-                + " = "
-                + str(order_item["subtotal"])[1:]
-                + "\n\n"
-            )
+        if len(o_i)>0:
+            if int(o_i[0]['quantity']) == 0:
+                msg = (
+                    msg
+                    + order_item["name"]
+                    + " x "
+                    + str(order_item["quantity"]*-1)
+                    + "\n"
+                    + "₹"
+                    + str(order_item["price"])
+                    + " x "
+                    + str(order_item["quantity"]*-1)
+                    + " = "
+                    + str(order_item["subtotal"])[1:]
+                    + "\n\n"
+                )
     if len(msg) > 0:
         msg = "We are not able to send: \n\n"+msg
     return msg
@@ -680,7 +683,6 @@ def update_order_status(order, invoice_id, wcapi):
         else:
             return False
     elif order['status'] in ['processing'] and order['payment_method_title'] == 'Pay Online on Delivery':
-        data['date_completed_gmt'] = utc_time.strftime(format)
         data['payment_method'] = 'pre-paid'
         data['payment_method_title'] = 'Pre-paid'
         u_order = wcapi.put("orders/"+str(order_id), data).json()

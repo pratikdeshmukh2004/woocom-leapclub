@@ -895,6 +895,7 @@ def razorpay():
         return "Plese Use POST Method..."
     e = request.get_json()
     if len(e) > 0:
+        print(e)
         if e["event"] == "invoice.paid":
             if 'Wallet' in e['payload']['order']['entity']['receipt']:
                 customer_id = e['payload']['order']['entity']['receipt'].split("-")[1]
@@ -918,9 +919,11 @@ def razorpay():
                 orders = wcapi.get("orders", params={"include": order_id})
                 if orders.status_code == 200:
                     orders = orders.json()
+                    if len(orders)==0:
+                        return {'status': 'error no orders'}
                     order = orders[0]
                     name = order['billing']['first_name']
-                    if (order['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (order['status'] == 'processing' and order['payment_method_title'] == 'Pay Online on Delivery')):
+                    if (order['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (order['status'] == 'processing' and order['payment_method_title'] in ['Pay Online on Delivery', 'other'] )):
                         msg = send_whatsapp_msg(
                             {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
                         if "W_" in e['payload']['order']['entity']['receipt']:
@@ -1525,6 +1528,7 @@ def change_order_status():
     orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
     without_payment = list(filter(lambda x: x['status'] in ['processing'] and x['payment_method'] == '', orders))
     paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] in ['pre-paid', 'wallet'], orders))
+    print(paid_orders)
     if len(without_payment)>0:
         return {'result': 'vendor', 'orders': without_payment}
     if len(paid_orders)>0 and data['status'][0] == 'paid':
