@@ -244,6 +244,8 @@
     {%if nav_active in ['delivered-unpaid, completed', 'processing', 'tbd-paid, tbd-unpaid']%}
       <button onclick="payByWallet()" type="button"
         class="btn btn-info ml-2">Pay By Wallet</button>
+      <button onclick="payByCash()" type="button"
+        class="btn btn-info ml-2">Pay By Cash</button>
     {%endif%}
   </form>
   {%if nav_active == 'any'%}
@@ -252,6 +254,112 @@
     </div>
   {%endif%}
 </div>
+<script>
+  function payByCash(inp_s_v){
+var inp_select = $('#select_inps')
+var ischecked = ''
+if (inp_s_v == undefined){
+  var inp_select_v = inp_select.val()
+}else{
+  var inp_select_v = inp_s_v
+  ischecked = "?check=true"
+}
+Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+})
+$.ajax({
+  type: "POST",
+  crossDomain: true,
+  dataType: "json",
+  url: "/payByCash"+ischecked,
+  data: { 'ids': inp_select_v },
+  success: function (res) {
+    if (res.result == 'paid'){
+      trs = ""
+      for (var o of res.orders) {
+        trs += '<tr>'
+        trs += '<td>' + o['id'] + '</td>'
+        trs += '<td>' + o['billing']['first_name'] + '</td>'
+        trs += '<td>' + o['total'] + '</td>'
+        trs += '<td>' + o['status'] + '</td>'
+        trs += '</tr>'
+      }
+      Swal.fire({
+        icon: "warning",
+        html: `
+        <h4>Following orders are already paid. Please remove them from selection:</h4>
+        <table class='table'>
+          <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Name</th>
+            <th>Amount</th>
+            <th>Status</th>
+          <tr>
+          </thead>
+          <tbody>
+            `+trs+`
+          </tbody>
+        <table>
+        `,
+        width: 900
+      })
+    }
+    else  if (res.result == 'success'){
+      trs = ""
+      for (var o of res.orders) {
+        trs += '<tr>'
+        trs += '<td>' + o['id'] + '</td>'
+        trs += '<td>' + o['billing']['first_name'] + '</td>'
+        trs += '<td>' + o['total'] + '</td>'
+        trs += '<td>' + o['status'] + '</td>'
+        trs += '</tr>'
+      }
+      Swal.fire({
+        icon: "success",
+        html: `
+        <h4>Following orders are marked as paid:</h4>
+
+        <table class='table'>
+          <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Name</th>
+            <th>Amount</th>
+            <th>Status</th>
+          <tr>
+          </thead>
+          <tbody>
+            `+trs+`
+          </tbody>
+        <table>
+        `,
+        width: 900
+      })
+    }
+    else{
+      Swal.fire({
+      icon: "error",
+      title: "Got Error Please Recheck Orders!"
+    })
+    }
+  },
+  error: function () {
+    Swal.fire({
+      icon: "error",
+      title: "Got Error Please Recheck Orders!"
+    })
+  }
+})
+
+}
+
+
+</script>
 </div>
 <div style="overflow-x: auto;" class="ml-1 mr-1 pt-3">
   <table class="table">

@@ -1,3 +1,4 @@
+import re
 from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response, g, session
 from flask_sqlalchemy import SQLAlchemy
 from sshtunnel import SSHTunnelForwarder
@@ -1342,6 +1343,16 @@ def send_whatsapp_messages_m(name):
     results = []
     feedback_list = {}
     orders = list_orders_with_status(wcapi, {"include": get_list_to_string(data['order_ids[]'])})
+    d_dates = []
+    for o in orders:
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        t = datetime.now()
+        t = t.strftime('%Y-%m-%d')
+        if t != delivery_date:
+            o['delivery_date'] = delivery_date
+            d_dates.append(o)
+    if len(d_dates)>0 and name == 'today':
+        return {'result': 'delivery', 'orders': d_dates}
     for o in orders:
         wallet_payment = 0
         refunds = 0
@@ -1548,6 +1559,7 @@ def change_order_status():
         else:
             update_list.append({'id': order['id'], 'status': order['status']})
     updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
+    print(updates)
     for o in updates['update']:
         name = o['billing']['first_name']+" "+o['billing']['last_name']
         message = update_order_status_with_id(o, data['status'][0], 'message')
@@ -1912,7 +1924,7 @@ def payByWallet():
     data = request.form.to_dict(flat=False)
     args = request.args.to_dict(flat=True)
     orders = wcapi.get("orders", params={'include': ", ".join(data['ids[]']), 'per_page': 50}).json()
-    paid_orders = list(filter(lambda o: o['status'] in ['tbd-paid', 'completed'] or o['payment_method'] == 'razorpay', orders))
+    paid_orders = list(filter(lambda o: o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method'] == 'razorpay'), orders))
     if len(paid_orders)>0:
         return {'result': 'paid','orders': paid_orders}
     customer_orders = {}
@@ -1974,6 +1986,24 @@ def payByWallet():
     else:
         return {'result': 'check', 'customers': customers}
 
+
+@app.route("/payByCash", methods=['POST'])
+def payByCash():
+    data = request.form.to_dict(flat=False)
+    args = request.args.to_dict(flat=True)
+    orders = wcapi.get("orders", params={'include': ", ".join(data['ids[]']), 'per_page': 50}).json()
+    paid_orders = list(filter(lambda o: o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method'] in ['wallet', 'pre-paid']), orders))
+    if len(paid_orders)>0:
+        return {'result': 'paid','orders': paid_orders}
+    updates = []
+    for o in orders:
+        s = update_order_status_with_id(o, 'paid', 'status')
+        if o['status'] == 'processing':
+            updates.append({'id': o['id'], 'payment_method': 'other', 'payment_method_title': 'other'})
+        else:
+            updates.append({'id': o['id'], 'status': s, 'payment_method': 'other', 'payment_method_title': 'other'})
+    update_list = wcapi_write.post("orders/batch", {"update": updates}).json()
+    return {'result': 'success', 'orders': update_list['update']}
 
 if __name__ == "__main__":
     db.create_all()

@@ -955,6 +955,42 @@ function sendWMessages(name) {
               allowOutsideClick: false
             })
           }
+          else if (res.result == 'delivery'){
+            trtext = ""
+            for (var o of res.orders) {
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.billing.first_name + " ( " + o.billing.phone + ` ) </p></td>
+                    <td><p>`+ o.id + `</p></td>
+                    <td><p>`+ o.delivery_date + `</p></td>
+                  </tr>
+              `
+            }
+            Swal.fire({
+              icon: 'warning',
+              
+              html: `
+              <b>Delivery date is invalid or missing:</b>
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Name (Mobile)</b></th>  
+                    <th><b>Order ID</b></th>  
+                    <th><b>Delivery Date</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `,
+              width: 1000,
+              backdrop: `
+                rgba(0,0,123,0.4)
+              `,
+              allowOutsideClick: false
+            })
+          }
           else {
             $.nok({
               message: "Error, Messages not sent!",
