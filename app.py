@@ -1202,9 +1202,39 @@ def gen_multipayment():
     wstr = ""
     if 'type' in data:
         if data['type'] == 'remove':
-            refund = wcapiw.post("wallet/"+str(data['customer_id']), data={'type': 'debit', 'amount': float(data['balance']), 'details': 'Debited for order ID-'+data['order_ids']}).json()
-            if refund['response'] != 'success' and refund['id'] == False:
-                return {'result': 'error'}
+            balance = wcapiw.get("current_balance/"+str(data["customer_id"]))
+            balance = float(balance.text[1:-1])
+            orders = wcapi.get("orders", params={'include': data['order_ids']}).json()
+            for o in orders:
+                total_amount = 0
+                wallet_payment = 0
+                if len(o["fee_lines"]) > 0:
+                    for item in o["fee_lines"]:
+                        if "wallet" in item["name"].lower():
+                            wallet_payment += (-1)*float(item["total"])
+                total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+                if balance<=total_amount and balance>0:
+                    refund = wcapiw.post("wallet/"+str(data['customer_id']), data={'type': 'debit', 'amount': balance, 'details': 'Debited for order ID-'+str(o['id'])}).json()
+                    if refund['response'] != 'success' and refund['id'] == False:
+                        return {'result': 'error'}
+
+                    d = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(balance)*-1)}]}
+                    u_order = wcapi.put("orders/"+str(o['id']), d).json()
+                    if 'id' not in u_order.keys():
+                        return {'result': 'error_s','error': 'error while adding fee!'}
+                    break
+                elif balance>total_amount:
+                    refund = wcapiw.post("wallet/"+str(data['customer_id']), data={'type': 'debit', 'amount': total_amount, 'details': 'Debited for order ID-'+str(o['id'])}).json()
+                    if refund['response'] != 'success' and refund['id'] == False:
+                        return {'result': 'error'}
+                    d = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(total_amount)*-1)}]}
+                    u_order = wcapi.put("orders/"+str(o['id']), d).json()
+                    if 'id' not in u_order.keys():
+                        return {'result': 'error_s','error': 'error while adding fee!'}
+                    balance-=total_amount
+
+                        
+
         elif data['type'] == 'add':
             wstr="-W_"+str(float(data['balance'])*-1)
     reciept = "Leap "+data['order_ids']+wstr

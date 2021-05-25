@@ -1226,348 +1226,107 @@ function CheckOutRequest(url) {
 }
 
 
-function payByWallet(inp_s_v){
-  console.log(inp_s_v)
-var inp_select = $('#select_inps')
-var ischecked = ''
-if (inp_s_v == undefined){
-  var inp_select_v = inp_select.val()
-}else{
-  var inp_select_v = inp_s_v
-  ischecked = "?check=true"
-}
-Swal.fire({
-    title: 'Processing Your Request....',
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading()
-    },
-})
-$.ajax({
-  type: "POST",
-  crossDomain: true,
-  dataType: "json",
-  url: "/payByWallet"+ischecked,
-  data: { 'ids': inp_select_v },
-  success: function (res) {
-    if (res.result == 'paid'){
-      trs = ""
-      for (var o of res.orders) {
-        trs += '<tr>'
-        trs += '<td>' + o['id'] + '</td>'
-        trs += '<td>' + o['billing']['first_name'] + '</td>'
-        trs += '<td>' + o['total'] + '</td>'
-        trs += '<td>' + o['status'] + '</td>'
-        trs += '</tr>'
-      }
-      Swal.fire({
-        icon: "warning",
-        html: `
-        <h4>Following orders are already paid. Please remove them from selection:</h4>
-        <table class='table'>
-          <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>Name</th>
-            <th>Amount</th>
-            <th>Status</th>
-          <tr>
-          </thead>
-          <tbody>
-            `+trs+`
-          </tbody>
-        <table>
-        `,
-        width: 900
-      })
-    }
-    else if (res.result == 'balance'){
-      trs = ""
-      for (var c of res.customers) {
-        trs += '<tr>'
-        trs += '<td>' + c['name']+" (" +c['mobile']+ ')</td>'
-        trs += '<td>' + c['order_ids'] + '</td>'
-        trs += '<td>' + c['total'] + '</td>'
-        trs += '<td>' + c['wallet_balance'] + '</td>'
-        trs += '</tr>'
-      }
-      Swal.fire({
-        icon: "warning",
-        html: `
-        <h4>Following customers have insufficient balance. Please remove them from selection:</h4>
-        <table class='table'>
-          <thead>
-          <tr>
-            <th>Name (Mobile)</th>
-            <th>Order IDS</th>
-            <th>Amount</th>
-            <th>Wallet Balance</th>
-          <tr>
-          </thead>
-          <tbody>
-            `+trs+`
-          </tbody>
-        <table>
-        `,
-        width: 900
-      })
-    }
-    else if (res.result == 'success'){
-      trs = ""
-      for (var c of res.customers) {
-        trs += '<tr>'
-        trs += '<td>' + c['name']+" (" +c['mobile']+ ')</td>'
-        trs += '<td>' + c['order_ids'] + '</td>'
-        trs += '<td>' + c['total'] + '</td>'
-        trs += '<td>' + c['wallet_balance'] + '</td>'
-        trs += '<td>' + c['status'] + '</td>'
-        if (c['status'] =='success'){
-          trs += '<td><button class="btn btn-sm btn-success">button</button></td>'
-        }
-        trs += '</tr>'
-      }
-      Swal.fire({
-        icon: "success",
-        html: `
-        <table class='table'>
-          <thead>
-          <tr>
-            <th>Name (Mobile)</th>
-            <th>Order ID</th>
-            <th>Amount Paid</th>
-            <th>Current Balance</th>
-            <th>Result</th>
-          <tr>
-          </thead>
-          <tbody>
-            `+trs+`
-          </tbody>
-        <table>
-        `,
-        width: 1100
-      }).then(()=>{
-        location.reload()
-      })
-    }
-    else if (res.result == 'check'){
-      trs = ""
-      for (var c of res.customers) {
-        trs += '<tr>'
-        trs += '<td>' + c['name']+" (" +c['mobile']+ ')</td>'
-        trs += '<td>' + c['order_ids'] + '</td>'
-        trs += '<td>' + c['total'] + '</td>'
-        trs += '<td>' + c['wallet_balance'] + '</td>'
-        trs += '</tr>'
-      }
-      Swal.fire({
-        icon: "warning",
-        html: `
-        <h4>Do you want to pay for these orders by wallet? (Yes / No)</h4>
-        <table class='table'>
-          <thead>
-          <tr>
-            <th>Name (Mobile)</th>
-            <th>Order ID</th>
-            <th>Total Amount</th>
-            <th>Current Balance</th>
-          <tr>
-          </thead>
-          <tbody>
-            `+trs+`
-          </tbody>
-        <table>
-        `,
-        width: 1100,
-        confirmButtonText: 'Yes &rarr;',
-        cancelButtonText: 'No',
-        showCancelButton: true,
-      }).then((result) => {
-        if (result.isConfirmed) {
-          payByWallet(inp_select_v)
-        }
-      })
-    }else{
-      Swal.fire({
-        icon: "error",
-        title: "Got Error Please Recheck Orders!"
-      })
-    }
-  },
-  error: function () {
-    Swal.fire({
-      icon: "error",
-      title: "Got Error Please Recheck Orders!"
-    })
+function payByCash(inp_s_v){
+  var inp_select = $('#select_inps')
+  var ischecked = ''
+  if (inp_s_v == undefined){
+    var inp_select_v = inp_select.val()
+  }else{
+    var inp_select_v = inp_s_v
+    ischecked = "?check=true"
   }
-})
-
-}
-
-
-
-function gen_multipayment(id, c_id, amount, name, phone, balance, type){
-  $.ajax({
-  type: "POST",
-  crossDomain: true,
-  dataType: "json",
-  url: "/gen_multipayment",
-  data: { 'order_ids': id, 'amount': amount, 'name': name, 'phone': phone,'balance': balance, 'type': type , 'customer_id': c_id},
-  success: function (res){
-    if (res.result == 'success' || res.result == 'already'){
-      $('#status-'+c_id).append('<b class="text-success ml-2 mr-1">'+res.result+'</b>')
-      $('#status-'+c_id).append(`<b>Link: '`+res.short_url+`'</b>`)
-
-    }else{
-      $('#status-'+c_id).append('<b class="text-danger ml-2">Error</b>')
-
-    }
-
-  },
-  error: function (){
-    $('#status-'+c_id).append('<b class="text-danger ml-2">Error</b>')
-  }
-})
-}
-
-function genMultipleLinks() {
-var inp_select = $('#select_inps')
-var inp_select_v = inp_select.val()
-Swal.fire({
-  showConfirmButton: false,
-  allowOutsideClick: false,
-  didOpen: () => {
-    Swal.showLoading()
-  },
-})  
-$.ajax({
-  type: "POST",
-  crossDomain: true,
-  dataType: "json",
-  url: "/multiple_links",
-  data: { 'order_ids': inp_select_v },
-  success: function (res) {
-    if (res.status == 'paid'){
-      trs = ""
-      for (var o of res.orders) {
-        trs += '<tr>'
-        trs += '<td>' + o['id'] + '</td>'
-        trs += '<td>' + o['billing']['first_name'] + '</td>'
-        trs += '<td>' + o['total'] + '</td>'
-        trs += '<td>' + o['status'] + '</td>'
-        trs += '</tr>'
-      }
-      Swal.fire({
-        icon: "warning",
-        html: `
-        <h4>Following orders are already paid. Please remove them from selection:</h4>
-        <table class='table'>
-          <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>Name</th>
-            <th>Amount</th>
-            <th>Status</th>
-          <tr>
-          </thead>
-          <tbody>
-            `+trs+`
-          </tbody>
-        <table>
-        `,
-        width: 900
-      })
-    }
-    else if (res.status == 'vendor'){
-      trs = ""
-      for (var o of res.orders) {
-        trs += '<tr>'
-        trs += '<td>' + o['id'] + '</td>'
-        trs += '<td>' + o['billing']['first_name'] + '</td>'
-        trs += '<td>' + o['total'] + '</td>'
-        trs += '<td>' + o['status'] + '</td>'
-        trs += '</tr>'
-      }
-      Swal.fire({
-        icon: "warning",
-        html: `
-        <h4>Following orders are without vendor. Please assign them vendor:</h4>
-        <table class='table'>
-          <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>Name</th>
-            <th>Amount</th>
-            <th>Status</th>
-          <tr>
-          </thead>
-          <tbody>
-            `+trs+`
-          </tbody>
-        <table>
-        `,
-        width: 900
-      })
-    }
-    else if (res.status == 'popup'){
-      trs = ""
-      for (var o of res.customers) {
-        btns = ''
-        var o_ids = "["+o.order_id+"]"
-        if (o.pbw){
-          btns = '<button onclick="payByWallet('+o_ids+')" class="btn btn-success btn-sm mr-1 mt-2">Pay by wallet</button>'
-        }else if (o.genl || o.genm){
-          var type = 'add'
-          if (o.genm){
-            type = 'remove'
-          }
-          btns = `<button onclick="gen_multipayment('`+o.order_id+`','`+o.customer_id+`', '`+(parseFloat(o.total)-parseFloat(o.wallet_balance))+`','`+o.name+`','`+o.phone+`','`+o.wallet_balance+`','`+type+`')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of `+(parseFloat(o.total)-parseFloat(o.wallet_balance)).toString()+`</button>`
-        }
-        trs += '<tr>'
-        trs += '<td>' + o['name']+' ('+o['phone'] + ')</td>'
-        trs += '<td>' + o['order_id'] + '</td>'
-        trs += '<td>' + o['total'] + '</td>'
-        trs += '<td>' + o['wallet_balance'] + '</td>'
-        trs += `<td><button onclick="gen_multipayment('`+o.order_id+`','`+o.customer_id+`', '`+o.total+`','`+o.name+`','`+o.phone+`')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of `+o.total+`</button>`+btns+`</td>`
-        trs += '<td style="display: flex;" id="status-'+o.customer_id+'"></td>'
-        trs += '</tr>'
-      }
-    $('#exampleModal').modal({
-      show: true
-    })
-    $(".modal-body").html(`
-    <table class='table'>
-          <thead>
-          <tr>
-            <th>Customer</th>
-            <th>Order ID</th>
-            <th>Amount</th>
-            <th>Wallet Balance</th>
-            <th></th>
-            <th>Status</th>
-          <tr>
-          </thead>
-          <tbody>
-            `+trs+`
-          </tbody>
-        <table>
-    `)
-    Swal.fire({
+  Swal.fire({
       showConfirmButton: false,
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading()
       },
-      timer: 500
-    })
+  })
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/payByCash"+ischecked,
+    data: { 'ids': inp_select_v },
+    success: function (res) {
+      if (res.result == 'paid'){
+        trs = ""
+        for (var o of res.orders) {
+          trs += '<tr>'
+          trs += '<td>' + o['id'] + '</td>'
+          trs += '<td>' + o['billing']['first_name'] + '</td>'
+          trs += '<td>' + o['total'] + '</td>'
+          trs += '<td>' + o['status'] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          html: `
+          <h4>Following orders are already paid. Please remove them from selection:</h4>
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Name</th>
+              <th>Amount</th>
+              <th>Status</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+trs+`
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
+      }
+      else  if (res.result == 'success'){
+        trs = ""
+        for (var o of res.orders) {
+          trs += '<tr>'
+          trs += '<td>' + o['id'] + '</td>'
+          trs += '<td>' + o['billing']['first_name'] + '</td>'
+          trs += '<td>' + o['total'] + '</td>'
+          trs += '<td>' + o['status'] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "success",
+          html: `
+          <h4>Following orders are marked as paid:</h4>
+  
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Name</th>
+              <th>Amount</th>
+              <th>Status</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+trs+`
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
+      }
+      else{
+        Swal.fire({
+        icon: "error",
+        title: "Got Error Please Recheck Orders!"
+      })
+      }
+    },
+    error: function () {
+      Swal.fire({
+        icon: "error",
+        title: "Got Error Please Recheck Orders!"
+      })
     }
-  },
-  error: function (err){
-    Swal.fire({
-      title: "Error in Flask Panel. Or Please Select Correct Orders.",
-      icon: "error"
-    })
+  })
+  
   }
-})
-}
-
+  
+  
