@@ -1150,7 +1150,7 @@ def multiple_links():
     if len(order_id) == 0:
         return ""
     orders = wcapi.get("orders", params={'include': ", ".join(order_id)}).json()
-    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] in  ['pre-paid', 'wallet'], orders))
+    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] in  ['razorpay', 'wallet'], orders))
     if len(paid_orders)>0:
         return {'status': 'paid', 'orders': paid_orders}
     customers = []
@@ -1496,7 +1496,7 @@ def update_order_status_with_id(order, status, r):
             s = 'completed'
             m = ("Mark as completed")
         else:
-            s = 'pre-paid'
+            s = 'razorpay'
             m = ("Mark as Paid")
     else:
         s = order['status']
@@ -1527,7 +1527,7 @@ def change_order_status():
     success_text = ""
     orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
     without_payment = list(filter(lambda x: x['status'] in ['processing'] and x['payment_method'] == '', orders))
-    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] in ['pre-paid', 'wallet'], orders))
+    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] in ['razorpay', 'wallet'], orders))
     print(paid_orders)
     if len(without_payment)>0:
         return {'result': 'vendor', 'orders': without_payment}
@@ -1907,7 +1907,7 @@ def payByWallet():
     data = request.form.to_dict(flat=False)
     args = request.args.to_dict(flat=True)
     orders = wcapi.get("orders", params={'include': ", ".join(data['ids[]']), 'per_page': 50}).json()
-    paid_orders = list(filter(lambda o: o['status'] in ['tbd-paid', 'completed'] or o['payment_method'] == 'pre-paid', orders))
+    paid_orders = list(filter(lambda o: o['status'] in ['tbd-paid', 'completed'] or o['payment_method'] == 'razorpay', orders))
     if len(paid_orders)>0:
         return {'result': 'paid','orders': paid_orders}
     customer_orders = {}
