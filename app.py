@@ -915,6 +915,8 @@ def razorpay():
                 mobile = e['payload']['payment']['entity']['contact']
                 order_id = e['payload']['order']['entity']['receipt'][5:].split(
                     "-")[0]
+                if order_id == "":
+                    return "Order id is empty..."
                 invoice_id = e['payload']['invoice']['entity']['id']
                 orders = wcapi.get("orders", params={"include": order_id})
                 if orders.status_code == 200:
