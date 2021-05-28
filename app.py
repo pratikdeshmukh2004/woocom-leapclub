@@ -895,8 +895,7 @@ def razorpay():
         return "Plese Use POST Method..."
     e = request.get_json()
     if len(e) > 0:
-        print(e)
-        if e["event"] == "invoice.paid":
+        if e["event"] == "invoice.paid":    
             if 'Wallet' in e['payload']['order']['entity']['receipt']:
                 customer_id = e['payload']['order']['entity']['receipt'].split("-")[1]
                 total = e['payload']['order']['entity']['amount_paid']/100
@@ -913,22 +912,26 @@ def razorpay():
                         response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", 'Error while adding money to wallet of '+customer['first_name']+" "+customer['last_name'])
             else:
                 mobile = e['payload']['payment']['entity']['contact']
-                order_id = e['payload']['order']['entity']['receipt'][5:].split(
+                receipt = e['payload']['order']['entity']['receipt']
+                order_id = receipt[5:].split(
                     "-")[0]
-                if order_id == "":
-                    return "Order id is empty..."
+                if order_id in ["", " "] or "Leap"  not in receipt:
+                    send_slack_message(client, "PAYMENT_NOTIFICATIONS", "Got empty order id in these receipt: {}".format(receipt))
+                    return "Invalid order id..."
                 invoice_id = e['payload']['invoice']['entity']['id']
                 orders = wcapi.get("orders", params={"include": order_id})
                 if orders.status_code == 200:
                     orders = orders.json()
-                    if len(orders)==0:
+                    orders2 = order_id.split(", ")
+                    if len(orders)==0 or len(orders) != len(orders2):
+                        send_slack_message(client, "PAYMENT_NOTIFICATIONS", "Invalid orders are there in these receipt: {}".format(receipt))
                         return {'status': 'error no orders'}
                     order = orders[0]
                     name = order['billing']['first_name']
                     if (order['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (order['status'] == 'processing' and order['payment_method_title'] in ['Pay Online on Delivery', 'other'] )):
                         msg = send_whatsapp_msg(
                             {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
-                        if "W_" in e['payload']['order']['entity']['receipt']:
+                        if "W_" in receipt:
                             b = e['payload']['order']['entity']['receipt'][5:].split("_")[1]
                             wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(b), 'details': 'Credited from razorpay'}).json()
                     for order in orders:
@@ -1203,7 +1206,7 @@ def gen_multipayment():
                 return {'result': 'error'}
         elif data['type'] == 'add':
             wstr="-W_"+str(float(data['balance'])*-1)
-    reciept = data['order_ids']+wstr
+    reciept = "Leap "+data['order_ids']+wstr
     payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+reciept+"%")).all()
     if len(payment_links)>0:
         p_l = payment_links.copy()
