@@ -25,13 +25,11 @@ from flask_crontab import Crontab
 from slack_chennels import CHANNELS
 from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance
 
-
-
+# Configuration and importing secrets....
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_pyfile("config.py")
 db = SQLAlchemy(app)
 crontab = Crontab(app)
-
 
 wcapi = API(
     url=app.config["WOOCOMMERCE_API_URL"],
@@ -72,7 +70,7 @@ client = WebClient(
 razorpay_client = razorpay.Client(
     auth=(app.config["RAZORPAY_ID"], app.config["RAZORPAY_SECRET"]))
 
-
+# Admin importing from config file and adding it in a class.........
 class User:
     def __init__(self, email, password):
         self.email = email
@@ -80,57 +78,10 @@ class User:
 
     def __repr__(self):
         return f'<User: {self.email}>'
-
-
 users = []
-users.append(User(email=app.config["ADMIN_EMAIL"],
-                  password=app.config["ADMIN_PASSWORD"]))
+users.append(User(email=app.config["ADMIN_EMAIL"],password=app.config["ADMIN_PASSWORD"]))
 
-
-@app.errorhandler(404)
-def invalid_route(e):
-    return render_template("404found.html")
-
-
-@app.before_request
-def before_request():
-    g.user = None
-    if 'user_id' in session:
-        user = [x for x in users if x.email == session['user_id']]
-        if len(user) > 0:
-            g.user = user[0]
-
-@app.route("/")
-def take_me():
-    return redirect('login')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    error = ""
-    args = request.args.to_dict(flat=False)
-    if "error" in args:
-        error = args["error"][0]
-    if request.method == 'POST':
-        session.pop('user_id', None)
-        email = request.form['email']
-        password = request.form['password']
-        user = [x for x in users if x.email == email]
-        if len(user) > 0:
-            user = user[0]
-            if user.password == password:
-                session['user_id'] = email
-                return redirect(url_for('woocom_orders'))
-            else:
-                error = "Invalid User Password!"
-        else:
-            error = "You do not have accesss. Please contact To Admin!"
-        return redirect(url_for('login', error=error))
-    if "user_id" in session:
-        return redirect(url_for("woocom_orders"))
-    else:
-        return render_template('login.html', error=error)
-
-
+# Database and tables are here....
 class wtmessages(db.Model):
     id = db.Column(
         UUID(as_uuid=True),
@@ -162,6 +113,54 @@ class PaymentLinks(db.Model):
     name = db.Column(db.String)
     created_at = db.Column(db.String)
     amount = db.Column(db.Float)
+
+
+
+# Handle 404 Not Found error it will return a web page...
+@app.errorhandler(404)
+def invalid_route(e):
+    return render_template("404found.html")
+
+# Check before all requests and set user in g...
+@app.before_request
+def before_request():
+    g.user = None
+    if 'user_id' in session:
+        user = [x for x in users if x.email == session['user_id']]
+        if len(user) > 0:
+            g.user = user[0]
+
+# Redirect user to login if went to home...
+@app.route("/")
+def take_me():
+    return redirect('login')
+
+# Login route and redirect for home....
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = ""
+    args = request.args.to_dict(flat=False)
+    if "error" in args:
+        error = args["error"][0]
+    if request.method == 'POST':
+        session.pop('user_id', None)
+        email = request.form['email']
+        password = request.form['password']
+        user = [x for x in users if x.email == email]
+        if len(user) > 0:
+            user = user[0]
+            if user.password == password:
+                session['user_id'] = email
+                return redirect(url_for('woocom_orders'))
+            else:
+                error = "Invalid User Password!"
+        else:
+            error = "You do not have accesss. Please contact To Admin!"
+        return redirect(url_for('login', error=error))
+    if "user_id" in session:
+        return redirect(url_for("woocom_orders"))
+    else:
+        return render_template('login.html', error=error)
 
 
 def get_dairy_condition(o, d):
@@ -308,7 +307,7 @@ def get_orders_for_home(args, tab):
             params['status'] = 'delivered-unpaid, completed'
 
     args['payment_status'] = p_s
-    return render_template("woocom_orders.html", json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
+    return render_template("woocom_orders.html", admin_url=app.config['ADMIN_PANEL_URL'], json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
 
 
 @app.route("/orders")
@@ -1156,7 +1155,7 @@ def multiple_links():
     if len(order_id) == 0:
         return ""
     orders = wcapi.get("orders", params={'include': ", ".join(order_id)}).json()
-    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] in  ['razorpay', 'wallet'], orders))
+    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or (x['status'] == 'processing' and x['payment_method'] in  ['razorpay', 'wallet']), orders))
     if len(paid_orders)>0:
         return {'status': 'paid', 'orders': paid_orders}
     customers = []
@@ -1299,6 +1298,7 @@ def send_session_m_st(order_id, vendor, order_note):
         'Authorization': app.config["WATI_AUTHORIZATION"],
         'Content-Type': 'application/json',
     }
+    # Send Slack message session message.......
     ctime = time.time()
     response = requests.request(
         "POST", url, headers=headers)
@@ -1308,6 +1308,7 @@ def send_session_m_st(order_id, vendor, order_note):
                             broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
         db.session.add(new_wt)
         db.session.commit()
+        send_slack_message(client, "SESSION_MESSAGES", "*Customer* : {} \n\n {}".format(mobile_number, order[0]["c_msg"]))
     result["template_name"] = 'order_detail'
     result["parameteres"] = [{'name': 'order_id', 'value': str(order_id)}]
     return result
@@ -2034,6 +2035,8 @@ def payByCash():
             updates.append({'id': o['id'], 'status': s, 'payment_method': 'other', 'payment_method_title': 'other'})
     update_list = wcapi_write.post("orders/batch", {"update": updates}).json()
     return {'result': 'success', 'orders': update_list['update']}
+
+
 
 if __name__ == "__main__":
     db.create_all()

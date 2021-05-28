@@ -43,7 +43,7 @@
     <!-- Default Search -->
     <input style="display: none;" name="page" value="{{page}}">
 
-    <input class="form-control mr-2" type="name" placeholder="Name" {% if "name" in query %} {% if query["name"] !=""%} value="{{query["name"]}}" {% endif %} {% endif %} name="name">
+    <input class="form-control mr-2" type="name" placeholder="Search by username..." {% if "name" in query %} {% if query["name"] !=""%} value="{{query["name"]}}" {% endif %} {% endif %} name="name">
     <button class="btn btn-info ml-1"><i class="uil uil-search-alt" aria-hidden="true"></i>
     </button>
   </form>
@@ -54,10 +54,11 @@
         <thread>
             <tr class="bg-info text-white">
                 <th></th>
-                <th>Name</th>
-                <th>Mobile</th>
-                <th>Current Balance</th>
-                <th>Total Unpaid Amount</th>
+                <th>USERNAME</th>
+                <th>NAME</th>
+                <th>MOBILE</th>
+                <th>CURRENT BALANCE</th>
+                <th>UNPAID AMOUNT</th>
             </tr>
         </thread>
         <tbody>
@@ -69,6 +70,7 @@
                     <button onclick="MoneyToWallet('{{c.id}}', 'debit')" data-toggle="tooltip" title="Reduce Money From Wallet" class="btn btn-success btn-sm font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-minus mr-1"></i></button>
                     <button onclick="genPaymentLinkWallet('{{c.id}}')" data-toggle="tooltip" title="Generate Payment Link" class="btn btn-success btn-sm font-weight-bold"><i class="mdi mdi-18px mdi-link-plus mr-1"></i></button>
                 </td>
+                <td>{{c.username}}</td>
                 <td>{{c.first_name}} {{c.last_name}}</td>
                 <td>{{format_mobile(c.billing.phone)}}</td>
                 <td id="balance-{{c.id}}">₹ {{c.wallet_balance}}</td>
