@@ -117,3 +117,88 @@ def list_customers_with_wallet_balance(customers, wcapiw):
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(_get_customer_with_wallet_balance, customers)
     return list(result)
+
+
+def checkBefore(orders, conditions):
+    results = {}
+    for o in orders:
+        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        id = str(o['id'])
+        if 'paid' in conditions:
+            error_t = "Order is Paid"
+            if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method'] in ['wallet', 'razorpay']):
+                if id in results:
+                    results[id].append(error_t) 
+                else:
+                    results[id] = [error_t]
+        if 'wallet' in conditions:
+            error_t = "Payment Method is already wallet"
+            if o['payment_method_title'] == 'Wallet payment':
+                if id in results:
+                    results[id].append(error_t) 
+                else:
+                    results[id] = [error_t]
+        if 'payment_null' in conditions:
+            error_t = "Payment Method is empty"
+            if o['payment_method'] == "":
+                if id in results:
+                    results[id].append(error_t) 
+                else:
+                    results[id] = [error_t]
+        if 'vendor' in conditions:
+            error_t = "Vendor is missing"
+            if vendor == "":
+                if id in results:
+                    results[id].append(error_t) 
+                else:
+                    results[id] = [error_t]
+        if 'delivery_date' in conditions:
+            error_t = "Delivery Date is missing"
+            if delivery_date == "":
+                if id in results:
+                    results[id].append(error_t) 
+                else:
+                    results[id] = [error_t]
+        if 'name' in conditions:
+                error_t = "Name is empty"
+                if o['billing']['first_name'] == "":
+                    if id in results:
+                        results[id].append(error_t) 
+                    else:
+                        results[id] = [error_t]
+        if 'mobile' in conditions:
+                error_t = "Mobile number is empty"
+                if o['billing']['phone'] == "":
+                    if id in results:
+                        results[id].append(error_t) 
+                    else:
+                        results[id] = [error_t]
+        if 'billing_address' in conditions:
+                    error_t = "Billing Address is empty"
+                    if o['billing']['address_1'] == "" and o['billing']['address_2'] == "":
+                        if id in results:
+                            results[id].append(error_t) 
+                        else:
+                            results[id] = [error_t]
+        if 'shipping_address' in conditions:
+            error_t = "Shipping Address is empty"
+            if o['shipping']['address_1'] == "" and o['shipping']['address_2'] == "":
+                if id in results:
+                    results[id].append(error_t) 
+                else:
+                    results[id] = [error_t]
+        if 'pay_on' in conditions:
+            error_t = "Payment method is not Pay Online On Delivery"
+            if o['payment_method'] != 'cod':
+                if id in results:
+                    results[id].append(error_t) 
+                else:
+                    results[id] = [error_t]
+        if 'other_status' in conditions:
+            error_t = "Order status is not applicable"
+            if o['status'] in ['pending', 'cancelled', 'tbd-paid', 'delivered-paid']:
+                if id in results:
+                    results[id].append(error_t) 
+                else:
+                    results[id] = [error_t]
+    return results

@@ -196,7 +196,7 @@ function copyOrderDetail(status) {
     message: "Processing Your Request Please Wait!",
     type: "success",
   });
-  
+
   $.ajax({
     type: "POST",
     crossDomain: true,
@@ -204,23 +204,33 @@ function copyOrderDetail(status) {
     url: "/order_details",
     data: { 'order_ids': inp_select_v, 'status': status },
     success: function (res) {
-      if (res.result == 'missing') {
-        if (res.missings.delivery_date && res.missings.vendor) {
-          Swal.fire({
-            icon: "warning",
-            title: "Vendor and Delivery date is missing. Please add it before copying order details."
-          })
-        } else if (res.missings.delivery_date) {
-          Swal.fire({
-            icon: "warning",
-            title: "Delivery date is missing. Please add it before copying order derails"
-          })
-        } else {
-          Swal.fire({
-            icon: "warning",
-            title: "Vendor is missing. Please add it before copying order details."
-          })
+      if (res.result == 'errors') {
+        console.log(res);
+        trs = ""
+        for (var o in res.orders) {
+          trs += '<tr>'
+          trs += '<td>' + o + '</td>'
+          trs += '<td class="text-danger">' + res.orders[o] + '</td>'
+          trs += '</tr>'
         }
+        Swal.fire({
+          icon: "warning",
+          title: "There are some errors in orders. Please check following orders.",
+          html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Errors</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+ trs + `
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
         return ""
       }
       text = res.result.replace("&amp;", "&")
@@ -449,6 +459,180 @@ function copySupplierMessage(status) {
 
 
 
+function payByWallet(inp_s_v) {
+  console.log(inp_s_v)
+  var inp_select = $('#select_inps')
+  var ischecked = ''
+  if (inp_s_v == undefined) {
+    var inp_select_v = inp_select.val()
+  } else {
+    var inp_select_v = inp_s_v
+    ischecked = "?check=true"
+  }
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/payByWallet" + ischecked,
+    data: { 'ids': inp_select_v },
+    success: function (res) {
+      if (res.result == 'errors') {
+        console.log(res);
+        trs = ""
+        for (var o in res.orders) {
+          trs += '<tr>'
+          trs += '<td>' + o + '</td>'
+          trs += '<td class="text-danger">' + res.orders[o] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          title: "There are some errors in orders. Please check following orders.",
+          html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Errors</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+ trs + `
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
+      }
+      else if (res.result == 'balance') {
+        trs = ""
+        for (var c of res.customers) {
+          trs += '<tr>'
+          trs += '<td>' + c['name'] + " (" + c['mobile'] + ')</td>'
+          trs += '<td>' + c['order_ids'] + '</td>'
+          trs += '<td>' + c['total'] + '</td>'
+          trs += '<td>' + c['wallet_balance'] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          html: `
+          <h4>Following customers have insufficient balance. Please remove them from selection:</h4>
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Name (Mobile)</th>
+              <th>Order IDS</th>
+              <th>Amount</th>
+              <th>Wallet Balance</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+ trs + `
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
+      }
+      else if (res.result == 'success') {
+        var but = $('#' + res.customers[0].customer_id + '-pbw')
+        but.hide()
+        trs = ""
+        for (var c of res.customers) {
+          trs += '<tr>'
+          trs += '<td>' + c['name'] + " (" + c['mobile'] + ')</td>'
+          trs += '<td>' + c['order_ids'] + '</td>'
+          trs += '<td>' + c['total'] + '</td>'
+          trs += '<td>' + c['wallet_balance'] + '</td>'
+          trs += '<td>' + c['status'] + '</td>'
+          if (c['status'] == 'success') {
+            trs += '<td><button class="btn btn-sm btn-success">button</button></td>'
+          }
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "success",
+          html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Name (Mobile)</th>
+              <th>Order ID</th>
+              <th>Amount Paid</th>
+              <th>Current Balance</th>
+              <th>Result</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+ trs + `
+            </tbody>
+          <table>
+          `,
+          width: 1100
+        })
+      }
+      else if (res.result == 'check') {
+        trs = ""
+        for (var c of res.customers) {
+          trs += '<tr>'
+          trs += '<td>' + c['name'] + " (" + c['mobile'] + ')</td>'
+          trs += '<td>' + c['order_ids'] + '</td>'
+          trs += '<td>' + c['total'] + '</td>'
+          trs += '<td>' + c['wallet_balance'] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          html: `
+          <h4>Do you want to pay for these orders by wallet? (Yes / No)</h4>
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Name (Mobile)</th>
+              <th>Order ID</th>
+              <th>Total Amount</th>
+              <th>Current Balance</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+ trs + `
+            </tbody>
+          <table>
+          `,
+          width: 1100,
+          confirmButtonText: 'Yes &rarr;',
+          cancelButtonText: 'No',
+          showCancelButton: true,
+        }).then((result) => {
+          if (result.isConfirmed) {
+            payByWallet(inp_select_v)
+          }
+        })
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Got Error Please Recheck Orders!"
+        })
+      }
+    },
+    error: function () {
+      Swal.fire({
+        icon: "error",
+        title: "Got Error Please Recheck Orders!"
+      })
+    }
+  })
+
+}
+
 function changeOrderStatus(status) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
@@ -459,10 +643,13 @@ function changeOrderStatus(status) {
     denyButtonText: `No`,
   }).then((result) => {
     if (result.isConfirmed) {
-      $.nok({
-        message: "Processing Your Request Please Wait!",
-        type: "success",
-      });
+      Swal.fire({
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+      })
       $.ajax({
         type: "POST",
         crossDomain: true,
@@ -470,7 +657,35 @@ function changeOrderStatus(status) {
         url: "/change_order_status",
         data: { 'order_ids': inp_select_v, "status": status },
         success: function (res) {
-          if (res.result == 'success') {
+          if (res.result == 'errors') {
+            console.log(res);
+            trs = ""
+            for (var o in res.orders) {
+              trs += '<tr>'
+              trs += '<td>' + o + '</td>'
+              trs += '<td class="text-danger">' + res.orders[o] + '</td>'
+              trs += '</tr>'
+            }
+            Swal.fire({
+              icon: "warning",
+              title: "There are some errors in orders. Please check following orders.",
+              html: `
+              <table class='table'>
+                <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Errors</th>
+                <tr>
+                </thead>
+                <tbody>
+                  `+ trs + `
+                </tbody>
+              <table>
+              `,
+              width: 900
+            })
+          }
+          else if (res.result == 'success') {
             trtext = ""
             for (var o of res.result_list) {
               trtext += `
@@ -506,68 +721,6 @@ function changeOrderStatus(status) {
               location.reload()
             })
           }
-          else if (res.result == 'paid') {
-            trtext = ""
-            for (var o of res.result_list) {
-              trtext += `
-                  <tr>
-                    <td><p>`+ o.id + " ( " + o.billing.first_name + ` ) </p></td>
-                    <td><p>`+ o.status + `</p></td>
-                  </tr>
-              `
-            }
-            Swal.fire({
-              title: "You Selected Paid Orders Please Try Again",
-              html: `
-                <table class='table'>
-                  <thead>
-                  <tr>
-                    <th><b>Order ID ( Name )</b></th>  
-                    <th><b>Status</b></th>  
-                  </tr>  
-                  </thead>
-                  <tbody>
-                  `+ trtext + `
-                  </tbody>
-                </table>
-              `,
-              width: 700,
-              backdrop: `
-                rgba(0,0,123,0.4)
-              `
-            })
-          }
-          else if (res.result == 'vendor') {
-            trtext = ""
-            for (var o of res.result_list) {
-              trtext += `
-                  <tr>
-                    <td><p>`+ o.id + " ( " + o.billing.first_name + ` ) </p></td>
-                    <td><p>`+ o.status + `</p></td>
-                  </tr>
-              `
-            }
-            Swal.fire({
-              title: "You have selected orders without vendor. Please assign vendor and try again.",
-              html: `
-                <table class='table'>
-                  <thead>
-                  <tr>
-                    <th><b>Order ID ( Name )</b></th>  
-                    <th><b>Status</b></th>  
-                  </tr>  
-                  </thead>
-                  <tbody>
-                  `+ trtext + `
-                  </tbody>
-                </table>
-              `,
-              width: 700,
-              backdrop: `
-                rgba(0,0,123,0.4)
-              `
-            })
-          }
           else {
             $.nok({
               message: "Error, Order Status Not Changed Please Check Order ID!",
@@ -578,87 +731,6 @@ function changeOrderStatus(status) {
       })
     }
   })
-}
-
-function copyToClipboard(id) {
-  $.nok({
-    message: "Please Wait For a While, Generating Message ....",
-    type: "success",
-  });
-  $.ajax({
-    type: "GET",
-    crossDomain: true,
-    dataType: "json",
-    url: "/get_copy_messages/" + id.toString(),
-    success: function (res) {
-      if (res.status == 'missing') {
-        if (res.missings.delivery_date && res.missings.vendor) {
-          Swal.fire({
-            icon: "warning",
-            title: "Vendor and Delivery date is missing. Please add it before copying order details."
-          })
-        } else if (res.missings.delivery_date) {
-          Swal.fire({
-            icon: "warning",
-            title: "Delivery date is missing. Please add it before copying order derails"
-          })
-        } else {
-          Swal.fire({
-            icon: "warning",
-            title: "Vendor is missing. Please add it before copying order details."
-          })
-        }
-        return ""
-      }
-      else if (res.status == 'success') {
-        var input = document.body.appendChild(document.createElement("textarea"));
-        input.value = res.text;
-        input.select();
-        var status = document.execCommand("copy");
-        input.parentNode.removeChild(input);
-        if (status) {
-          $.nok({
-            message: "Success, Message Copied!",
-            type: "success",
-          });
-        } else {
-          if (res.text.length > 0) {
-            Swal.fire({
-              html: `
-          <pre>
-          <div style='text-align: left;'>
-<b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
-
-`+ res.text + `
-</pre>
-</div>
-          `,
-              width: 700,
-              backdrop: `
-            rgba(0,0,123,0.4)
-          `
-            })
-          } else {
-            $.nok({
-              message: "Error, Message Not Copied!",
-              type: "error",
-            });
-          }
-        }
-      } else {
-        $.nok({
-          message: "Error, Message Not Copied!",
-          type: "error",
-        });
-      }
-    },
-    error: function (res) {
-      $.nok({
-        message: "API Error, Message Not Sent!",
-        type: "error",
-      });
-    },
-  });
 }
 
 
@@ -1107,15 +1179,32 @@ function CheckOutRequest(url) {
         tag.attr('onclick', "copyText('" + res.short_url + "')")
         tag.attr('class', 'text-success')
       }
-      else if (res.result == 'paid') {
+      else if (res.result == 'errors') {
+        console.log(res);
+        trs = ""
+        for (var o in res.orders) {
+          trs += '<tr>'
+          trs += '<td>' + o + '</td>'
+          trs += '<td class="text-danger">' + res.orders[o] + '</td>'
+          trs += '</tr>'
+        }
         Swal.fire({
-          title: 'The order is already paid. Payment link cannot be generated.',
-          icon: 'warning'
-        })
-      } else if (res.result == 'vendor') {
-        Swal.fire({
-          title: 'In this order vendor is missing. Payment link cannot be generated.',
-          icon: 'warning'
+          icon: "warning",
+          title: "There are some errors in orders. Please check following orders.",
+          html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Errors</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+ trs + `
+            </tbody>
+          <table>
+          `,
+          width: 900
         })
       }
       else if (res.result == 'balance') {
@@ -1312,7 +1401,7 @@ function payByCash(inp_s_v) {
           <table>
           `,
           width: 900
-        }).then(()=>{
+        }).then(() => {
           location.reload()
         })
       }
@@ -1333,182 +1422,6 @@ function payByCash(inp_s_v) {
 
 }
 
-function payByWallet(inp_s_v) {
-  var inp_select = $('#select_inps')
-  var ischecked = ''
-  if (inp_s_v == undefined) {
-    var inp_select_v = inp_select.val()
-  } else {
-    var inp_select_v = inp_s_v
-    ischecked = "?check=true"
-  }
-  Swal.fire({
-    title: 'Processing Your Request....',
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading()
-    },
-  })
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/payByWallet" + ischecked,
-    data: { 'ids': inp_select_v },
-    success: function (res) {
-      if (res.result == 'paid') {
-        trs = ""
-        for (var o of res.orders) {
-          trs += '<tr>'
-          trs += '<td>' + o['id'] + '</td>'
-          trs += '<td>' + o['billing']['first_name'] + '</td>'
-          trs += '<td>' + o['total'] + '</td>'
-          trs += '<td>' + o['status'] + '</td>'
-          trs += '</tr>'
-        }
-        Swal.fire({
-          icon: "warning",
-          html: `
-          <h4>Following orders are already paid. Please remove them from selection:</h4>
-          <table class='table'>
-            <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Name</th>
-              <th>Amount</th>
-              <th>Status</th>
-            <tr>
-            </thead>
-            <tbody>
-              `+ trs + `
-            </tbody>
-          <table>
-          `,
-          width: 900
-        })
-      }
-      else if (res.result == 'balance') {
-        trs = ""
-        for (var c of res.customers) {
-          trs += '<tr>'
-          trs += '<td>' + c['name'] + " (" + c['mobile'] + ')</td>'
-          trs += '<td>' + c['order_ids'] + '</td>'
-          trs += '<td>' + c['total'] + '</td>'
-          trs += '<td>' + c['wallet_balance'] + '</td>'
-          trs += '</tr>'
-        }
-        Swal.fire({
-          icon: "warning",
-          html: `
-          <h4>Following customers have insufficient balance. Please remove them from selection:</h4>
-          <table class='table'>
-            <thead>
-            <tr>
-              <th>Name (Mobile)</th>
-              <th>Order IDS</th>
-              <th>Amount</th>
-              <th>Wallet Balance</th>
-            <tr>
-            </thead>
-            <tbody>
-              `+ trs + `
-            </tbody>
-          <table>
-          `,
-          width: 900
-        })
-      }
-      else if (res.result == 'success') {
-        var but = $('#' + res.customers[0].customer_id + '-pbw')
-        but.hide()
-        trs = ""
-        for (var c of res.customers) {
-          trs += '<tr>'
-          trs += '<td>' + c['name'] + " (" + c['mobile'] + ')</td>'
-          trs += '<td>' + c['order_ids'] + '</td>'
-          trs += '<td>' + c['total'] + '</td>'
-          trs += '<td>' + c['wallet_balance'] + '</td>'
-          trs += '<td>' + c['status'] + '</td>'
-          if (c['status'] == 'success') {
-            trs += '<td><button class="btn btn-sm btn-success">button</button></td>'
-          }
-          trs += '</tr>'
-        }
-        Swal.fire({
-          icon: "success",
-          html: `
-          <table class='table'>
-            <thead>
-            <tr>
-              <th>Name (Mobile)</th>
-              <th>Order ID</th>
-              <th>Amount Paid</th>
-              <th>Current Balance</th>
-              <th>Result</th>
-            <tr>
-            </thead>
-            <tbody>
-              `+ trs + `
-            </tbody>
-          <table>
-          `,
-          width: 1100
-        })
-      }
-      else if (res.result == 'check') {
-        trs = ""
-        for (var c of res.customers) {
-          trs += '<tr>'
-          trs += '<td>' + c['name'] + " (" + c['mobile'] + ')</td>'
-          trs += '<td>' + c['order_ids'] + '</td>'
-          trs += '<td>' + c['total'] + '</td>'
-          trs += '<td>' + c['wallet_balance'] + '</td>'
-          trs += '</tr>'
-        }
-        Swal.fire({
-          icon: "warning",
-          html: `
-          <h4>Do you want to pay for these orders by wallet? (Yes / No)</h4>
-          <table class='table'>
-            <thead>
-            <tr>
-              <th>Name (Mobile)</th>
-              <th>Order ID</th>
-              <th>Total Amount</th>
-              <th>Current Balance</th>
-            <tr>
-            </thead>
-            <tbody>
-              `+ trs + `
-            </tbody>
-          <table>
-          `,
-          width: 1100,
-          confirmButtonText: 'Yes &rarr;',
-          cancelButtonText: 'No',
-          showCancelButton: true,
-        }).then((result) => {
-          if (result.isConfirmed) {
-            payByWallet(inp_select_v)
-          }
-        })
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Got Error Please Recheck Orders!"
-        })
-      }
-    },
-    error: function () {
-      Swal.fire({
-        icon: "error",
-        title: "Got Error Please Recheck Orders!"
-      })
-    }
-  })
-
-}
 
 function gen_multipayment(id, c_id, amount, name, phone, balance, type) {
   $.ajax({
@@ -1554,27 +1467,24 @@ function genMultipleLinks() {
     url: "/multiple_links",
     data: { 'order_ids': inp_select_v },
     success: function (res) {
-      if (res.status == 'paid') {
+      if (res.status == 'errors') {
+        console.log(res);
         trs = ""
-        for (var o of res.orders) {
+        for (var o in res.orders) {
           trs += '<tr>'
-          trs += '<td>' + o['id'] + '</td>'
-          trs += '<td>' + o['billing']['first_name'] + '</td>'
-          trs += '<td>' + o['total'] + '</td>'
-          trs += '<td>' + o['status'] + '</td>'
+          trs += '<td>' + o + '</td>'
+          trs += '<td class="text-danger">' + res.orders[o] + '</td>'
           trs += '</tr>'
         }
         Swal.fire({
           icon: "warning",
+          title: "There are some errors in orders. Please check following orders.",
           html: `
-          <h4>Following orders are already paid. Please remove them from selection:</h4>
           <table class='table'>
             <thead>
             <tr>
               <th>Order ID</th>
-              <th>Name</th>
-              <th>Amount</th>
-              <th>Status</th>
+              <th>Errors</th>
             <tr>
             </thead>
             <tbody>
@@ -1584,39 +1494,7 @@ function genMultipleLinks() {
           `,
           width: 900
         })
-      }
-      else if (res.status == 'vendor') {
-        trs = ""
-        for (var o of res.orders) {
-          trs += '<tr>'
-          trs += '<td>' + o['id'] + '</td>'
-          trs += '<td>' + o['billing']['first_name'] + '</td>'
-          trs += '<td>' + o['total'] + '</td>'
-          trs += '<td>' + o['status'] + '</td>'
-          trs += '</tr>'
-        }
-        Swal.fire({
-          icon: "warning",
-          html: `
-          <h4>Following orders are without vendor. Please assign them vendor:</h4>
-          <table class='table'>
-            <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Name</th>
-              <th>Amount</th>
-              <th>Status</th>
-            <tr>
-            </thead>
-            <tbody>
-              `+ trs + `
-            </tbody>
-          <table>
-          `,
-          width: 900
-        })
-      }
-      else if (res.status == 'popup') {
+      }else if (res.status == 'popup') {
         trs = ""
         for (var o of res.customers) {
           btns = ''
@@ -1678,3 +1556,149 @@ function genMultipleLinks() {
   })
 }
 
+function moveToProcessing(id, payment_method) {
+  if (payment_method == undefined) {
+    $('#exampleModal').modal({
+      show: true
+    })
+    $(".modal-body").html(`
+      <h3 class="text-center font-weight-bold">Select Payment Method</h3>
+      <div class="justify-content-center mt-3">
+      <center class"mt-3">
+      <button onclick="moveToProcessing('`+ id + `','Wallet payment')" class="btn btn-success btn-lg">Wallet payment</button>
+      <button onclick="moveToProcessing('`+ id + `','Pre-paid')" class="btn btn-success btn-lg">Pre-paid</button>
+      <button onclick="moveToProcessing('`+ id + `','Pay Online on Delivery')" class="btn btn-success btn-lg">Pay Online on Delivery</button>
+      <button onclick="moveToProcessing('`+ id + `','Other')" class="btn btn-success btn-lg">Cash</button>
+      </center>
+      </div>
+    `)
+    return ""
+  }
+  $('#exampleModal').modal('hide')
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+  $.ajax({
+    type: "GET",
+    crossDomain: true,
+    dataType: "json",
+    url: '/movetoprocessing/' + id + "/" + payment_method,
+    success: function (res) {
+      if (res.result == 'success') {
+        Swal.fire({
+          title: "Success, Order moved to processing!",
+          icon: "success",
+        });
+        $('#order-' + id).hide()
+      } else {
+        Swal.fire({
+          title: "Errors, Can't move to processing!",
+          icon: "error",
+        });
+      }
+    },
+    error: function () {
+      Swal.fire({
+        title: "Errors, Can't move to processing!",
+        icon: "error",
+      });
+    }
+  });
+}
+
+
+function copyToClipboard(id) {
+  $.nok({
+          message: "Processing Your Request!",
+          type: "success",
+        });
+
+  $.ajax({
+    type: "GET",
+    crossDomain: true,
+    dataType: "json",
+    url: "/get_copy_messages/" + id.toString(),
+    success: function (res) {
+      if (res.status == 'errors') {
+            console.log(res);
+            trs = ""
+            for (var o in res.orders) {
+              trs += '<tr>'
+              trs += '<td>' + o + '</td>'
+              trs += '<td class="text-danger">' + res.orders[o] + '</td>'
+              trs += '</tr>'
+            }
+            Swal.fire({
+              icon: "warning",
+              title: "There are some errors in orders. Please check following orders.",
+              html: `
+              <table class='table'>
+                <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Errors</th>
+                <tr>
+                </thead>
+                <tbody>
+                  `+ trs + `
+                </tbody>
+              <table>
+              `,
+              width: 900
+            })
+          }
+      else if (res.status == 'success') {
+        var input = document.body.appendChild(document.createElement("textarea"));
+        input.value = res.text;
+        input.select();
+        var status = document.execCommand("copy");
+        input.parentNode.removeChild(input);
+        if (status) {
+          $.nok({
+            message: "Success, Message Copied!",
+            type: "success",
+          });
+        } else {
+          if (res.text.length > 0) {
+            Swal.fire({
+              html: `
+          <pre>
+          <div style='text-align: left;'>
+<b class='text-danger'>There are some problem in flask panel, please copy manualy</b>
+
+`+ res.text + `
+</pre>
+</div>
+          `,
+              width: 700,
+              backdrop: `
+            rgba(0,0,123,0.4)
+          `
+            })
+          } else {
+            $.nok({
+              message: "Error, Message Not Copied!",
+              type: "error",
+            });
+          }
+        }
+      } else {
+        $.nok({
+          message: "Error, Message Not Copied!",
+          type: "error",
+        });
+      }
+    },
+    error: function (res) {
+      $.nok({
+        message: "API Error, Message Not Sent!",
+        type: "error",
+      });
+    },
+  });
+  
+}
