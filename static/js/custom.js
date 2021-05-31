@@ -680,7 +680,6 @@ function genSubscriptionLink(id) {
         url: "/genSubscriptionLink/" + id + "/" + amount,
         success: function (res) {
           if (res.result == "success") {
-            console.log(res);
             return res
           } else {
             Swal.showValidationMessage(
@@ -915,7 +914,6 @@ function sendWMessages(name) {
           if (res.result == 'success') {
             trtext = ""
             for (var o of res.results) {
-              console.log(o);
               if (["success", "PENDING", "SENT", true].includes(o.result)) {
                 updateSpan(o.order_id, o.template_name, 'text-success')
               } else {
@@ -1008,7 +1006,6 @@ function sendWMessages(name) {
 }
 
 function sendWPaymentLink(id, phone_number, order_type) {
-  console.log(id, phone_number, order_type);
   $.nok({
     message: "Processing Your Request Please Wait!",
     type: "success",
@@ -1337,7 +1334,6 @@ function payByCash(inp_s_v) {
 }
 
 function payByWallet(inp_s_v) {
-  console.log(inp_s_v)
   var inp_select = $('#select_inps')
   var ischecked = ''
   if (inp_s_v == undefined) {

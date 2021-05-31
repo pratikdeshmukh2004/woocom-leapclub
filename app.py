@@ -1575,7 +1575,6 @@ def change_order_status():
     orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
     without_payment = list(filter(lambda x: x['status'] in ['processing'] and x['payment_method'] == '', orders))
     paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] in ['razorpay', 'wallet'], orders))
-    print(paid_orders)
     if len(without_payment)>0:
         return {'result': 'vendor', 'orders': without_payment}
     if len(paid_orders)>0 and data['status'][0] == 'paid':
@@ -1590,7 +1589,6 @@ def change_order_status():
         else:
             update_list.append({'id': order['id'], 'status': order['status']})
     updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
-    print(updates)
     for o in updates['update']:
         name = o['billing']['first_name']+" "+o['billing']['last_name']
         message = update_order_status_with_id(o, data['status'][0], 'message')
@@ -1893,7 +1891,6 @@ def customers():
                         wallet_payment += (-1)*float(item["total"])
             total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
         main_unpaid_list[list(c.keys())[0]] = total_amount
-    print("Total time: ", time.time()-m_time)
     return render_template('customers/index.html', page=page, customers=customers, format_mobile = format_mobile, query=args, unpaid_list=main_unpaid_list)
 
 @app.route("/customers/<string:id>")
