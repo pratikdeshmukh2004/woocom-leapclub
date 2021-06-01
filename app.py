@@ -1083,6 +1083,9 @@ def order_details_mini():
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
     orders = wcapi.get("orders", params=params).json()
+    checks = checkBefore(orders, ['payment_null', 'vendor', 'delivery_date','name', 'mobile', 'billing_address', 'shipping_address'])
+    if len(checks)>0:
+        return {'result':'errors', 'orders': checks}
     main_text = ""
     total = 0
     for o in orders:
@@ -1568,11 +1571,12 @@ def change_order_status():
     error_text = ""
     success_text = ""
     orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
-    if data['status'][0] == 'paid':
+    if data['status'][0] == 'tbd' or data['status'][0] == 'delivered':
         checks = checkBefore(orders, ['payment_null','name', 'mobile', 'billing_address', 'shipping_address'])
+        print(checks, "CHecka")
         if len(checks)>0:
             return {'result':'errors', 'orders': checks}
-    elif data['status'][0] == 'tbd' or data['status'][0] == 'delivered':
+    elif data['status'][0] == 'paid':
         checks = checkBefore(orders, ['payment_null','paid', 'vendor', 'delivery_date', 'name', 'mobile', 'billing_address', 'shipping_address'])
         if len(checks)>0:
             return {'result':'errors', 'orders': checks}

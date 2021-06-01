@@ -294,6 +294,35 @@ function copyOrderDetailMini(status) {
     url: "/order_details_mini",
     data: { 'order_ids': inp_select_v, 'status': status },
     success: function (res) {
+      if (res.result == 'errors') {
+        console.log(res);
+        trs = ""
+        for (var o in res.orders) {
+          trs += '<tr>'
+          trs += '<td>' + o + '</td>'
+          trs += '<td class="text-danger">' + res.orders[o] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          title: "There are some errors in orders. Please check following orders.",
+          html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Errors</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+ trs + `
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
+        return ""
+      }
       text = res.result.replace("&amp;", "&")
       var input = document.body.appendChild(document.createElement("textarea"));
       input.value = text;
