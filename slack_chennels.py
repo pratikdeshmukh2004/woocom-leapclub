@@ -5,7 +5,8 @@ CHANNELS = {
     "VENDOR_WISE": "delivery-updates",
     "TAG_USER_ID": "<@U01HP4Q58S2>",
     "DAIRY_NOTIFICATIONS": "dairy-updates",
-    "PAYMENT_NOTIFICATIONS": "payment-notifications"
+    "PAYMENT_NOTIFICATIONS": "payment-notifications",
+    "SESSION_MESSAGES": 'session-messages'
 }
 #
 # # This dict is for testing....
@@ -15,5 +16,6 @@ CHANNELS = {
 #     "VENDOR_WISE": "flask-bot",
 #     "TAG_USER_ID": "",
 #     "DAIRY_NOTIFICATIONS": "flask-bot",
-#     "PAYMENT_NOTIFICATIONS": "flask-bot"
+#     "PAYMENT_NOTIFICATIONS": "flask-bot",
+#     "SESSION_MESSAGES": 'session-messages'
 # }
