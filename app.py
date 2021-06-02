@@ -1857,8 +1857,9 @@ def send_payment_link_wt(id):
 
 def list_unpaid_amounts(customers):
     def _get_unpaid_orders(c):
-        params = {'customer': c['id'], 'status': 'tbd-unpaid, delivered-unpaid', 'per_page': 100}
+        params = {'customer': c['id'], 'status': 'tbd-unpaid, delivered-unpaid, processing', 'per_page': 100}
         orders = wcapi.get("orders", params=params).json()
+        orders = list(filter(lambda x: x['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (x['status'] == 'processing' and x['payment_method_title'] == 'Pay Online on Delivery'), orders))
         return {str(c['id']): orders}
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(_get_unpaid_orders, customers)
@@ -1899,7 +1900,29 @@ def customers():
 def customers_show(id):
     customer = wcapi.get("customers/"+id).json()
     transactions = wcapiw.get('wallet/'+id).json()
-    return render_template('customers/show.html', customer=customer, transactions=transactions)
+    unpaid_orders = list_unpaid_amounts([customer])
+    unpaid_orders = unpaid_orders[0][str(customer['id'])]
+    payment_links = {}
+    for o in unpaid_orders:
+        o["vendor"], manager, o['delivery_date'], order_note,  = get_meta_data(o)
+        wallet_payment = 0
+        refunds = 0
+        for r in o["refunds"]:
+            refunds = refunds + float(r["total"])
+        o["total_refunds"] = refunds*-1
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment += (-1)*float(item["total"])
+        o["wallet_payment"] = wallet_payment
+        o["total"] = float(o["total"]) + float(o["wallet_payment"])
+        payment_link = PaymentLinks.query.filter_by(order_id=o["id"]).all()
+        if len(payment_link) > 0:
+            payment_link = payment_link[-1]
+        else:
+            payment_link = ''
+        payment_links[o["id"]] = payment_link
+    return render_template('customers/show.html', customer=customer, transactions=transactions, unpaid_orders=unpaid_orders, admin_url=app.config['ADMIN_PANEL_URL'], payment_links=payment_links)
 
 @app.route("/wallet", methods=['POST'])
 def handelWallet():

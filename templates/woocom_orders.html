@@ -173,7 +173,7 @@
     {% endif %}
     {%if nav_active in ['processing', 'tbd-paid, tbd-unpaid'] or tab in ['vendor_orders', 'woocom_orders']%}
     <select id="select_inps" data-live-search="true" data-actions-box="true" multiple required title="Order ID"
-      name="order_ids" class="selectpicker mr-2">
+      name="order_ids" class="selectpicker mr-2 input">
       {% for o in orders %}
       <option value="{{o.id}}">{{o.id}} - {{ o.billing.first_name}} -
         {{o.vendor}}
@@ -248,6 +248,11 @@
         class="btn btn-info ml-2">Pay By Wallet</button>
       <button onclick="payByCash()" type="button"
         class="btn btn-info ml-2">Pay By Cash</button>
+    {%endif%}
+    {%if nav_active in ['failed, pending']%}
+    <button onclick="moveToProcessing()" title="Move to Processing" class="btn btn-info ml-2 button" 
+    >Move to processing
+    </button>
     {%endif%}
   </form>
   {%if nav_active == 'any'%}
@@ -382,9 +387,6 @@
               ">Confirm
               </button>
               {% endif %}
-              <button onclick="moveToProcessing('{{o.id}}')" title="Move to Processing" class="btn btn-success btn-sm" 
-              >Move to processing
-              </button>
             {% endif %}
           </div>
         </td>
