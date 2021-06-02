@@ -489,7 +489,6 @@ function copySupplierMessage(status) {
 
 
 function payByWallet(inp_s_v) {
-  console.log(inp_s_v)
   var inp_select = $('#select_inps')
   var ischecked = ''
   if (inp_s_v == undefined) {
