@@ -23,7 +23,7 @@ from slack import WebClient
 from slack_bot import send_slack_message_, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
 from flask_crontab import Crontab
 from slack_chennels import CHANNELS
-from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance
+from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance, checkBefore
 
 # Configuration and importing secrets....
 app = Flask(__name__, instance_relative_config=True)
@@ -788,16 +788,17 @@ def gen_payment_link(order_id):
         return redirect(url_for('login'))
     args = request.args.to_dict(flat=True)
     o = wcapi.get("orders/"+order_id).json()
-    vendor, manager, delivery_date, order_note  = get_meta_data(o)
-    if vendor == "":
-        return {'result': 'vendor'}
+    checks = checkBefore([o], ['pay_on', 'other_status','paid', 'payment_null', 'vendor', 'delivery_date','name', 'mobile', 'billing_address', 'shipping_address'])
+    if len(checks)>0:
+        return {'result':'errors', 'orders': checks}
+
     orders = list_orders_with_status_N2(wcapi, {'status': 'tbd-unpaid, delivered-unpaid, processing', 'customer': o['customer_id']})
     orders = list(filter(lambda x: x['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (x['status'] == 'processing' and x['payment_method_title'] == 'Pay Online on Delivery'), orders))
-    balance = wcapiw.get("current_balance/"+str(o["customer_id"])).text[1:-1]
     if len(orders)>1 and 'check' not in args:
         return jsonify({"result": 'check', 'orders':orders})
     elif o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] in ['Pre-paid', 'Wallet payment']) :
         return jsonify({'result': 'paid'})
+    balance = wcapiw.get("current_balance/"+str(o["customer_id"])).text[1:-1]
     wallet_payment = 0
     s_for_r = ""
     if len(o["fee_lines"]) > 0:
@@ -1058,15 +1059,9 @@ def order_details():
     params["include"] = get_list_to_string(data["order_ids"])
     c_time = time.time()
     orders = wcapi.get("orders", params=params).json()
-    missing = {'delivery_date': False, 'vendor': False}
-    for o in orders:
-        vendor, manager, delivery_date, order_note,  = get_meta_data(o)
-        if vendor == "":
-            missing['vendor'] = True
-        if delivery_date == "":
-            missing['delivery_date'] = True
-    if True in list(missing.values()):
-        return {'result': 'missing', 'missings': missing}
+    checks = checkBefore(orders, ['payment_null', 'vendor', 'delivery_date','name', 'mobile', 'billing_address', 'shipping_address'])
+    if len(checks)>0:
+        return {'result':'errors', 'orders': checks}
     print("Time to fetch orders: ", time.time()-c_time)
     c_time = time.time()
     orders = get_orders_with_messages_without(orders, wcapi)
@@ -1088,6 +1083,9 @@ def order_details_mini():
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
     orders = wcapi.get("orders", params=params).json()
+    checks = checkBefore(orders, ['payment_null', 'vendor', 'delivery_date','name', 'mobile', 'billing_address', 'shipping_address'])
+    if len(checks)>0:
+        return {'result':'errors', 'orders': checks}
     main_text = ""
     total = 0
     for o in orders:
@@ -1155,9 +1153,9 @@ def multiple_links():
     if len(order_id) == 0:
         return ""
     orders = wcapi.get("orders", params={'include': ", ".join(order_id)}).json()
-    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or (x['status'] == 'processing' and x['payment_method'] in  ['razorpay', 'wallet']), orders))
-    if len(paid_orders)>0:
-        return {'status': 'paid', 'orders': paid_orders}
+    checks = checkBefore(orders, ['pay_on', 'other_status','paid', 'payment_null', 'vendor', 'delivery_date','name', 'mobile', 'billing_address', 'shipping_address'])
+    if len(checks)>0:
+        return {'status':'errors', 'orders': checks}
     customers = []
     customer_list = {}
     without_vendor = []
@@ -1573,12 +1571,16 @@ def change_order_status():
     error_text = ""
     success_text = ""
     orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
-    without_payment = list(filter(lambda x: x['status'] in ['processing'] and x['payment_method'] == '', orders))
-    paid_orders = list(filter(lambda x: x['status'] in ['tbd-paid', 'completed'] or x['payment_method'] in ['razorpay', 'wallet'], orders))
-    if len(without_payment)>0:
-        return {'result': 'vendor', 'orders': without_payment}
-    if len(paid_orders)>0 and data['status'][0] == 'paid':
-        return {'result': 'paid', 'result_list': paid_orders}
+    if data['status'][0] == 'tbd' or data['status'][0] == 'delivered':
+        checks = checkBefore(orders, ['payment_null','name', 'mobile', 'billing_address', 'shipping_address'])
+        print(checks, "CHecka")
+        if len(checks)>0:
+            return {'result':'errors', 'orders': checks}
+    elif data['status'][0] == 'paid':
+        checks = checkBefore(orders, ['payment_null','paid', 'vendor', 'delivery_date', 'name', 'mobile', 'billing_address', 'shipping_address'])
+        if len(checks)>0:
+            return {'result':'errors', 'orders': checks}
+
     update_list = []
     wallet_refund = []
     for order in orders:
@@ -1594,7 +1596,7 @@ def change_order_status():
         message = update_order_status_with_id(o, data['status'][0], 'message')
         wallet_payment = 0
         if len(o["fee_lines"]) > 0:
-            for item in oct(i)["fee_lines"]:
+            for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
                     wallet_payment = (-1)*float(item["total"])
         o['total']= float(o['total'])+wallet_payment
@@ -1629,8 +1631,9 @@ def get_copy_messages(id):
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
-        if vendor == "" or delivery_date == "":
-            return {'status': 'missing', 'missings': {'vendor': False if vendor !="" else True, 'delivery_date': False if delivery_date != "" else True}}
+        checks = checkBefore([o], ['payment_null','vendor', 'delivery_date', 'name', 'mobile', 'billing_address', 'shipping_address'])
+        if len(checks)>0:
+            return {'status':'errors', 'orders': checks}       
         if delivery_date:
             try:
                 dt = datetime.strptime(delivery_date, '%Y-%m-%d')
@@ -1952,9 +1955,9 @@ def payByWallet():
     data = request.form.to_dict(flat=False)
     args = request.args.to_dict(flat=True)
     orders = wcapi.get("orders", params={'include': ", ".join(data['ids[]']), 'per_page': 50}).json()
-    paid_orders = list(filter(lambda o: o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method'] == 'razorpay'), orders))
-    if len(paid_orders)>0:
-        return {'result': 'paid','orders': paid_orders}
+    checks = checkBefore(orders, ['payment_null','paid', 'wallet', 'vendor', 'delivery_date', 'name', 'mobile', 'billing_address', 'shipping_address'])
+    if len(checks)>0:
+        return {'result':'errors', 'orders': checks}
     customer_orders = {}
     customers = []
     for o in orders:
@@ -2014,7 +2017,7 @@ def payByWallet():
     else:
         return {'result': 'check', 'customers': customers}
 
-
+                
 @app.route("/payByCash", methods=['POST'])
 def payByCash():
     data = request.form.to_dict(flat=False)
@@ -2033,7 +2036,13 @@ def payByCash():
     update_list = wcapi_write.post("orders/batch", {"update": updates}).json()
     return {'result': 'success', 'orders': update_list['update']}
 
-
+@app.route("/movetoprocessing/<string:id>/<string:payment_method>")
+def movetoprocessing(id, payment_method):
+    p_m = {"Wallet payment": 'wallet', "Pre-paid": 'razorpay', "Pay Online on Delivery": 'cod', "Other": 'other'}
+    u_order = wcapi.put("orders/"+id, {'status': 'processing', 'payment_method_title': payment_method, 'payment_method': p_m[payment_method]}).json()
+    if 'id' not in u_order.keys():
+        return {'result': 'error','error': 'error while adding fee!'}
+    return{'result': 'success'}
 
 if __name__ == "__main__":
     db.create_all()
