@@ -1450,8 +1450,14 @@ function payByCash(inp_s_v) {
 
 }
 
-
 function gen_multipayment(id, c_id, amount, name, phone, balance, type) {
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
   $.ajax({
     type: "POST",
     crossDomain: true,
@@ -1463,20 +1469,137 @@ function gen_multipayment(id, c_id, amount, name, phone, balance, type) {
         $('#status-' + c_id).append('<b class="text-success ml-2 mr-1">' + res.result + " Link: " + res.short_url + '</b>')
         if (type == undefined) {
           $('#' + c_id + '-gpm').hide()
+          Swal.fire({
+          showConfirmButton: false,
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading()
+          },
+          timer: 500
+        })
         } else {
           $('#' + c_id + '-gpmw').hide()
+          if (type == 'remove'){
+            Swal.fire({
+            title: balance + " adjusted from wallet and payment link generated of Rs."+amount,
+            icon: "success"
+          })
+          }else{
+            Swal.fire({
+          showConfirmButton: false,
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading()
+          },
+          timer: 500
+        })
+          }
         }
       } else {
         $('#status-' + c_id).append('<b class="text-danger ml-2">Error</b>')
-
+        Swal.fire({
+          showConfirmButton: false,
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading()
+          },
+          timer: 500
+        })
       }
 
     },
     error: function () {
       $('#status-' + c_id).append('<b class="text-danger ml-2">Error</b>')
+      Swal.fire({
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+        timer: 500
+      })
     }
   })
 }
+
+function moveToProcessing(payment_method) {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val().join()
+  if (payment_method == undefined) {
+    $('#exampleModal').modal({
+      show: true
+    })
+    $(".modal-body").html(`
+      <h3 class="text-center font-weight-bold">Select Payment Method</h3>
+      <div class="justify-content-center mt-3">
+      <center class"mt-3">
+      <button type='button' onclick="moveToProcessing('Wallet payment')" class="btn btn-success btn-lg">Wallet payment</button>
+      <button type='button' onclick="moveToProcessing('Pre-paid')" class="btn btn-success btn-lg">Pre-paid</button>
+      <button type='button' onclick="moveToProcessing('Pay Online on Delivery')" class="btn btn-success btn-lg">Pay Online on Delivery</button>
+      <button type='button' onclick="moveToProcessing('Other')" class="btn btn-success btn-lg">Cash</button>
+      </center>
+      </div>
+    `)
+    return ""
+  }
+  $('#exampleModal').modal('hide')
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+  $.ajax({
+    type: "GET",
+    crossDomain: true,
+    dataType: "json",
+    url: '/movetoprocessing/' + inp_select_v + "/" + payment_method,
+    success: function (res) {
+      if (res.result == 'success') {
+        Swal.fire({
+          title: "Success, Orders moved to processing!",
+          icon: "success",
+        });
+        location.reload()
+      } else {
+        trs = ""
+        for (var o in res.orders) {
+          trs += '<tr>'
+          trs += '<td>' + o + '</td>'
+          trs += '<td class="text-danger">' + res.orders[o] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          title: "There are some errors in orders. Please check following orders.",
+          html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Errors</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+ trs + `
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
+      }
+    },
+    error: function () {
+      Swal.fire({
+        title: "Errors, Can't move to processing!",
+        icon: "error",
+      });
+    }
+  });
+}
+
+
 
 function genMultipleLinks() {
   var inp_select = $('#select_inps')
@@ -1496,7 +1619,6 @@ function genMultipleLinks() {
     data: { 'order_ids': inp_select_v },
     success: function (res) {
       if (res.status == 'errors') {
-        console.log(res);
         trs = ""
         for (var o in res.orders) {
           trs += '<tr>'
@@ -1534,7 +1656,7 @@ function genMultipleLinks() {
             if (o.genm) {
               type = 'remove'
             }
-            btns = `<button id="` + o.customer_id + `-gpmw" onclick="gen_multipayment('` + o.order_id + `','` + o.customer_id + `', '` + (parseFloat(o.total) - parseFloat(o.wallet_balance)) + `','` + o.name + `','` + o.phone + `','` + o.wallet_balance + `','` + type + `')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + (parseFloat(o.total) - parseFloat(o.wallet_balance)).toString() + `</button>`
+            btns = `<button id="` + o.customer_id + `-gpmw" onclick="gen_multipayment('` + o.order_id + `','` + o.customer_id + `', '` + (parseFloat(o.total) - parseFloat(o.wallet_balance)).toFixed(2) + `','` + o.name + `','` + o.phone + `','` + o.wallet_balance + `','` + type + `')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + (parseFloat(o.total) - parseFloat(o.wallet_balance)).toFixed(2) + `</button>`
           }
           trs += '<tr>'
           trs += '<td>' + o['name'] + ' (' + o['phone'] + ')</td>'
@@ -1584,59 +1706,6 @@ function genMultipleLinks() {
   })
 }
 
-function moveToProcessing(id, payment_method) {
-  if (payment_method == undefined) {
-    $('#exampleModal').modal({
-      show: true
-    })
-    $(".modal-body").html(`
-      <h3 class="text-center font-weight-bold">Select Payment Method</h3>
-      <div class="justify-content-center mt-3">
-      <center class"mt-3">
-      <button onclick="moveToProcessing('`+ id + `','Wallet payment')" class="btn btn-success btn-lg">Wallet payment</button>
-      <button onclick="moveToProcessing('`+ id + `','Pre-paid')" class="btn btn-success btn-lg">Pre-paid</button>
-      <button onclick="moveToProcessing('`+ id + `','Pay Online on Delivery')" class="btn btn-success btn-lg">Pay Online on Delivery</button>
-      <button onclick="moveToProcessing('`+ id + `','Other')" class="btn btn-success btn-lg">Cash</button>
-      </center>
-      </div>
-    `)
-    return ""
-  }
-  $('#exampleModal').modal('hide')
-  Swal.fire({
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading()
-    },
-  })
-  $.ajax({
-    type: "GET",
-    crossDomain: true,
-    dataType: "json",
-    url: '/movetoprocessing/' + id + "/" + payment_method,
-    success: function (res) {
-      if (res.result == 'success') {
-        Swal.fire({
-          title: "Success, Order moved to processing!",
-          icon: "success",
-        });
-        $('#order-' + id).hide()
-      } else {
-        Swal.fire({
-          title: "Errors, Can't move to processing!",
-          icon: "error",
-        });
-      }
-    },
-    error: function () {
-      Swal.fire({
-        title: "Errors, Can't move to processing!",
-        icon: "error",
-      });
-    }
-  });
-}
 
 
 function copyToClipboard(id) {

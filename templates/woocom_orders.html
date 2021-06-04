@@ -246,11 +246,13 @@
     {%if nav_active in ['delivered-unpaid, completed', 'processing', 'tbd-paid, tbd-unpaid']%}
       <button onclick="payByWallet()" type="button"
         class="btn btn-info ml-2">Pay By Wallet</button>
+      {%if nav_active not in ['processing']%}
       <button onclick="payByCash()" type="button"
         class="btn btn-info ml-2">Pay By Cash</button>
     {%endif%}
+    {%endif%}
     {%if nav_active in ['failed, pending']%}
-    <button onclick="moveToProcessing()" title="Move to Processing" class="btn btn-info ml-2 button" 
+    <button type="button" onclick="moveToProcessing()" title="Move to Processing" class="btn btn-info ml-2 button" 
     >Move to processing
     </button>
     {%endif%}
@@ -402,8 +404,8 @@
         {% else %}
         <td scope="row">Unpaid ({{ o.payment_method_title}})</td>
         {% endif %}
-        <td scope="row">{{ o.total}} ({{ o.total_refunds}})</td>
-        <td scope="row">{{ o.total-o.total_refunds-o.wallet_payment}}</td>
+        <td scope="row">{{ o.total+(o.shipping_total | float)}} ({{ o.total_refunds}})</td>
+        <td scope="row">{{ (o.total-o.total_refunds-o.wallet_payment) | round(2)}}</td>
         <td scope="row">
           <div class="wtmessage-{{o.id}}" style="max-height: 100px; overflow-y: scroll;">
             {% for wt in wtmessages_list[o.id]%}

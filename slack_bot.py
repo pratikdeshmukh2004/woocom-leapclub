@@ -13,6 +13,8 @@ def get_total_from_params(wcapi, params):
 
 
 def send_slack_message_(client, wcapi, o):
+    if float(o['shipping_total']) == 0:
+        return ""
     params = {'per_page': 100}
     params['status'] = "processing, tbd-unpaid, tbd-paid, delivered-unpaid, completed"
     params['customer'] = int(o['customer_id'])

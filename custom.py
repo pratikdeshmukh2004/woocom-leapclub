@@ -439,7 +439,7 @@ def get_csv_from_orders(orders, wcapi):
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if item["name"] == "Via wallet":
-                    wallet_payment = (-1)*float(item["total"])
+                    wallet_payment += (-1)*float(item["total"])
                     break
         o["total"] = float(o["total"]) + float(wallet_payment)
         refunds = []
@@ -490,7 +490,7 @@ def get_csv_from_vendor_orders(orders, wcapi):
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if item["name"] == "Via wallet":
-                    wallet_payment = (-1)*float(item["total"])
+                    wallet_payment += (-1)*float(item["total"])
                     break
         o["total"] = float(o["total"]) + float(wallet_payment)
         refunds = []

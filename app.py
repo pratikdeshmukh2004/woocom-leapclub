@@ -453,8 +453,7 @@ def download_csv():
                 refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
             o['line_items_text'] = list_order_items_csv(
                 o["line_items"], refunds, wcapi, product_list).replace("&amp;", "&")
-            o['total_text'] = get_totals(
-                o["total"], refunds)+get_shipping_total_for_csv(o)
+            o['total_text'] = get_total_from_line_items(o["line_items"])
         print("Time to fetch line_items and refunds: ", time.time()-c_time)
         c_time = time.time()
         response = requests.post(
@@ -642,7 +641,7 @@ def new_order():
     if len(o["fee_lines"]) > 0:
         for item in o["fee_lines"]:
             if "wallet" in item["name"].lower():
-                wallet_payment = (-1)*float(item["total"])
+                wallet_payment += (-1)*float(item["total"])
     o["total"] = float(o["total"]) + float(wallet_payment)
     params["c_name"] = o["billing"]["first_name"]
     params["order_id"] = o["id"]
@@ -1095,7 +1094,7 @@ def order_details_mini():
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
-                    wallet_payment = (-1)*float(item["total"])
+                    wallet_payment += (-1)*float(item["total"])
         total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -1287,6 +1286,7 @@ def send_session_m_st(order_id, vendor, order_note):
     order[0]['c_msg'] = "Hi,\n\nYour "+vendor_type[vendor] + \
         " order will be delivered today. Let us know if everything meets your expectations.\n\n" + \
         order_note_t+order[0]['c_msg']
+    order[0]['c_msg'] = order[0]['c_msg'].replace('&', 'and')
     mobile_number = mobile_number[-10:]
     mobile_number = (
         "91"+mobile_number) if len(mobile_number) == 10 else mobile_number
@@ -1393,7 +1393,7 @@ def send_whatsapp_messages_m(name):
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
-                    wallet_payment = (-1)*float(item["total"])
+                    wallet_payment += (-1)*float(item["total"])
         if vendor in vendor_type.keys():
             o["vendor_type"] = vendor_type[vendor]
         else:
@@ -1597,7 +1597,7 @@ def change_order_status():
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
-                    wallet_payment = (-1)*float(item["total"])
+                    wallet_payment += (-1)*float(item["total"])
         o['total']= float(o['total'])+wallet_payment
         refund_s = "NO"
         if 'error' in o:
@@ -2060,6 +2060,11 @@ def payByCash():
 
 @app.route("/movetoprocessing/<string:id>/<string:payment_method>")
 def movetoprocessing(id, payment_method):
+    orders = wcapi.get("orders", params={'include': id, 'per_page': 50}).json()
+    checks = checkBefore(orders, ['payment_null', 'vendor', 'name', 'mobile', 'billing_address', 'shipping_address'])
+    if len(checks)>0 or len(orders)==0:
+        return {'result':'errors', 'orders': checks}
+    order_ids = id.split(",")
     p_m = {"Wallet payment": 'wallet', "Pre-paid": 'razorpay', "Pay Online on Delivery": 'cod', "Other": 'other'}
     u_order = wcapi_write.put("orders/"+id, {'status': 'processing', 'payment_method_title': payment_method, 'payment_method': p_m[payment_method]}).json()
     if 'id' not in u_order.keys():
