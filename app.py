@@ -1,6 +1,7 @@
 import re
 from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response, g, session
-from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy, model
+import sqlalchemy
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
@@ -113,8 +114,6 @@ class PaymentLinks(db.Model):
     name = db.Column(db.String)
     created_at = db.Column(db.String)
     amount = db.Column(db.Float)
-
-
 
 # Handle 404 Not Found error it will return a web page...
 @app.errorhandler(404)
@@ -912,11 +911,13 @@ def razorpay():
                         response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", 'Error while adding money to wallet of '+customer['first_name']+" "+customer['last_name'])
             else:
                 mobile = e['payload']['payment']['entity']['contact']
+                c_amount = e['payload']['payment']['entity']['amount']
                 receipt = e['payload']['order']['entity']['receipt']
                 order_id = receipt[5:].split(
                     "-")[0]
                 if order_id in ["", " "] or "Leap"  not in receipt:
-                    send_slack_message(client, "PAYMENT_NOTIFICATIONS", "Got empty order id in these receipt: {}".format(receipt))
+                    txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {}".format(c_amount, mobile, receipt)
+                    response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", txt_msg)
                     return "Invalid order id..."
                 invoice_id = e['payload']['invoice']['entity']['id']
                 orders = wcapi.get("orders", params={"include": order_id})
@@ -924,7 +925,8 @@ def razorpay():
                     orders = orders.json()
                     orders2 = order_id.split(", ")
                     if len(orders)==0 or len(orders) != len(orders2):
-                        send_slack_message(client, "PAYMENT_NOTIFICATIONS", "Invalid orders are there in these receipt: {}".format(receipt))
+                        txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {}".format(c_amount, mobile, receipt)
+                        response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", txt_msg)
                         return {'status': 'error no orders'}
                     order = orders[0]
                     name = order['billing']['first_name']
@@ -942,11 +944,11 @@ def razorpay():
                             vendor_t = vendor_type[vendor_name]
                         status = update_order_status(order, invoice_id, wcapi_write)
                         if status == 'already':
-                            txt_msg = "These orders are already marked as paid in admin panel: "+order_id
+                            txt_msg = "These orders are already marked as paid in admin panel: {} Receipt: {}".format(order_id, receipt)
                         elif status:
-                            txt_msg = "These orders are marked as paid in admin panel: "+order_id
+                            txt_msg = "These orders are marked as paid in admin panel: {} Reciept: {}".format(order_id, receipt)
                         else:
-                            txt_msg = "These orders gave an error while marking them as paid: "+order_id
+                            txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {}".format(c_amount, mobile, receipt)
                         response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", txt_msg)
             return("Done")
         else:
@@ -1196,6 +1198,11 @@ def multiple_links():
 def gen_multipayment():
     data = request.form.to_dict(flat=True)
     wstr = ""
+    orders = wcapi.get("orders", params={'include': data['order_ids']}).json()
+    vendor_t_list = []
+    for o in orders:
+        vendor, manager, delivery_d, order_note,  = get_meta_data(o)
+        vendor_t_list.append(vendor_type[vendor])
     if 'type' in data:
         if data['type'] == 'remove':
             balance = wcapiw.get("current_balance/"+str(data["customer_id"]))
@@ -1240,7 +1247,7 @@ def gen_multipayment():
         p_l.reverse()
         for p in p_l:
             if float(p.amount)/100 == float(data['amount']):
-                return {'result': 'already', 'short_url': p.payment_link_url}
+                return {'result': 'already', 'short_url': p.payment_link_url, 'vendor': ", ".join(vendor_t_list)}
     reciept = reciept if len(payment_links)<=0 else reciept+"-"+str(len(payment_links))
     data['phone'] = format_mobile(data['phone'])
     data1 = {
@@ -1269,7 +1276,7 @@ def gen_multipayment():
             new_payment_link = PaymentLinks(order_id=i, receipt=data1["receipt"], payment_link_url=invoice['short_url'], contact=data['phone'], name=data1["customer"]['name'], created_at=invoice["created_at"], amount=data1['amount'], status=status)
             db.session.add(new_payment_link)
             db.session.commit()
-        return ({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":data['phone']})
+        return ({"result": "success", 'order_ids': o_ids, 'short_url': invoice['short_url'], 'amount': data1['amount'], 'receipt': reciept, "mobile":data['phone'], 'vendor': ", ".join(vendor_t_list)})
     except Exception as e:
         print(e)
         return ({"result": "error", 'mobile': data['phone'], 'receipt':reciept, 'amount': data1['amount']})
@@ -1306,7 +1313,6 @@ def send_session_m_st(order_id, vendor, order_note):
                             broadcast_name="order_detail", status="success", time_sent=datetime.utcnow())
         db.session.add(new_wt)
         db.session.commit()
-        send_slack_message(client, "SESSION_MESSAGES", "*Customer* : {} \n\n {}".format(mobile_number, order[0]["c_msg"]))
     result["template_name"] = 'order_detail'
     result["parameteres"] = [{'name': 'order_id', 'value': str(order_id)}]
     return result
@@ -1373,8 +1379,11 @@ def send_whatsapp_messages_m(name):
     feedback_list = {}
     orders = list_orders_with_status(wcapi, {"include": get_list_to_string(data['order_ids[]'])})
     d_dates = []
+    vendor, manager, delivery_d, order_note,  = get_meta_data(orders[0])
     for o in orders:
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        if delivery_date != delivery_d:
+            return {'result': "error_s",'error_s': "Delivery Date is not Similar"}
         t = datetime.now()
         t = t.strftime('%Y-%m-%d')
         if t != delivery_date:
@@ -2004,10 +2013,10 @@ def payByWallet():
                         wallet_payment += (-1)*float(item["total"])
             total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
             total_payble+=total_amount
-        for c in customers:
-            if c['customer_id'] == c['customer_id']:
-                c['total'] = total_payble
-                c['order_ids'] = ", ".join(list(map(lambda o: str(o['id']), customer_orders[c['customer_id']])))
+        for c_n in customers:
+            if c_n['customer_id'] == c:
+                c_n['total'] = total_payble
+                c_n['order_ids'] = ", ".join(list(map(lambda o: str(o['id']), customer_orders[c_n['customer_id']])))
         if float(c_d['wallet_balance'])<total_payble:
             low_balance.append(c_d)
     if len(low_balance)>0:
@@ -2032,6 +2041,7 @@ def payByWallet():
                     c['status'] = 'success'
                 else:
                     c['status'] = 'error to update order status'
+                c['status'] = 'success'
             else:
                 c['status'] = 'error while adding debitiong amount from walet'
         customers = get_orders_with_wallet_balance(customers, wcapiw)
@@ -2070,6 +2080,117 @@ def movetoprocessing(id, payment_method):
     if 'id' not in u_order.keys():
         return {'result': 'error','error': 'error while adding fee!'}
     return{'result': 'success'}
+
+@app.route("/sendWhatsappSessionTemplate/<string:id>/<string:amount>")
+def sendWhatsappSessionTemplate(id, amount):
+    balance = wcapiw.get("current_balance/"+id).json()
+    customer = wcapi.get("customers/"+id).json()
+    s_msg = "*Your wallet is updated!*\n\nAmount {}: {}\n\nCurrent Wallet Balance: {}\n\nLet us know if you have any queries.".format("debited", amount, balance)
+    mobile_number = format_mobile(customer["billing"]["phone"])
+    url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
+        mobile_number + "?messageText="+s_msg
+    headers = {
+        'Authorization': app.config["WATI_AUTHORIZATION"],
+        'Content-Type': 'application/json',
+    }
+    response = requests.request(
+        "POST", url, headers=headers)
+    result = json.loads(response.text.encode('utf8'))
+    if result["result"] in ["success", "PENDING", "SENT", True]:
+        return {'status': 'success'}
+    else:
+        url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile_number
+        parameters_s = "["
+        args = {'credited_debited': 'debited', 'amount_added': amount, 'wallet_balance': balance}
+        for d in args:
+            parameters_s = parameters_s + \
+                '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
+        parameters_s = parameters_s[:-1]
+        parameters_s = parameters_s+"]"
+        payload = {
+            "template_name": 'wallet_balance',
+            "broadcast_name": 'wallet_balance',
+            "parameters": parameters_s
+        }
+        headers = {
+            'Authorization': app.config["WATI_AUTHORIZATION"],
+            'Content-Type': 'application/json',
+        }
+
+        response = requests.request(
+            "POST", url, headers=headers, data=json.dumps(payload))
+
+        result = json.loads(response.text.encode('utf8'))
+        if result["result"] in ["success", "PENDING", "SENT", True]:
+            return {'status': 'success'}
+
+@app.route("/sendPaymentRemainder", methods=['POST'])
+def sendPaymentRemainder():
+    data = request.form.to_dict(flat=False)
+    args = request.args.to_dict(flat=True)
+    orders = wcapi.get("orders", params={'include': ", ".join(data['ids[]']), 'per_page': 50}).json()
+    checks = checkBefore(orders, ['paid'])
+    if len(checks)>0:
+        return {'result':'errors', 'orders': checks}
+    customers = {}
+    for o in orders:
+        wallet_payment = 0
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment += (-1)*float(item["total"])
+        total_amount = float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1)
+        o['total_payble'] = round(total_amount, 1)
+
+        c_id = str(o['customer_id'])
+        if c_id in customers:
+            customers[c_id].append(o)
+        else:
+            customers[c_id] = [o]
+    customers_list = []
+    for c in customers:
+        total_payble = 0
+        ids = []
+        amount_str = []
+        for o in customers[c]:
+            total_payble+=o['total_payble']
+            ids.append(str(o['id']))
+            amount_str.append(str(o['total_payble']))
+        customers_list.append({'name': '{} {}'.format(o['billing']['first_name'], o['billing']['last_name']), 'mobile': format_mobile(o['billing']['phone']), 'total': total_payble, 'order_ids': ", ".join(ids), 'customer_id': c, 'total_str': ', '.join(amount_str) + " = Rs. "+str(total_payble)})
+    return {'result': 'success', 'customers': customers_list}
+
+
+@app.route("/sendWhatsappSessionTemplateRemainder/<string:id>/<string:amount>/<string:mobile>/<string:order_ids>/<string:amount_str>/<string:name>")
+def sendWhatsappSessionTemplateRemainder(id, amount, mobile, order_ids, amount_str, name):
+    payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+order_ids+"%")).all()
+    if len(payment_links)==0:
+        return {'status': 'errors'}
+    payment_link = payment_links[-1]
+    url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
+    parameters_s = "["
+    args = {'name': name, 'order_id': order_ids, 'total_amount': amount, 'url_post_pay': payment_link.payment_link_url.split("/")[-1]}
+    for d in args:
+        parameters_s = parameters_s + \
+            '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
+    parameters_s = parameters_s[:-1]
+    parameters_s = parameters_s+"]"
+    payload = {
+        "template_name": 'payment_reminder_3',
+        "broadcast_name": 'payment_remainder',
+        "parameters": parameters_s
+    }
+    headers = {
+        'Authorization': app.config["WATI_AUTHORIZATION"],
+        'Content-Type': 'application/json',
+    }
+
+    response = requests.request(
+        "POST", url, headers=headers, data=json.dumps(payload))
+
+    result = json.loads(response.text.encode('utf8'))
+    if result["result"] in ["success", "PENDING", "SENT", True]:
+        return {'status': 'success'}
+
 
 if __name__ == "__main__":
     db.create_all()

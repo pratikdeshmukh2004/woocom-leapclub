@@ -115,8 +115,12 @@
         <td>{{o.delivery_date}}</td>
         <td>{{o.vendor}}</td>
         <td>{{o.payment_method_title}}</td>
-        <td>{{o.total}}</td>
-        <td>{{ o.total-o.total_refunds-o.wallet_payment}}</td>
+        {%if o.shipping_total |float > 0%}
+        <td>{{(o.total - o.shipping_total|float) | round(2)}} + {{o.shipping_total}}</td>
+        {%else%}
+        <td>{{o.total| round(2)}}</td>
+        {%endif%}
+        <td>{{ (o.total-o.total_refunds-o.wallet_payment)|round(2)}}</td>
         <td>
           {% if payment_links[o.id] != ''%}
           {% if payment_links[o.id].status == "success"%}
@@ -141,10 +145,12 @@
 </div>
 <br/>
 <div class="shadow  ml-5 mr-5 pt-3 pb-3">
-  <div class="text-center">
-    <div>
+  <div style="justify-content: center;" class="text-center d-flex pb-2">
+    <div class="ml-3 mr-3 mt-1">
       <h4 class="font-weight-bold">Wallet Transactions</h4>
     </div>
+    <button onclick="MoneyToWallet('{{customer.id}}', 'credit', 'reload')" data-toggle="tooltip" title="Add Money" class="btn btn-success btn-sm mr-3 font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-plus mr-1"></i></button>
+    <button onclick="MoneyToWallet('{{customer.id}}', 'debit', 'reload')" data-toggle="tooltip" title="Reduce Money" class="btn btn-success btn-sm mr-3 font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-minus mr-1"></i></button>
   </div>
   <div class=" pr-2 pl-2" style="overflow-y: scroll; max-height: 600px;" >
   <table class="table">

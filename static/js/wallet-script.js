@@ -1,4 +1,4 @@
-function MoneyToWallet(id, action) {
+function MoneyToWallet(id, action,reload) {
   acc = 'Reduce'
   if (action == 'credit'){
     acc = 'Add'
@@ -29,11 +29,15 @@ function MoneyToWallet(id, action) {
         data: { 'id': id, 'amount': result.value[0], 'action': action, 'details': result.value[1] },
         success: function (res) {
           if (res.result == 'success') {
+            if (reload){
+              location.reload()
+            }else{
             Swal.fire({
               icon: "success",
               title: "Rs " + result.value[0] + " " + action.toUpperCase() + "ED Successfuly!"
             })
             $('#balance-' + id).html("₹ " + res.balance)
+          }
           } else {
             Swal.fire({
               icon: "error",
