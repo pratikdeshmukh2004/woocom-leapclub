@@ -338,6 +338,7 @@ def send_whatsapp_msg(args, mobile, name):
             args["order_note"] = "No changes to the order"
     else:
         args["order_note"] = "No changes to the order"
+    args['order_note'] = args['order_note'].replace("&", 'and')
     for d in args:
         parameters_s = parameters_s + \
             '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
@@ -789,13 +790,10 @@ def gen_payment_link(order_id):
     checks = checkBefore([o], ['pay_on', 'other_status','paid', 'payment_null', 'vendor', 'delivery_date','name', 'mobile', 'billing_address', 'shipping_address'])
     if len(checks)>0:
         return {'result':'errors', 'orders': checks}
-
     orders = list_orders_with_status_N2(wcapi, {'status': 'tbd-unpaid, delivered-unpaid, processing', 'customer': o['customer_id']})
     orders = list(filter(lambda x: x['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (x['status'] == 'processing' and x['payment_method_title'] == 'Pay Online on Delivery'), orders))
     if len(orders)>1 and 'check' not in args:
         return jsonify({"result": 'check', 'orders':orders})
-    elif o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] in ['Pre-paid', 'Wallet payment']) :
-        return jsonify({'result': 'paid'})
     balance = wcapiw.get("current_balance/"+str(o["customer_id"])).text[1:-1]
     wallet_payment = 0
     s_for_r = ""
@@ -805,87 +803,14 @@ def gen_payment_link(order_id):
                 wallet_payment += (-1)*float(item["total"])
     total_amount = float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1)
     total_amount = round(total_amount, 1)
-    if float(balance)>total_amount and 'balance' not in args:
-        return jsonify({'result': 'balance', 'balance': balance, 'total': str(total_amount)})
-    elif float(balance)<total_amount and float(balance)>0 and 'wallet_remove' not in args:
-        return jsonify({'result': 'wallet', 'balance': balance, 'total': str(total_amount)})
-    elif float(balance)<0 and 'wallet_add' not in args:
-        return jsonify({'result': 'wallet_add', 'balance': balance, 'total': str(total_amount)})
-    else:
-        if 'wallet_add' in args:
-            if args['wallet_add'] == 'add':
-                total_amount -=float(balance)
-                s_for_r = '-W_'+balance[1:]
-        elif 'wallet_remove' in args:
-            if args['wallet_remove'] == 'add':
-                refund = wcapiw.post("wallet/"+str(o['customer_id']), data={'type': 'debit', 'amount': float(balance), 'details': 'Debited for  Order ID: #'+str(o['id'])}).json()
-                if refund['response'] == 'success' and refund['id'] != False: 
-                    total_amount -=float(balance)
-                    data = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(balance)*-1)}]}
-                    u_order = wcapi_write.put("orders/"+str(o['id']), data).json()
-                    if 'id' not in u_order.keys():
-                        return {'result': 'error_s','error': 'error while adding fee!'}
-
-                else:
-                    return {'error_s': 'error while debiting amount from wallet!'}
-        elif 'balance' in args:
-            if args['balance'] =='add':
-                refund = wcapiw.post("wallet/"+str(o['customer_id']), data={'type': 'debit', 'amount': total_amount, 'details': 'Debited for  Order ID: #'+str(o['id'])}).json()
-                if refund['response'] == 'success' and refund['id'] != False:
-                    data = {}
-                    data['payment_method'] = 'wallet'
-                    data['payment_method_title'] = 'Wallet payment'
-                    if o['status'] == 'tbd-unpaid':
-                        data['status'] = 'tbd-paid'
-                    elif o['status'] == 'delivered-unpaid':
-                        data['status'] = 'completed'
-                    u_order = wcapi_write.put("orders/"+str(o['id']), data).json()
-                    if 'id' in u_order.keys():
-                        return {'result': 'success_s'}
-                    else:
-                        return {'result': 'error_s','error': 'error while changing order status!'}
-                else:
-                    return {'result': 'error_s','error': 'error while debiting amount from wallet!'}
-    payment_links = PaymentLinks.query.filter_by(order_id=o["id"]).all()
-    counter = 0
-    while counter<len(payment_links):
-        if float(payment_links[counter].amount) == float(total_amount)*100 and 'Leap' in payment_links[counter].receipt and s_for_r == "":
-            return {"text": "Link is already exists","result": "success", 'order_id': o['id'], 'short_url': payment_links[counter].payment_link_url, 'payment': {'amount': payment_links[counter].amount, 'receipt': payment_links[counter].receipt}}
-        counter += 1
-    if len(payment_links)==0:
-        receipt = "Leap "+str(o["id"])
-    else:
-        receipt = "Leap "+str(o["id"])+"-"+str(len(payment_links)+1)
-    data = {
-        "amount": total_amount*100,
-        "receipt": receipt+s_for_r,
-        "customer": {
-            "name": o["shipping"]["first_name"] + " " + o["shipping"]["last_name"],
-            "contact": format_mobile(o["billing"]["phone"])
-        },
-        "type": "link",
-        "view_less": 1,
-        "currency": "INR",
-        "description": "Thank you for making a healthy and sustainable choice",
-        "reminder_enable": False,
-        "callback_url": "https://leapclub.in/",
-        "callback_method": "get",
-        "sms_notify": False,
-        'email_notify': False
-    }
-    try:
-        invoice = razorpay_client.invoice.create(data=data)
-        status = "success"
-        short_url = invoice['short_url']
-        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url=invoice['short_url'], contact=format_mobile(o["billing"]["phone"]), name=data["customer"]['name'], created_at=invoice["created_at"], amount=data['amount'], status=status)
-    except Exception as e:
-        print(e)
-        status = "failed"
-        short_url = ""
-        new_payment_link = PaymentLinks(order_id=o["id"], receipt=data["receipt"], payment_link_url="", contact=format_mobile(o["billing"]["phone"]), name=data["customer"]['name'], created_at="", amount=data['amount'], status=status)
-    db.session.add(new_payment_link)
-    db.session.commit()
-    return jsonify({"text": 'Success, Link Generated!',"result": status, 'payment': data, "short_url": short_url, "order_id": order_id})
+    customers = [{'wallet_balance': balance, 'customer_id': o['customer_id'], 'order_id': o['id'], 'total': total_amount, 'name': o['billing']['first_name']+" "+o['billing']['last_name'], 'phone': format_mobile(o['billing']['phone'])}]
+    if float(customers[0]['wallet_balance'])>=customers[0]['total']:
+        customers[0]['pbw']=True
+    elif float(customers[0]['wallet_balance'])>0:
+        customers[0]['genm']=True
+    elif float(customers[0]['wallet_balance'])<0:
+        customers[0]['genl'] = True
+    return {'result': 'popup', 'customers': customers}
 
 
 @app.route("/razorpay", methods=["GET", "POST"])
@@ -1220,7 +1145,6 @@ def gen_multipayment():
                     refund = wcapiw.post("wallet/"+str(data['customer_id']), data={'type': 'debit', 'amount': balance, 'details': 'Debited for order ID-'+str(o['id'])}).json()
                     if refund['response'] != 'success' and refund['id'] == False:
                         return {'result': 'error'}
-
                     d = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(balance)*-1)}]}
                     u_order = wcapi_write.put("orders/"+str(o['id']), d).json()
                     if 'id' not in u_order.keys():
@@ -1235,9 +1159,6 @@ def gen_multipayment():
                     if 'id' not in u_order.keys():
                         return {'result': 'error_s','error': 'error while adding fee!'}
                     balance-=total_amount
-
-                        
-
         elif data['type'] == 'add':
             wstr="-W_"+str(float(data['balance'])*-1)
     reciept = "Leap "+data['order_ids']+wstr
