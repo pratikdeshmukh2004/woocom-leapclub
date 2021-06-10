@@ -1301,6 +1301,7 @@ def send_whatsapp_messages_m(name):
     orders = list_orders_with_status(wcapi, {"include": get_list_to_string(data['order_ids[]'])})
     d_dates = []
     vendor, manager, delivery_d, order_note,  = get_meta_data(orders[0])
+    unpaid_orders = []
     for o in orders:
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         if delivery_date != delivery_d:
@@ -1324,6 +1325,10 @@ def send_whatsapp_messages_m(name):
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
                     wallet_payment += (-1)*float(item["total"])
+
+        o['amount_payble'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+        if o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
+            unpaid_orders.append(o)
         if vendor in vendor_type.keys():
             o["vendor_type"] = vendor_type[vendor]
         else:
@@ -1431,6 +1436,8 @@ def send_whatsapp_messages_m(name):
                     vendors = vendors+" + "+r['vendor_type']
                 t_d['vendor_type'] = vendors+" ("+ids+")"
         results = list(today_list.values())
+    if len(unpaid_orders)>0:
+        print(results)
     return {'result': 'success', 'results': results}
 
 def update_order_status_with_id(order, status, r):
