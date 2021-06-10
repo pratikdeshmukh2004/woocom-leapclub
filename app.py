@@ -824,7 +824,7 @@ def gen_payment_link(order_id):
                 if refund['response'] == 'success' and refund['id'] != False: 
                     total_amount -=float(balance)
                     data = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(balance)*-1)}]}
-                    u_order = wcapi.put("orders/"+str(o['id']), data).json()
+                    u_order = wcapi_write.put("orders/"+str(o['id']), data).json()
                     if 'id' not in u_order.keys():
                         return {'result': 'error_s','error': 'error while adding fee!'}
 
@@ -841,7 +841,7 @@ def gen_payment_link(order_id):
                         data['status'] = 'tbd-paid'
                     elif o['status'] == 'delivered-unpaid':
                         data['status'] = 'completed'
-                    u_order = wcapi.put("orders/"+str(o['id']), data).json()
+                    u_order = wcapi_write.put("orders/"+str(o['id']), data).json()
                     if 'id' in u_order.keys():
                         return {'result': 'success_s'}
                     else:
@@ -1216,7 +1216,7 @@ def gen_multipayment():
                         return {'result': 'error'}
 
                     d = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(balance)*-1)}]}
-                    u_order = wcapi.put("orders/"+str(o['id']), d).json()
+                    u_order = wcapi_write.put("orders/"+str(o['id']), d).json()
                     if 'id' not in u_order.keys():
                         return {'result': 'error_s','error': 'error while adding fee!'}
                     break
@@ -1225,7 +1225,7 @@ def gen_multipayment():
                     if refund['response'] != 'success' and refund['id'] == False:
                         return {'result': 'error'}
                     d = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(total_amount)*-1)}]}
-                    u_order = wcapi.put("orders/"+str(o['id']), d).json()
+                    u_order = wcapi_write.put("orders/"+str(o['id']), d).json()
                     if 'id' not in u_order.keys():
                         return {'result': 'error_s','error': 'error while adding fee!'}
                     balance-=total_amount
@@ -2039,7 +2039,7 @@ def payByCash():
 @app.route("/movetoprocessing/<string:id>/<string:payment_method>")
 def movetoprocessing(id, payment_method):
     p_m = {"Wallet payment": 'wallet', "Pre-paid": 'razorpay', "Pay Online on Delivery": 'cod', "Other": 'other'}
-    u_order = wcapi.put("orders/"+id, {'status': 'processing', 'payment_method_title': payment_method, 'payment_method': p_m[payment_method]}).json()
+    u_order = wcapi_write.put("orders/"+id, {'status': 'processing', 'payment_method_title': payment_method, 'payment_method': p_m[payment_method]}).json()
     if 'id' not in u_order.keys():
         return {'result': 'error','error': 'error while adding fee!'}
     return{'result': 'success'}
