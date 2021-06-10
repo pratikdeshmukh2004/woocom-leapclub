@@ -1301,10 +1301,10 @@ def send_whatsapp_messages_m(name):
     orders = list_orders_with_status(wcapi, {"include": get_list_to_string(data['order_ids[]'])})
     d_dates = []
     vendor, manager, delivery_d, order_note,  = get_meta_data(orders[0])
-    unpaid_orders = []
+    unpaid_orders = {}
     for o in orders:
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
-        if delivery_date != delivery_d:
+        if delivery_date != delivery_d and name == 'feedback':
             return {'result': "error_s",'error_s': "Delivery Date is not Similar"}
         t = datetime.now()
         t = t.strftime('%Y-%m-%d')
@@ -1328,7 +1328,10 @@ def send_whatsapp_messages_m(name):
 
         o['amount_payble'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
         if o['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (o['status'] == 'processing' and o['payment_method_title'] == 'Pay Online on Delivery'):
-            unpaid_orders.append(o)
+            if str(o['customer_id']) in unpaid_orders:
+                unpaid_orders[str(o['customer_id'])].append(o)
+            else:
+                unpaid_orders[str(o['customer_id'])] = [o]
         if vendor in vendor_type.keys():
             o["vendor_type"] = vendor_type[vendor]
         else:
@@ -1401,6 +1404,7 @@ def send_whatsapp_messages_m(name):
                 feedback_list[o['customer_id']]=params
         r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
         r['phone_number'] = format_mobile(o['billing']['phone'])
+        r['customer_id'] = str(o['customer_id'])
         results.append(r)
     if name == 'feedback':
         results = []
@@ -1412,6 +1416,7 @@ def send_whatsapp_messages_m(name):
             feedback_list[c]['phone_number'] = feedback_list[c]['mobile_number']
             feedback_list[c]['vendor_type'] = feedback_list[c]['order_type']
             feedback_list[c]['order_id'] = order_ids
+            feedback_list[c]['customer_id'] = c
             results.append(feedback_list[c])
             if feedback_list[c]['button']:
                 payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+order_ids+"%")).all()
@@ -1435,9 +1440,35 @@ def send_whatsapp_messages_m(name):
                 if r['vendor_type'] not in t_d['vendor_type']:
                     vendors = vendors+" + "+r['vendor_type']
                 t_d['vendor_type'] = vendors+" ("+ids+")"
+                if not(r['button'] and t_d['button']):
+                    t_d['button'] = False
         results = list(today_list.values())
-    if len(unpaid_orders)>0:
-        print(results)
+        for r in results:
+            if r['button']:
+                payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+r['order_id']+"%")).all()
+                if len(payment_links)==0:
+                    r['button'] = False
+    for r in results:
+        if len(unpaid_orders)>0:
+            r['show'] = True
+        else:
+            r['show'] = False
+        r['customer_id'] = str(r['customer_id'])
+        if str(r['customer_id']) in unpaid_orders and not r['button']:
+            total_payble = 0
+            order_ids = []
+            for o in unpaid_orders[r['customer_id']]:
+                total_payble+=o['amount_payble']
+                order_ids.append(str(o['id']))
+            r['total_unpaid_payble'] = total_payble
+            r['ids'] = ", ".join(order_ids)
+            r['balance'] = wcapiw.get("current_balance/"+r['customer_id']).json()
+            if float(r['balance'])>=total_payble:
+                r['pbw']=True
+            elif float(r['balance'])>0:
+                r['genm']=True
+            elif float(r['balance'])<0:
+                r['genl'] = True
     return {'result': 'success', 'results': results}
 
 def update_order_status_with_id(order, status, r):
@@ -1999,7 +2030,7 @@ def payByCash():
 @app.route("/movetoprocessing/<string:id>/<string:payment_method>")
 def movetoprocessing(id, payment_method):
     orders = wcapi.get("orders", params={'include': id, 'per_page': 50}).json()
-    checks = checkBefore(orders, ['payment_null', 'vendor', 'name', 'mobile', 'billing_address', 'shipping_address'])
+    checks = checkBefore(orders, ['vendor', 'name', 'mobile', 'billing_address', 'shipping_address'])
     if len(checks)>0 or len(orders)==0:
         return {'result':'errors', 'orders': checks}
     order_ids = id.split(",")
