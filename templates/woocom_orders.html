@@ -258,7 +258,7 @@
     {%endif%}
     {%if nav_active in ['delivered-unpaid, completed']%}
     <button type="button" onclick="sendPaymentRemainder()" title="Payment reminder" class="btn btn-info ml-2 button" 
-    >Payment Remainder
+    >Payment Reminder
     </button>
     {%endif%}
   </form>
@@ -413,12 +413,12 @@
         <td scope="row">Unpaid ({{ o.payment_method_title}})</td>
         {% endif %}
         {%if o.shipping_total |float > 0%}
-        <td>{{(o.total - o.shipping_total|float)  | round(2)}} + {{o.shipping_total}} ({{ o.total_refunds}})</td>
+        <td>{{(format_decimal(o.total - o.shipping_total|float))}} + {{format_decimal(o.shipping_total)}} ({{ o.total_refunds}})</td>
         {%else%}
-        <td>{{ o.total}} ({{ o.total_refunds}})</td>
+        <td>{{format_decimal(o.total)}} ({{format_decimal(o.total_refunds)}})</td>
         {%endif%}
 
-        <td scope="row">{{ (o.total-o.total_refunds-o.wallet_payment) | round(2)}}</td>
+        <td scope="row">{{ format_decimal(o.total-o.total_refunds-o.wallet_payment)}}</td>
         <td scope="row">
           <div class="wtmessage-{{o.id}}" style="max-height: 100px; overflow-y: scroll;">
             {% for wt in wtmessages_list[o.id]%}

@@ -2201,7 +2201,7 @@ function sendWMessages(name) {
               } else {
                 updateSpan(o.order_id, o.template_name, 'text-danger')
               }
-              btns = `<td id='pay-`+o.phone_number+`' onclick="sendWPaymentLink('` + o.order_id + "','" + o.phone_number + "','" + o.vendor_type + `')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
+              btns = `<td id='pay-`+o.phone_number+`' onclick="sendWPaymentLink('` + o.o_ids + "','" + o.phone_number + "','" + o.vendor_type + `')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
               if (!o.button) {
                 btns = ''
                 if (o.show){
@@ -2215,7 +2215,7 @@ function sendWMessages(name) {
                 }
                 btns = `<button id="` + o.customer_id + `-gpmw" onclick="gen_multipayment('` + o.ids + `','` + o.customer_id + `', '` + (parseFloat(o.total_unpaid_payble) - parseFloat(o.balance)).toFixed(2) + `','` + o.customer_name + `','` + o.phone_number + `','` + o.balance + `','` + type + `')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + (parseFloat(o.total_unpaid_payble) - parseFloat(o.balance)).toFixed(2) + `</button>`
               }
-              btns = `<button id="` + o.customer_id + `-gpm" onclick="gen_multipayment('` + o.ids + `','` + o.customer_id + `', '` + o.total_unpaid_payble + `','` + o.customer_name + `','` + o.phone_number + `')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + o.total_unpaid_payble + `</button>`+btns
+              btns = `<button id="` + o.customer_id + `-gpm" onclick="gen_multipayment('` + o.ids + `','` + o.customer_id + `', '` + o.total_unpaid_payble + `','` + o.customer_name + `','` + o.phone_number + `')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + o.total_unpaid_payble.toFixed(2) + `</button>`+btns
               }
             }
               trtext += `

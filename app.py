@@ -115,6 +115,20 @@ class PaymentLinks(db.Model):
     created_at = db.Column(db.String)
     amount = db.Column(db.Float)
 
+def format_decimal(dec):
+    dec = float(dec)
+    if float(dec) == int(dec):
+        return int(dec)
+    else:
+        return round(float(dec),2)
+
+def format_order_ids(s):
+    s_int = s.split(", ")
+    if len(s_int)>1:
+        return s[::-1].replace(" ,", " dna ",1)[::-1]
+    else:
+        return s
+
 # Handle 404 Not Found error it will return a web page...
 @app.errorhandler(404)
 def invalid_route(e):
@@ -306,7 +320,7 @@ def get_orders_for_home(args, tab):
             params['status'] = 'delivered-unpaid, completed'
 
     args['payment_status'] = p_s
-    return render_template("woocom_orders.html", admin_url=app.config['ADMIN_PANEL_URL'], json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
+    return render_template("woocom_orders.html", format_decimal = format_decimal, admin_url=app.config['ADMIN_PANEL_URL'], json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
 
 
 @app.route("/orders")
@@ -1363,7 +1377,7 @@ def send_whatsapp_messages_m(name):
                 if o['payment_method_title'] != 'Pay Online on Delivery':
                     r['button'] = False
             else:
-                r['payment_status'] = ""
+                r['payment_status'] = "Unpaid"
         else:
             td = 'feedback_old_prepaid_v2'
             months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -1418,10 +1432,6 @@ def send_whatsapp_messages_m(name):
             feedback_list[c]['order_id'] = order_ids
             feedback_list[c]['customer_id'] = c
             results.append(feedback_list[c])
-            if feedback_list[c]['button']:
-                payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+order_ids+"%")).all()
-                if len(payment_links)==0:
-                    feedback_list[c]['button'] = False
     else:
         today_list = {}
         for r in results:
@@ -1443,32 +1453,35 @@ def send_whatsapp_messages_m(name):
                 if not(r['button'] and t_d['button']):
                     t_d['button'] = False
         results = list(today_list.values())
-        for r in results:
-            if r['button']:
-                payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+r['order_id']+"%")).all()
-                if len(payment_links)==0:
-                    r['button'] = False
     for r in results:
-        if len(unpaid_orders)>0:
-            r['show'] = True
-        else:
-            r['show'] = False
         r['customer_id'] = str(r['customer_id'])
-        if str(r['customer_id']) in unpaid_orders and not r['button']:
+        if str(r['customer_id']) in unpaid_orders:
             total_payble = 0
+            r['show'] = True
             order_ids = []
             for o in unpaid_orders[r['customer_id']]:
                 total_payble+=o['amount_payble']
                 order_ids.append(str(o['id']))
-            r['total_unpaid_payble'] = total_payble
-            r['ids'] = ", ".join(order_ids)
-            r['balance'] = wcapiw.get("current_balance/"+r['customer_id']).json()
-            if float(r['balance'])>=total_payble:
-                r['pbw']=True
-            elif float(r['balance'])>0:
-                r['genm']=True
-            elif float(r['balance'])<0:
-                r['genl'] = True
+            payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+", ".join(order_ids)+"%")).all()
+            if len(payment_links)!=0:
+                p_l = payment_links.copy()
+                p_l.reverse()
+                for p in p_l:
+                    if float(p.amount)/100 == float(total_payble):
+                        r['button'] = True
+                        r['show'] = False
+            if r['show']:
+                r['button'] = False
+                r['total_unpaid_payble'] = total_payble
+                r['ids'] = ", ".join(order_ids)
+                r['balance'] = wcapiw.get("current_balance/"+r['customer_id']).json()
+                if float(r['balance'])>=total_payble:
+                    r['pbw']=True
+                elif float(r['balance'])>0:
+                    r['genm']=True
+                elif float(r['balance'])<0:
+                    r['genl'] = True
+    print(results)
     return {'result': 'success', 'results': results}
 
 def update_order_status_with_id(order, status, r):
@@ -1778,7 +1791,27 @@ def copy_linked_orders():
 def send_payment_link_wt(id):
     args = request.form.to_dict(flat=True)
     mobile_number = args['mobile_number']
-    payment_link = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+id+"%")).all()[-1]
+    payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+id+"%")).all()
+    orders = wcapi.get("orders", params={'include': id, 'per_page': 50}).json()
+    total_unpaid = 0
+    for o in orders:
+        wallet_payment = 0
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment += (-1)*float(item["total"])
+        total_unpaid += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+    if len(payment_links)!=0:
+        p_l = payment_links.copy()
+        p_l.reverse()
+        for p in p_l:
+            if float(p.amount)/100 == float(total_unpaid):
+                payment_link = p
+                break
+        else:
+            return {'result': 'error'}
+    else:
+        return {'result': 'error'}
     headers = {
         'Authorization': app.config["WATI_AUTHORIZATION"],
         'Content-Type': 'application/json',
@@ -2127,7 +2160,7 @@ def sendWhatsappSessionTemplateRemainder(id, amount, mobile, order_ids, amount_s
     payment_link = payment_links[-1]
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile
     parameters_s = "["
-    args = {'name': name, 'order_id': order_ids, 'total_amount': amount, 'url_post_pay': payment_link.payment_link_url.split("/")[-1]}
+    args = {'name': name, 'order_id': format_order_ids(order_ids), 'total_amount': amount, 'url_post_pay': payment_link.payment_link_url.split("/")[-1]}
     for d in args:
         parameters_s = parameters_s + \
             '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
