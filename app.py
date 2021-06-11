@@ -1481,7 +1481,6 @@ def send_whatsapp_messages_m(name):
                     r['genm']=True
                 elif float(r['balance'])<0:
                     r['genl'] = True
-    print(results)
     return {'result': 'success', 'results': results}
 
 def update_order_status_with_id(order, status, r):
@@ -1805,7 +1804,7 @@ def send_payment_link_wt(id):
         p_l = payment_links.copy()
         p_l.reverse()
         for p in p_l:
-            if float(p.amount)/100 == float(total_unpaid):
+            if round(float(p.amount)/100,1) == round(float(total_unpaid),1):
                 payment_link = p
                 break
         else:
