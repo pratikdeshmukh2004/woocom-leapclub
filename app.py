@@ -1175,7 +1175,7 @@ def gen_multipayment():
                     balance-=total_amount
         elif data['type'] == 'add':
             wstr="-W_"+str(float(data['balance'])*-1)
-    reciept = "Leap "+data['order_ids']+wstr
+    reciept = "Leap4 "+data['order_ids']+wstr
     payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+reciept+"%")).all()
     if len(payment_links)>0:
         p_l = payment_links.copy()
@@ -1789,7 +1789,7 @@ def copy_linked_orders():
 @app.route("/send_payment_link_wt/<string:id>", methods=['POST'])
 def send_payment_link_wt(id):
     args = request.form.to_dict(flat=True)
-    mobile_number = args['mobile_number']
+    mobile_number = format_mobile(args['mobile_number'])
     payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+id+"%")).all()
     orders = wcapi.get("orders", params={'include': id, 'per_page': 50}).json()
     total_unpaid = 0
@@ -1821,9 +1821,11 @@ def send_payment_link_wt(id):
         "POST", url, headers=headers)
     url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
         mobile_number + "?messageText=^ Please pay through this link."
+    print(url, 'sdndingsndl......')
     response = requests.request(
         "POST", url, headers=headers)
     result = json.loads(response.text.encode('utf8'))
+    print(result)
     result["template_name"] = 'payment_link_6'
     if result["result"] in ["success", "PENDING", "SENT", True]:
         return result
@@ -1852,6 +1854,7 @@ def send_payment_link_wt(id):
         "POST", url, headers=headers, data=json.dumps(payload))
 
     result = json.loads(response.text.encode('utf8'))
+    print(result)
     result["template_name"] = template_name
     return result
 
