@@ -1175,7 +1175,7 @@ def gen_multipayment():
                     balance-=total_amount
         elif data['type'] == 'add':
             wstr="-W_"+str(float(data['balance'])*-1)
-    reciept = "Leap4 "+data['order_ids']+wstr
+    reciept = "Leap "+data['order_ids']+wstr
     payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+reciept+"%")).all()
     if len(payment_links)>0:
         p_l = payment_links.copy()
