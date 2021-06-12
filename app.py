@@ -1821,11 +1821,9 @@ def send_payment_link_wt(id):
         "POST", url, headers=headers)
     url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
         mobile_number + "?messageText=^ Please pay through this link."
-    print(url, 'sdndingsndl......')
     response = requests.request(
         "POST", url, headers=headers)
     result = json.loads(response.text.encode('utf8'))
-    print(result)
     result["template_name"] = 'payment_link_6'
     if result["result"] in ["success", "PENDING", "SENT", True]:
         return result
@@ -1854,7 +1852,6 @@ def send_payment_link_wt(id):
         "POST", url, headers=headers, data=json.dumps(payload))
 
     result = json.loads(response.text.encode('utf8'))
-    print(result)
     result["template_name"] = template_name
     return result
 
