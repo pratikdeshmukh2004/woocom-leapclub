@@ -1,4 +1,10 @@
 {% extends "layout.html" %} {% block content %}
+<style>
+  .header{
+    position: sticky;
+    top: 0;
+}
+</style>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
   <div class="container">
     <a class="navbar-brand font-weight-bold" href="{{url_for('customers')}}">
@@ -11,9 +17,9 @@
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav ml-auto">
         <li class="nav-item">
-            <a class="nav-link" href="{{url_for('woocom_orders')}}">
-                Orders
-            </a>
+          <a class="nav-link" href="{{url_for('woocom_orders')}}">
+            Orders
+          </a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="{{url_for('vendor_orders')}}">
@@ -38,54 +44,137 @@
 </nav>
 
 <div class="pt-3 mr-5 ml-5 d-flex justify-content-center">
-    <table style="width: 60%;" class="table table-bordered">
-        <tbody>
-          <tr>
-            <th scope="row">Name: </th>
-            <td>{{customer.first_name}} {{customer.last_name}}</td>
-          </tr>
-          <tr>
-            <th scope="row">Mobile</th>
-            <td>{{customer.billing.phone}}</td>
-          </tr>
-          <tr>
-            <th scope="row">Balance</th>
-            <td>{% if transactions | length >0 %}
-              {{(transactions | first).balance}}
-              {%else%}
-              0
-              {%endif%}
-            </td>
-          </tr>
+  <table style="width: 60%;" class="table table-bordered">
+    <tbody>
+      <tr>
+        <th scope="row">Name: </th>
+        <td>{{customer.first_name}} {{customer.last_name}}</td>
+      </tr>
+      <tr>
+        <th scope="row">Mobile</th>
+        <td>{{customer.billing.phone}}</td>
+      </tr>
+      <tr>
+        <th scope="row">Balance</th>
+        <td>{% if transactions | length >0 %}
+          {{(transactions | first).balance}}
+          {%else%}
+          0
+          {%endif%}
+        </td>
+      </tr>
 
-        </tbody>
-      </table>
+    </tbody>
+  </table>
 </div>
-<div class="mt-3 ml-5 mr-5 text-center">
-  <div><h4>Wallet Transactions</h4></div>
-</div>
+<div class="shadow  ml-5 mr-5 pt-3 pb-3">
+  <div class="mt-3 text-center">
+    <div>
+      <h4 class="font-weight-bold">Unpaid Orders</h4>
+    </div>
+  </div>
+  <div class=" pr-2 pl-2"  style="overflow-y: scroll; max-height: 600px;" >
 
-<div class="ml-5 mr-5 pt-3">
-    <table class="table">
-        <thread>
-            <tr class="bg-info text-white">
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Date</th>
-                <th>Details</th>
-            </tr>
-        </thread>
-        <tbody>
-            {%for t in transactions%}
-            <tr>
-                <td>{{t.type}}</td>
-                <td>₹ {{t.amount}}</td>
-                <td>{{t.date}}</td>
-                <td>{{t.details}}</td>
-            </tr>
-            {%endfor%}
+  <table class="table">
+    <thread style="position: sticky; max-height: 600px;">
+      <tr class="bg-info text-white header">
+        <th></th>
+        <th>Order ID</th>
+        <th>Status</th>
+        <th>Order Date</th>
+        <th>Delivery Date</th>
+        <th>Vendor</th>
+        <th>Payment Type</th>
+        <th>Amount</th>
+        <th>Amount Payble</th>
+        <th>Payment Link</th>
+      </tr>
+    </thread>
+    <tbody>
+      {%for o in unpaid_orders%}
+      <tr>
+          <td class="{{o.id}}" scope="row">
+            <div style="min-width: 216px;">
+              <a data-toggle="tooltip" target='blank' href="{{admin_url}}{{o.id}}&action=edit"><i
+                  title="Edit Order" class="mdi mdi-18px mdi-pencil-outline btn-sm btn btn-warning"
+                  style="cursor: pointer;" aria-hidden="true"></i></a>
+              <i data-toggle="tooltip" title="Supplier Message" onclick="copyToClipboard('s_msg_{{o.id}}')"
+                class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning" style="cursor: pointer;"
+                aria-hidden="true"></i>
+              <i data-toggle="tooltip" title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')"
+                class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning" style="cursor: pointer;"
+                aria-hidden="true"></i>
+            <button data-toggle="tooltip" class="btn btn-warning btn-sm"
+            onclick="genSubscriptionLink('{{o.id}}')">
+            <i title="Generate Payment Link" class="mdi mdi-18px mdi-link mr-1"></i>
+          </button>
+        </td>
+        <td>{{o.id}}</td>
+        <td>{{o.status}}</td>
+        <td>{{o.date_created}}</td>
+        <td>{{o.delivery_date}}</td>
+        <td>{{o.vendor}}</td>
+        <td>{{o.payment_method_title}}</td>
+        {%if o.shipping_total |float > 0%}
+        <td>{{(o.total - o.shipping_total|float) | round(2)}} + {{o.shipping_total}}</td>
+        {%else%}
+        <td>{{o.total| round(2)}}</td>
+        {%endif%}
+        <td>{{ (o.total-o.total_refunds-o.wallet_payment)|round(2)}}</td>
+        <td>
+          {% if payment_links[o.id] != ''%}
+          {% if payment_links[o.id].status == "success"%}
+          <span id='payment-{{o.id}}' class="text-success" style="cursor: pointer;"
+            onclick="copyText('{{payment_links[o.id].payment_link_url}}')">{{payment_links[o.id].receipt}} |
+            {{payment_links[o.id].amount/100}}</span>
+          {%else%}
+          <span id='payment-{{o.id}}' style="cursor: pointer;" class="text-danger">{{payment_links[o.id].receipt}} |
+            {{payment_links[o.id].amount/100}}</span>
+          {% endif%}
+          {%else%}
+          <span id='payment-{{o.id}}' class="text-success" style="cursor: pointer;" onclick=""></span>
+          {% endif%}
+        </td>
+      </tr>
+      {%endfor%}
 
-        </tbody>
-    </table>
+    </tbody>
+  </table>
+  </div>
 </div>
+</div>
+<br/>
+<div class="shadow  ml-5 mr-5 pt-3 pb-3">
+  <div style="justify-content: center;" class="text-center d-flex pb-2">
+    <div class="ml-3 mr-3 mt-1">
+      <h4 class="font-weight-bold">Wallet Transactions</h4>
+    </div>
+    <button onclick="MoneyToWallet('{{customer.id}}', 'credit', 'reload')" data-toggle="tooltip" title="Add Money" class="btn btn-success btn-sm mr-3 font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-plus mr-1"></i></button>
+    <button onclick="MoneyToWallet('{{customer.id}}', 'debit', 'reload')" data-toggle="tooltip" title="Reduce Money" class="btn btn-success btn-sm mr-3 font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-minus mr-1"></i></button>
+  </div>
+  <div class=" pr-2 pl-2" style="overflow-y: scroll; max-height: 600px;" >
+  <table class="table">
+    <thread>
+      <tr class="bg-info text-white header">
+        <th>Type</th>
+        <th>Amount</th>
+        <th>Date</th>
+        <th>Details</th>
+      </tr>
+    </thread>
+    <tbody>
+      {%for t in transactions%}
+      <tr>
+        <td>{{t.type}}</td>
+        <td>₹ {{t.amount}}</td>
+        <td>{{t.date}}</td>
+        <td>{{t.details}}</td>
+      </tr>
+      {%endfor%}
+
+    </tbody>
+  </table>
+  </div>
+</div>
+<br>
 {%endblock%}
