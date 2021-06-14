@@ -487,6 +487,31 @@
 </div>
 <script>
   
+function copyText(text) {
+  var input = document.body.appendChild(document.createElement("textarea"));
+  text = text.replace("&amp;", "&");
+  input.value = text;
+  input.select();
+  var status = document.execCommand("copy");
+  input.parentNode.removeChild(input);
+  if (status){
+      $.nok({
+        message: "Copied!",
+        type: 'success'
+      });         
+    }else{
+     Swal.fire({
+       icon: 'error',
+       text: "Error While copying\n"+text
+     })
+    }
+}
+function copyTextMODEL(text) {
+  Swal.fire({
+    icon: 'warning',
+    html: "<b>Can't copy text: <input value='"+text+"'/></b>"
+  })
+}
 function sendWMessages(name) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()

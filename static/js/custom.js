@@ -60,19 +60,6 @@ $(document).ready(function () {
   $('[data-toggle="tooltip"]').tooltip()
 });
 
-function copyTextMODEL(text) {
-  navigator.clipboard.writeText(text).then(function() {
-      $.nok({
-        message: "Copied!",
-        type: 'success'
-      });         
-  }, function(err) {
-    $.nok({
-        message: "Error",
-        type: 'error'
-      }); 
-  });
-}
 
 
 function updateSpan(order_id, template_name, color) {
@@ -1774,8 +1761,7 @@ function gen_multipayment(id, c_id, amount, name, phone, balance, type) {
       if (res.result == 'success' || res.result == 'already') {
         $('#status-' + c_id).append(`
         <div>
-          <b class="text-success ml-2 mr-1">${res.result}</b>
-          <button onclick="copyText('${res.short_url}')" class="btn btn-sm btn-success">Copy Link</button>
+          <b class="text-success ml-2 mr-1">${res.result} Link: ${res.short_url}</b>
           <button onclick="sendWPaymentLink('${id}','${phone}','${res.vendor}')" class='btn btn-sm btn-success ml-2'>Send Payment Link</button></div>`)
         if (type == undefined) {
           $('#' + c_id + '-gpm').remove()
@@ -1800,20 +1786,6 @@ function gen_multipayment(id, c_id, amount, name, phone, balance, type) {
       $('#status-' + c_id).append('<b class="text-danger ml-2">Error</b>')
     }
   })
-}
-
-function copyText(text) {
-  navigator.clipboard.writeText(text).then(function() {
-    $.nok({
-      message: "Copied!",
-      type: 'success'
-    });         
-}, function(err) {
-  $.nok({
-      message: "Error",
-      type: 'error'
-    }); 
-});
 }
 
 
