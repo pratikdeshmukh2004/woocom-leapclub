@@ -125,10 +125,11 @@
               <i data-toggle="tooltip" title="Order Detail Message" onclick="copyToClipboard('c_msg_{{o.id}}')"
                 class="mdi mdi-18px mdi-content-copy btn-sm btn btn-warning" style="cursor: pointer;"
                 aria-hidden="true"></i>
-            <button data-toggle="tooltip" class="btn btn-warning btn-sm"
-            onclick="genSubscriptionLink('{{o.id}}')">
-            <i title="Generate Payment Link" class="mdi mdi-18px mdi-link mr-1"></i>
-          </button>
+              <button data-toggle="tooltip" class="btn btn-warning btn-sm"
+                onclick="CheckOutRequest('{{url_for('gen_payment_link', order_id=o.id)}}')">
+                <i title="Generate Payment Link" class="mdi mdi-18px mdi-link"></i>
+              </button>
+  
         </td>
         <td>{{o.id}}</td>
         <td>{{o.status}}</td>
