@@ -2186,7 +2186,14 @@ def sendWhatsappSessionTemplateRemainder(id, amount, mobile, order_ids, amount_s
     if result["result"] in ["success", "PENDING", "SENT", True]:
         return {'status': 'success'}
 
-
+# @app.route("/remDeliveryCharge/<string:id>")
+# def remDeliveryCharge(id):
+#     d = {'shipping_total': 0}
+#     u_order = wcapi_write.put("orders/"+id, d).json()
+#     if 'id' not in u_order.keys():
+#         return {'status': 'error_s','error': 'error while adding fee!'}
+#     else:
+#         return {'status':'success'}
 if __name__ == "__main__":
     db.create_all()
     app.run(debug=True)
