@@ -997,6 +997,7 @@ def order_details():
     data['order_ids'] = data['order_ids[]']
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
+    params['status'] = 'any'
     c_time = time.time()
     orders = wcapi.get("orders", params=params).json()
     checks = checkBefore(orders, ['payment_null', 'vendor', 'delivery_date','name', 'mobile', 'billing_address', 'shipping_address'])
@@ -1022,6 +1023,7 @@ def order_details_mini():
     data['order_ids'] = data['order_ids[]']
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
+    params['status'] = 'any'
     orders = wcapi.get("orders", params=params).json()
     checks = checkBefore(orders, ['payment_null', 'vendor', 'delivery_date','name', 'mobile', 'billing_address', 'shipping_address'])
     if len(checks)>0:
@@ -1053,6 +1055,7 @@ def order_details_mini():
         main_text += "\n\n-----------------------------------------\n\n"
         total += total_amount
     main_text += ("*Total Amount: "+str(round(total,1))+"*\n\n")
+    print(main_text)
     return {"result": main_text}
 
 
@@ -2074,6 +2077,7 @@ def movetoprocessing(id, payment_method):
 
 @app.route("/sendWhatsappSessionTemplate/<string:id>/<string:amount>")
 def sendWhatsappSessionTemplate(id, amount):
+    amount = format_decimal(amount)
     balance = wcapiw.get("current_balance/"+id).json()
     customer = wcapi.get("customers/"+id).json()
     s_msg = "*Your wallet is updated!*\n\nAmount {}: {}\n\nCurrent Wallet Balance: {}\n\nLet us know if you have any queries.".format("debited", amount, balance)

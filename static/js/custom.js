@@ -2141,3 +2141,154 @@ function payByWallet(inp_s_v, pp) {
   })
 
 }
+
+
+function sendWMessages(name) {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  Swal.fire({
+    title: `Do you want to send ` + name + ` message for ` + inp_select_v.length.toString() + ` orders? (Yes / No)`,
+    showDenyButton: true,
+    confirmButtonText: `Yes`,
+    denyButtonText: `No`,
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+      })
+      $.ajax({
+        type: "POST",
+        crossDomain: true,
+        dataType: "json",
+        url: "/send_whatsapp_messages/" + name,
+        data: { 'order_ids': inp_select_v },
+        success: function (res) {
+          if (res.result == 'success') {
+            trtext = ""
+            for (var o of res.results) {
+              console.log(o);
+              if (["success", "PENDING", "SENT", true].includes(o.result)) {
+                updateSpan(o.order_id, o.template_name, 'text-success')
+              } else {
+                updateSpan(o.order_id, o.template_name, 'text-danger')
+              }
+              btns = `<td id='pay-`+o.phone_number+`' onclick="sendWPaymentLink('` + o.order_id + "','" + o.phone_number + "','" + o.vendor_type + `')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
+              if (!o.button) {
+                btns = ''
+                if (o.show){
+              var o_ids = "[" + o.ids + "]"
+              if (o.pbw) {
+                btns = `<button id="${o.customer_id}-pbw" onclick="payByWallet(${o_ids},'yes' )" class="btn btn-success btn-sm mr-1 mt-2">Pay by wallet</button>`
+              } else if (o.genl || o.genm) {
+                var type = 'add'
+                if (o.genm) {
+                  type = 'remove'
+                }
+                btns = `<button id="` + o.customer_id + `-gpmw" onclick="gen_multipayment('` + o.ids + `','` + o.customer_id + `', '` + (parseFloat(o.total_unpaid_payble) - parseFloat(o.balance)).toFixed(2) + `','` + o.customer_name + `','` + o.phone_number + `','` + o.balance + `','` + type + `')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + (parseFloat(o.total_unpaid_payble) - parseFloat(o.balance)).toFixed(2) + `</button>`
+              }
+              btns = `<button id="` + o.customer_id + `-gpm" onclick="gen_multipayment('` + o.ids + `','` + o.customer_id + `', '` + o.total_unpaid_payble + `','` + o.customer_name + `','` + o.phone_number + `')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + o.total_unpaid_payble.toFixed(2) + `</button>`+btns
+              }
+            }
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.customer_name + " ( " + o.phone_number + ` ) </p></td>
+                    <td><p>`+ o.order_id + `</p></td>
+                    <td><p>`+ o.result + `</p></td>
+                    <td><p>`+ o.payment_status + `</p></td>
+                    <td>`+btns + `</td>
+                    <td style="display: flex;" id="status-${o.customer_id}"></td>
+                  </tr>
+              `
+            }
+            $('#exampleModal').modal({
+          show: true
+        })
+        $(".modal-body").html(`
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Name (Mobile)</b></th>  
+                    <th><b>Order IDS</b></th>  
+                    <th><b>Result</b></th>  
+                    <th><b>Paid/Unpaid</b></th>  
+                    <th></th>
+                    <th>Status</th>
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `)
+            Swal.fire({
+              showConfirmButton: false,
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading()
+              },
+              timer: 500
+            })
+          }
+          else if (res.result == 'delivery') {
+            trtext = ""
+            for (var o of res.orders) {
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.billing.first_name + " ( " + o.billing.phone + ` ) </p></td>
+                    <td><p>`+ o.id + `</p></td>
+                    <td><p>`+ o.delivery_date + `</p></td>
+                  </tr>
+              `
+            }
+            Swal.fire({
+              icon: 'warning',
+
+              html: `
+              <b>These orders don't have today's delivery date. Please select correct orders.</b>
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Name (Mobile)</b></th>  
+                    <th><b>Order ID</b></th>  
+                    <th><b>Delivery Date</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `,
+              width: 1000,
+              backdrop: `
+                rgba(0,0,123,0.4)
+              `,
+              allowOutsideClick: false
+            })
+          }
+          else if (res.result == 'error_s'){
+            Swal.fire({
+              icon: 'error',
+              title: res.error_s
+            })
+          }
+          else {
+            $.nok({
+              message: "Error, Messages not sent!",
+              type: "error",
+            });
+          }
+        },
+        error: function (res) {
+          Swal.fire({
+            title: 'Something went wrong..',
+            icon: 'error'
+          })
+        }
+      })
+    }
+  })
+}

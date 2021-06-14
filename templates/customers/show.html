@@ -67,10 +67,31 @@
     </tbody>
   </table>
 </div>
-<div class="shadow  ml-5 mr-5 pt-3 pb-3">
-  <div class="mt-3 text-center">
+<div class="shadow  ml-5 mr-5 pt-1 pb-3">
+  <div class="mt-3 d-flex">
     <div>
-      <h4 class="font-weight-bold">Unpaid Orders</h4>
+      <h4 class="font-weight-bold ml-3 ">Unpaid Orders</h4>
+    </div>
+    <div style="margin-right: 30px;" class="ml-auto mb-2">
+      <select id="select_inps" data-live-search="true" data-actions-box="true" multiple required title="Order ID" name="order_ids" class="selectpicker mr-2 input">
+        {% for o in unpaid_orders %}
+        <option value="{{o.id}}">{{o.id}} - {{ o.billing.first_name}} -
+          {{o.vendor}}
+        </option>
+        {% endfor%}
+      </select>
+      <button data-toggle="tooltip" onclick="copyOrderDetail()" type="button" title="Copy Order Details"
+      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
+      <button data-toggle="tooltip" onclick="copyOrderDetailMini()" type="button" title="Copy Mini Order Detail"
+      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-content-copy" aria-hidden="true"></i></button>
+      <button data-toggle="tooltip" onclick="genMultipleLinks()" type="button" title="Gen Payment Links"
+      class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-link" aria-hidden="true"></i></button>
+      <button onclick="changeOrderStatus('paid')" type="button"
+      class="btn btn-info ml-2">Mark as Paid</button>
+      <button onclick="payByWallet()" type="button"
+      class="btn btn-info ml-2">Pay By Wallet</button>
+      <button onclick="payByCash()" type="button"
+      class="btn btn-info ml-2">Pay By Cash</button>
     </div>
   </div>
   <div class=" pr-2 pl-2"  style="overflow-y: scroll; max-height: 600px;" >
