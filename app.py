@@ -2194,6 +2194,19 @@ def sendWhatsappSessionTemplateRemainder(id, amount, mobile, order_ids, amount_s
 #         return {'status': 'error_s','error': 'error while adding fee!'}
 #     else:
 #         return {'status':'success'}
+
+@app.route("/check_unpaid_orders", methods=['POST'])
+def check_unpaid_orders():
+    data = request.form.to_dict(flat=False)
+    customer_id = data['customer_id'][0]
+    order_ids = data['order_ids'][0]
+    orders = list_unpaid_amounts([{'id': customer_id}])[0][customer_id]
+    unselect = list(filter(lambda o: str(o['id']) not in order_ids, orders))
+    if len(unselect)>0:
+        return {'result': 'unpaid', 'orders': unselect}
+    else:
+        return {'result': 'no'}
+
 if __name__ == "__main__":
     db.create_all()
     app.run(debug=True)

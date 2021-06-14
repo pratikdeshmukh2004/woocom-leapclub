@@ -1734,61 +1734,6 @@ function sendWhatsappSessionTemplateRemainder(id, amount, mobile, order_ids, amo
 }
 
 
-function gen_multipayment(id, c_id, amount, name, phone, balance, type) {
-  Swal.fire({
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading()
-    },
-  })
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/gen_multipayment",
-    data: { 'order_ids': id, 'amount': amount, 'name': name, 'phone': phone, 'balance': balance, 'type': type, 'customer_id': c_id },
-    success: function (res) {
-      console.log(res);
-      Swal.fire({
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading()
-        },
-        timer: 500
-      })
-      if (res.result == 'success' || res.result == 'already') {
-        $('#status-' + c_id).append(`
-        <div>
-          <b class="text-success ml-2 mr-1">${res.result} Link: ${res.short_url}</b>
-          <button onclick="sendWPaymentLink('${id}','${phone}','${res.vendor}')" class='btn btn-sm btn-success ml-2'>Send Payment Link</button></div>`)
-        if (type == undefined) {
-          $('#' + c_id + '-gpm').remove()
-        } else {
-          $('#' + c_id + '-gpmw').remove()
-        }
-      } else {
-        $('#status-' + c_id).append('<b class="text-danger ml-2">Error</b>')
-
-      }
-
-    },
-    error: function () {
-      Swal.fire({
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading()
-        },
-        timer: 500
-      })
-      $('#status-' + c_id).append('<b class="text-danger ml-2">Error</b>')
-    }
-  })
-}
-
-
 function CheckOutRequest(url) {
   Swal.fire({
     showConfirmButton: false,
@@ -2291,4 +2236,25 @@ function sendWMessages(name) {
       })
     }
   })
+}
+
+
+function copyText(text) {
+  var input = document.body.appendChild(document.createElement("textarea"));
+  text = text.replace("&amp;", "&");
+  input.value = text;
+  input.select();
+  var status = document.execCommand("copy");
+  input.parentNode.removeChild(input);
+  if (status){
+      $.nok({
+        message: "Copied!",
+        type: 'success'
+      });         
+    }else{
+     Swal.fire({
+       icon: 'error',
+       text: "Error While copying\n"+text
+     })
+    }
 }
