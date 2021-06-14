@@ -1556,7 +1556,7 @@ def change_order_status():
         if len(checks)>0:
             return {'result':'errors', 'orders': checks}
     elif data['status'][0] == 'tbd' or data['status'][0] == 'delivered':
-        checks = checkBefore(orders, ['payment_null','paid', 'vendor', 'delivery_date', 'name', 'mobile', 'billing_address', 'shipping_address'])
+        checks = checkBefore(orders, ['payment_null', 'vendor', 'delivery_date', 'name', 'mobile', 'billing_address', 'shipping_address'])
         if len(checks)>0:
             return {'result':'errors', 'orders': checks}
 
