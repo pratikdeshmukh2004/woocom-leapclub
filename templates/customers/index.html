@@ -54,9 +54,8 @@
         <thread>
             <tr class="bg-info text-white">
                 <th></th>
-                <th>USERNAME</th>
-                <th>NAME</th>
                 <th>MOBILE</th>
+                <th>NAME</th>
                 <th>CURRENT BALANCE</th>
                 <th>UNPAID AMOUNT</th>
             </tr>
@@ -66,13 +65,13 @@
             <tr>
                 <td>
                     <a class="btn btn-sm btn-warning mr-1" href="{{url_for('customers_show', id=c.id)}}"><i style="font-size: 20px;" class="mdi mdi-eye"></i></a>
+                    <a class="btn btn-warning mr-1" target="blank" href="https://app.metorik.com/customers/{{c.id}}"><span class="font-weight-bold">M</span></a>
                     <button onclick="MoneyToWallet('{{c.id}}', 'credit')" data-toggle="tooltip" title="Add Money To Wallet" class="btn btn-success btn-sm font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-plus mr-1"></i></button>
                     <button onclick="MoneyToWallet('{{c.id}}', 'debit')" data-toggle="tooltip" title="Reduce Money From Wallet" class="btn btn-success btn-sm font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-minus mr-1"></i></button>
                     <button onclick="genPaymentLinkWallet('{{c.id}}')" data-toggle="tooltip" title="Generate Payment Link" class="btn btn-success btn-sm font-weight-bold"><i class="mdi mdi-18px mdi-link-plus mr-1"></i></button>
-                </td>
-                <td>{{c.username}}</td>
-                <td>{{c.first_name}} {{c.last_name}}</td>
-                <td>{{format_mobile(c.billing.phone)}}</td>
+                  </td>
+                  <td>{{format_mobile(c.billing.phone)}}</td>
+                  <td>{{c.first_name}} {{c.last_name}}</td>
                 <td id="balance-{{c.id}}">₹ {{c.wallet_balance}}</td>
                 <td>₹ {{unpaid_list[c.id | string]}}</td>
             </tr>

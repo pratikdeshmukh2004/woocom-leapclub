@@ -997,6 +997,7 @@ def order_details():
     data['order_ids'] = data['order_ids[]']
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
+    params['status'] = 'any'
     c_time = time.time()
     orders = wcapi.get("orders", params=params).json()
     checks = checkBefore(orders, ['payment_null', 'vendor', 'delivery_date','name', 'mobile', 'billing_address', 'shipping_address'])
@@ -1022,6 +1023,7 @@ def order_details_mini():
     data['order_ids'] = data['order_ids[]']
     params = get_params(data)
     params["include"] = get_list_to_string(data["order_ids"])
+    params['status'] = 'any'
     orders = wcapi.get("orders", params=params).json()
     checks = checkBefore(orders, ['payment_null', 'vendor', 'delivery_date','name', 'mobile', 'billing_address', 'shipping_address'])
     if len(checks)>0:
@@ -1053,6 +1055,7 @@ def order_details_mini():
         main_text += "\n\n-----------------------------------------\n\n"
         total += total_amount
     main_text += ("*Total Amount: "+str(round(total,1))+"*\n\n")
+    print(main_text)
     return {"result": main_text}
 
 
@@ -2074,6 +2077,7 @@ def movetoprocessing(id, payment_method):
 
 @app.route("/sendWhatsappSessionTemplate/<string:id>/<string:amount>")
 def sendWhatsappSessionTemplate(id, amount):
+    amount = format_decimal(amount)
     balance = wcapiw.get("current_balance/"+id).json()
     customer = wcapi.get("customers/"+id).json()
     s_msg = "*Your wallet is updated!*\n\nAmount {}: {}\n\nCurrent Wallet Balance: {}\n\nLet us know if you have any queries.".format("debited", amount, balance)
@@ -2182,6 +2186,26 @@ def sendWhatsappSessionTemplateRemainder(id, amount, mobile, order_ids, amount_s
     if result["result"] in ["success", "PENDING", "SENT", True]:
         return {'status': 'success'}
 
+# @app.route("/remDeliveryCharge/<string:id>")
+# def remDeliveryCharge(id):
+#     d = {'shipping_total': 0}
+#     u_order = wcapi_write.put("orders/"+id, d).json()
+#     if 'id' not in u_order.keys():
+#         return {'status': 'error_s','error': 'error while adding fee!'}
+#     else:
+#         return {'status':'success'}
+
+@app.route("/check_unpaid_orders", methods=['POST'])
+def check_unpaid_orders():
+    data = request.form.to_dict(flat=False)
+    customer_id = data['customer_id'][0]
+    order_ids = data['order_ids'][0]
+    orders = list_unpaid_amounts([{'id': customer_id}])[0][customer_id]
+    unselect = list(filter(lambda o: str(o['id']) not in order_ids, orders))
+    if len(unselect)>0:
+        return {'result': 'unpaid', 'orders': unselect}
+    else:
+        return {'result': 'no'}
 
 if __name__ == "__main__":
     db.create_all()

@@ -1734,61 +1734,6 @@ function sendWhatsappSessionTemplateRemainder(id, amount, mobile, order_ids, amo
 }
 
 
-function gen_multipayment(id, c_id, amount, name, phone, balance, type) {
-  Swal.fire({
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading()
-    },
-  })
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/gen_multipayment",
-    data: { 'order_ids': id, 'amount': amount, 'name': name, 'phone': phone, 'balance': balance, 'type': type, 'customer_id': c_id },
-    success: function (res) {
-      console.log(res);
-      Swal.fire({
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading()
-        },
-        timer: 500
-      })
-      if (res.result == 'success' || res.result == 'already') {
-        $('#status-' + c_id).append(`
-        <div>
-          <b class="text-success ml-2 mr-1">${res.result} Link: ${res.short_url}</b>
-          <button onclick="sendWPaymentLink('${id}','${phone}','${res.vendor}')" class='btn btn-sm btn-success ml-2'>Send Payment Link</button></div>`)
-        if (type == undefined) {
-          $('#' + c_id + '-gpm').remove()
-        } else {
-          $('#' + c_id + '-gpmw').remove()
-        }
-      } else {
-        $('#status-' + c_id).append('<b class="text-danger ml-2">Error</b>')
-
-      }
-
-    },
-    error: function () {
-      Swal.fire({
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading()
-        },
-        timer: 500
-      })
-      $('#status-' + c_id).append('<b class="text-danger ml-2">Error</b>')
-    }
-  })
-}
-
-
 function CheckOutRequest(url) {
   Swal.fire({
     showConfirmButton: false,
@@ -2140,4 +2085,293 @@ function payByWallet(inp_s_v, pp) {
     }
   })
 
+}
+
+
+function sendWMessages(name) {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  Swal.fire({
+    title: `Do you want to send ` + name + ` message for ` + inp_select_v.length.toString() + ` orders? (Yes / No)`,
+    showDenyButton: true,
+    confirmButtonText: `Yes`,
+    denyButtonText: `No`,
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+      })
+      $.ajax({
+        type: "POST",
+        crossDomain: true,
+        dataType: "json",
+        url: "/send_whatsapp_messages/" + name,
+        data: { 'order_ids': inp_select_v },
+        success: function (res) {
+          if (res.result == 'success') {
+            trtext = ""
+            for (var o of res.results) {
+              console.log(o);
+              if (["success", "PENDING", "SENT", true].includes(o.result)) {
+                updateSpan(o.order_id, o.template_name, 'text-success')
+              } else {
+                updateSpan(o.order_id, o.template_name, 'text-danger')
+              }
+              btns = `<td id='pay-`+o.phone_number+`' onclick="sendWPaymentLink('` + o.order_id + "','" + o.phone_number + "','" + o.vendor_type + `')"><button class='btn btn-sm btn-success'>Send Payment Link</button></td>`
+              if (!o.button) {
+                btns = ''
+                if (o.show){
+              var o_ids = "[" + o.ids + "]"
+              if (o.pbw) {
+                btns = `<button id="${o.customer_id}-pbw" onclick="payByWallet(${o_ids},'yes' )" class="btn btn-success btn-sm mr-1 mt-2">Pay by wallet</button>`
+              } else if (o.genl || o.genm) {
+                var type = 'add'
+                if (o.genm) {
+                  type = 'remove'
+                }
+                btns = `<button id="` + o.customer_id + `-gpmw" onclick="gen_multipayment('` + o.ids + `','` + o.customer_id + `', '` + (parseFloat(o.total_unpaid_payble) - parseFloat(o.balance)).toFixed(2) + `','` + o.customer_name + `','` + o.phone_number + `','` + o.balance + `','` + type + `')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + (parseFloat(o.total_unpaid_payble) - parseFloat(o.balance)).toFixed(2) + `</button>`
+              }
+              btns = `<button id="` + o.customer_id + `-gpm" onclick="gen_multipayment('` + o.ids + `','` + o.customer_id + `', '` + o.total_unpaid_payble + `','` + o.customer_name + `','` + o.phone_number + `')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + o.total_unpaid_payble.toFixed(2) + `</button>`+btns
+              }
+            }
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.customer_name + " ( " + o.phone_number + ` ) </p></td>
+                    <td><p>`+ o.order_id + `</p></td>
+                    <td><p>`+ o.result + `</p></td>
+                    <td><p>`+ o.payment_status + `</p></td>
+                    <td>`+btns + `</td>
+                    <td style="display: flex;" id="status-${o.customer_id}"></td>
+                  </tr>
+              `
+            }
+            $('#exampleModal').modal({
+          show: true
+        })
+        $(".modal-body").html(`
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Name (Mobile)</b></th>  
+                    <th><b>Order IDS</b></th>  
+                    <th><b>Result</b></th>  
+                    <th><b>Paid/Unpaid</b></th>  
+                    <th></th>
+                    <th>Status</th>
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `)
+            Swal.fire({
+              showConfirmButton: false,
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading()
+              },
+              timer: 500
+            })
+          }
+          else if (res.result == 'delivery') {
+            trtext = ""
+            for (var o of res.orders) {
+              trtext += `
+                  <tr>
+                    <td><p>`+ o.billing.first_name + " ( " + o.billing.phone + ` ) </p></td>
+                    <td><p>`+ o.id + `</p></td>
+                    <td><p>`+ o.delivery_date + `</p></td>
+                  </tr>
+              `
+            }
+            Swal.fire({
+              icon: 'warning',
+
+              html: `
+              <b>These orders don't have today's delivery date. Please select correct orders.</b>
+                <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Name (Mobile)</b></th>  
+                    <th><b>Order ID</b></th>  
+                    <th><b>Delivery Date</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+              `,
+              width: 1000,
+              backdrop: `
+                rgba(0,0,123,0.4)
+              `,
+              allowOutsideClick: false
+            })
+          }
+          else if (res.result == 'error_s'){
+            Swal.fire({
+              icon: 'error',
+              title: res.error_s
+            })
+          }
+          else {
+            $.nok({
+              message: "Error, Messages not sent!",
+              type: "error",
+            });
+          }
+        },
+        error: function (res) {
+          Swal.fire({
+            title: 'Something went wrong..',
+            icon: 'error'
+          })
+        }
+      })
+    }
+  })
+}
+
+
+function copyText(text) {
+  var input = document.body.appendChild(document.createElement("textarea"));
+  text = text.replace("&amp;", "&");
+  input.value = text;
+  input.select();
+  var status = document.execCommand("copy");
+  input.parentNode.removeChild(input);
+  if (status){
+      $.nok({
+        message: "Copied!",
+        type: 'success'
+      });         
+    }else{
+     Swal.fire({
+       icon: 'error',
+       text: "Error While copying\n"+text
+     })
+    }
+}
+
+function gen_multipayment(id, c_id, amount, name, phone, balance, type, check) {
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+  if (check == undefined){
+    $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/check_unpaid_orders",
+    data: { 'order_ids': id, 'customer_id': c_id },
+    success: function (res) {
+      if (res.result == 'unpaid') {
+        o_str = ""
+        for (var o of res.orders) {
+          o_str += '<tr>'
+          o_str += '<td>' + o['id'] + '</td>'
+          o_str += '<td>' + o['status'] + '</td>'
+          o_str += '<td>' + o['total'] + '</td>'
+          o_str += '</tr>'
+        }
+
+        Swal.fire({
+          icon: "warning",
+          html: `
+          <b>Follow orders of `+ res.orders[0]['billing']['first_name'] + " " + res.orders[0]['billing']['last_name'] + ` are unpaid. Do you want to generate?</b>
+          <table class='table'>
+            <thead>
+            <tr>
+              <th><b>Order ID</b></th>  
+              <th><b>Status</b></th>  
+              <th><b>Amount</b></th>  
+            </tr>  
+            </thead>
+            <tbody>
+            `+ o_str + `
+            </tbody>
+          </table>
+          `,
+          width: 1100,
+          confirmButtonText: 'Yes &rarr;',
+          cancelButtonText: 'No',
+          showCancelButton: true,
+        }).then((result) => {
+          if (result.isConfirmed) {
+            gen_multipayment(id, c_id, amount, name, phone, balance, type, 'ok')
+          }
+        })
+      } else {
+        gen_multipayment(id, c_id, amount, name, phone, balance, type, 'ok')
+      }
+
+    },
+    error: function () {
+      Swal.fire({
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+        timer: 500
+      })
+      $('#status-' + c_id).append('<b class="text-danger ml-2">Error</b>')
+    }
+  })
+  }else{
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/gen_multipayment",
+    data: { 'order_ids': id, 'amount': amount, 'name': name, 'phone': phone, 'balance': balance, 'type': type, 'customer_id': c_id },
+    success: function (res) {
+      console.log(res);
+      Swal.fire({
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+        timer: 500
+      })
+      if (res.result == 'success' || res.result == 'already') {
+        $('#status-' + c_id).append(`
+        <div>
+          <b class="text-success ml-2 mr-1">${res.result} Link: ${res.short_url}</b>
+          <button onclick="sendWPaymentLink('${id}','${phone}','${res.vendor}')" class='btn btn-sm btn-success ml-2'>Send Payment Link</button></div>`)
+        if (type == undefined) {
+          $('#' + c_id + '-gpm').remove()
+        } else {
+          $('#' + c_id + '-gpmw').remove()
+        }
+      } else {
+        $('#status-' + c_id).append('<b class="text-danger ml-2">Error</b>')
+
+      }
+
+    },
+    error: function () {
+      Swal.fire({
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+        timer: 500
+      })
+      $('#status-' + c_id).append('<b class="text-danger ml-2">Error</b>')
+    }
+  })
+}
 }
