@@ -2224,7 +2224,7 @@ def check_unpaid_orders():
 def deliverychargemessages():
     args = request.args.to_dict(flat=True)
     url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + format_mobile(args['mobile'])
-    args['order_type'] = vendor_type[args['vendor']]
+    args['order_type'] = vendor_type[args['vendor']]+" order"
     template_name = ""
     if args['vendor'] in ["micheartisanbakery", "Miche Artisan Bake"]:
         template_name = "min_order_miche"
