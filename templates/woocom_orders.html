@@ -281,7 +281,7 @@
         <th scope="col">Order Date</th>
         <th scope="col">Delivery Date</th>
         <th scope="col">Vendor</th>
-        <th scope="col">Payment Status (Payment_Type)</th>
+        <th scope="col">Payment_Type</th>
         <th scope="col">Amount (Refund)</th>
         <th scope="col">Amount Payble</th>
         <th scope="col">Whatsapp Messages</th>
@@ -321,11 +321,10 @@
           style="cursor: pointer;" aria-hidden="true"></i></a>
 
           </div>
-          <div class="mt-1">
+          <div style="min-width: 216;" class="mt-1">
             
             {% if nav_active == "processing"%}
             {% if o.vendor_type %}
-            <div style="min-width: 143px;">
               <button data-toggle="tooltip" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='hello_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key, page=page)}}')
               ">
                 <i title="Hello Message" class="mdi mdi-18px mdi-whatsapp"></i>
@@ -345,38 +344,31 @@
                 <i title="Prepay Message" class="mdi mdi-18px mdi-whatsapp"></i>
               </button>
               </button>
-            </div>
-            {% endif %}
+              {% endif %}
             {%endif%}
             {% endif %}
             {% if nav_active == "tbd-paid, tbd-unpaid" or nav_active == "subscription"%}
             {% if o.vendor_type and o.delivery_date and o.payment_method %}
             {% if o.date_paid != None %}
-            <div style="min-width: 120px;">
               <button data-toggle="tooltip" title="Order Detail Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_prepay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                   ">Order
               </button>
-            </div>
             {%else%}
-            <div class="mb-1" style="min-width: 143px">
               <button data-toggle="tooltip" title="Send Session Message" class="btn btn-warning btn-sm" onclick="SendWhatsappMessages('{{url_for('send_session_message', order_id=o.id)}}')
               "><i title="Order Detail Message" class="mdi mdi-18px mdi-whatsapp"></i>
               </button>
               <button data-toggle="tooltip" title="Order Detail Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='order_postpay', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                   ">Order
               </button>
-            </div>
             {%endif%}
             {%endif%}
             {% endif %}
             {% if o.status == "delivered-unpaid"%}
             {% if o.vendor_type %}
-            <div style="min-width: 162px;">
               <button data-toggle="tooltip" class="btn btn-success btn-sm ml-1" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='payment_remainder_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
                ">
                 Payment
               </button>
-            </div>
             {%endif%}
             {% endif %}
             {% if nav_active == "cancelled" %}
@@ -394,11 +386,14 @@
             {% endif %}
             {% if nav_active == "failed, pending" %}
               {% if o.vendor_type %}
-              <button title="Confirm Order Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='confirm_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+              <button style="font-size: 18px;" title="Confirm Order Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='confirm_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
               ">Confirm
               </button>
               {% endif %}
             {% endif %}
+            {%if o.shipping_total|float>0 and o.vendor%}
+            <button style="font-size: 18px;" title="Send Message with Delivery Charge" class="btn btn-success btn-sm font-weight-bold" onclick="deliveryChargeMessage('{{url_for('deliverychargemessages', vendor=o.vendor, name=o.billing.first_name+' '+o.billing.last_name, amount=format_decimal(o.total-o.total_refunds-o.wallet_payment), mobile = o.billing.phone)}}')">D</button>
+            {%endif%}
           </div>
         </td>
         <td scope="row">{{ o.id}}</td>
@@ -408,11 +403,7 @@
         <td scope="row">{{ o.date_created}}</td>
         <td scope="row">{{ o.delivery_date}}</td>
         <td scope="row">{{o.vendor}}</td>
-        {% if o['status'] in ['tbd-paid', 'completed'] or o['payment_method_title'] in ['Pre-paid', "Wallet payment"] %}
-        <td scope="row">Paid ({{ o.payment_method_title}})</td>
-        {% else %}
-        <td scope="row">Unpaid ({{ o.payment_method_title}})</td>
-        {% endif %}
+        <td scope="row">{{ o.payment_method_title}}</td>
         {%if o.shipping_total |float > 0%}
         <td>{{(format_decimal(o.total - o.shipping_total|float))}} + {{format_decimal(o.shipping_total)}} ({{ o.total_refunds}})</td>
         {%else%}

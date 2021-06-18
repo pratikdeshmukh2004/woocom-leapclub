@@ -1555,11 +1555,11 @@ def change_order_status():
     success_text = ""
     orders = list_orders_with_status(wcapi, {'include': get_list_to_string(data['order_ids[]'])})
     if data['status'][0] == 'paid':
-        checks = checkBefore(orders, ['payment_null','name', 'mobile', 'billing_address', 'shipping_address'])
+        checks = checkBefore(orders, ['payment_null','name', 'mobile', 'billing_address', 'shipping_address', 'subscription'])
         if len(checks)>0:
             return {'result':'errors', 'orders': checks}
     elif data['status'][0] == 'tbd' or data['status'][0] == 'delivered':
-        checks = checkBefore(orders, ['payment_null', 'vendor', 'delivery_date', 'name', 'mobile', 'billing_address', 'shipping_address'])
+        checks = checkBefore(orders, ['payment_null', 'vendor', 'delivery_date', 'name', 'mobile', 'billing_address', 'shipping_address', 'subscription'])
         if len(checks)>0:
             return {'result':'errors', 'orders': checks}
 
@@ -2145,13 +2145,33 @@ def sendPaymentRemainder():
     customers_list = []
     for c in customers:
         total_payble = 0
+        balance = wcapiw.get("current_balance/"+c).json()
         ids = []
         amount_str = []
         for o in customers[c]:
             total_payble+=o['total_payble']
             ids.append(str(o['id']))
             amount_str.append(str(o['total_payble']))
-        customers_list.append({'name': '{} {}'.format(o['billing']['first_name'], o['billing']['last_name']), 'mobile': format_mobile(o['billing']['phone']), 'total': total_payble, 'order_ids': ", ".join(ids), 'customer_id': c, 'total_str': ', '.join(amount_str) + " = Rs. "+str(total_payble)})
+        payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+", ".join(ids)+"%")).all()
+        if len(payment_links)==0:
+           link = False
+        else:
+            p_l = payment_links.copy()
+            p_l.reverse()
+            for p in p_l:
+                if float(p.amount)/100 == float(total_payble):
+                    link = True
+                    break
+            else:
+                link = False
+        customer_obj = {'wallet_balance': balance,'link':link,'name': '{} {}'.format(o['billing']['first_name'], o['billing']['last_name']), 'mobile': format_mobile(o['billing']['phone']), 'total': total_payble, 'order_ids': ", ".join(ids), 'customer_id': c, 'total_str': ', '.join(amount_str) + " = Rs. "+str(total_payble)}
+        if float(customer_obj['wallet_balance'])>=customer_obj['total']:
+            customer_obj['pbw']=True
+        elif float(customer_obj['wallet_balance'])>0:
+            customer_obj['genm']=True
+        elif float(customer_obj['wallet_balance'])<0:
+            customer_obj['genl'] = True
+        customers_list.append(customer_obj)
     return {'result': 'success', 'customers': customers_list}
 
 
@@ -2186,14 +2206,6 @@ def sendWhatsappSessionTemplateRemainder(id, amount, mobile, order_ids, amount_s
     if result["result"] in ["success", "PENDING", "SENT", True]:
         return {'status': 'success'}
 
-# @app.route("/remDeliveryCharge/<string:id>")
-# def remDeliveryCharge(id):
-#     d = {'shipping_total': 0}
-#     u_order = wcapi_write.put("orders/"+id, d).json()
-#     if 'id' not in u_order.keys():
-#         return {'status': 'error_s','error': 'error while adding fee!'}
-#     else:
-#         return {'status':'success'}
 
 @app.route("/check_unpaid_orders", methods=['POST'])
 def check_unpaid_orders():
@@ -2207,6 +2219,45 @@ def check_unpaid_orders():
     else:
         return {'result': 'no'}
 
+
+@app.route("/delivery_charge_message")
+def deliverychargemessages():
+    args = request.args.to_dict(flat=True)
+    url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + format_mobile(args['mobile'])
+    args['order_type'] = vendor_type[args['vendor']]+" order"
+    template_name = ""
+    if args['vendor'] in ["micheartisanbakery", "Miche Artisan Bake"]:
+        template_name = "min_order_miche"
+        args['minimum_order_amount'] = 300
+    elif args['vendor'] in ["Organic German Bake Shop", "organicgermanbakeshop"]:
+        template_name = "min_order_german"
+        args['minimum_order_amount'] = 300
+    elif args['vendor'] in ["desiutpadbyjaya", "Desi Utpad by Jaya","Kyssa Farms", "kyssafarms"]:
+        template_name = "min_order_groceries_1"
+        args['minimum_order_amount'] = 500
+    parameters_s = "["
+    for d in args:
+        parameters_s = parameters_s + \
+            '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
+    parameters_s = parameters_s[:-1]
+    parameters_s = parameters_s+"]"
+    payload = {
+        "template_name": template_name,
+        "broadcast_name": 'payment_remainder',
+        "parameters": parameters_s
+    }
+    headers = {
+        'Authorization': app.config["WATI_AUTHORIZATION"],
+        'Content-Type': 'application/json',
+    }
+
+    response = requests.request(
+        "POST", url, headers=headers, data=json.dumps(payload))
+
+    result = json.loads(response.text.encode('utf8'))
+    return result
+
+    
 if __name__ == "__main__":
     db.create_all()
     app.run(debug=True)

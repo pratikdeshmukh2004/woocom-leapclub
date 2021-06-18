@@ -147,14 +147,14 @@ def checkBefore(orders, conditions):
                     results[id] = [error_t]
         if 'vendor' in conditions:
             error_t = "Vendor is missing"
-            if vendor == "":
+            if vendor == "" and o['created_via'] != 'subscription':
                 if id in results:
                     results[id].append(error_t) 
                 else:
                     results[id] = [error_t]
         if 'delivery_date' in conditions:
             error_t = "Delivery Date is missing"
-            if delivery_date == "":
+            if delivery_date == "" and o['created_via'] != 'subscription':
                 if id in results:
                     results[id].append(error_t) 
                 else:

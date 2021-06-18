@@ -1573,109 +1573,6 @@ function sendWhatsappSessionTemplate(id, amount) {
 }
 
 
-function sendPaymentRemainder() {
-  var inp_select = $('#select_inps')
-  var inp_select_v = inp_select.val()
-
-  Swal.fire({
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading()
-    },
-  })
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/sendPaymentRemainder",
-    data: { 'ids': inp_select_v },
-    success: function (res) {
-      if (res.result == 'errors') {
-        console.log(res);
-        trs = ""
-        for (var o in res.orders) {
-          trs += '<tr>'
-          trs += '<td>' + o + '</td>'
-          trs += '<td class="text-danger">' + res.orders[o] + '</td>'
-          trs += '</tr>'
-        }
-        Swal.fire({
-          icon: "warning",
-          title: "There are some errors in orders. Please check following orders.",
-          html: `
-          <table class='table'>
-            <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Errors</th>
-            <tr>
-            </thead>
-            <tbody>
-              `+ trs + `
-            </tbody>
-          <table>
-          `,
-          width: 900
-        })
-      }
-      else if (res.result == 'success') {
-        Swal.fire({
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading()
-        },
-        timer: 500
-      })
-        trs = ""
-        for (var c of res.customers) {
-          console.log(c);
-          trs += '<tr>'
-          trs += '<td>' + c['name'] + '</td>'
-          trs += '<td>' + c['mobile'] + '</td>'
-          trs += '<td>' + c['order_ids'] + '</td>'
-          trs += '<td>' + c['total'] + '</td>'
-          trs += `<td id="rem-`+c.customer_id+`"><button onclick="sendWhatsappSessionTemplateRemainder('${c.customer_id}','${c.total}', '${c.mobile}', '${c.order_ids}','${c.total_str}','${c.name}')" class="btn btn-sm btn-success">Send Remainder</button></td>`
-          trs += '</tr>'
-        }
-        $('#exampleModal').modal({
-      show: true
-    })
-    $(".modal-body").html(`
-    <table class='table'>
-            <thead>
-            <tr>
-              <th>Customer Name</th>
-              <th>Mobile Number</th>
-              <th>Order IDs</th>
-              <th>Total Amount Payble</th>
-              <th></th>
-            <tr>
-            </thead>
-            <tbody>
-              `+ trs + `
-            </tbody>
-          <table>
-    `)
-      }
-      else {
-        Swal.fire({
-          icon: "error",
-          title: "Got Error Please Recheck Orders!"
-        })
-      }
-    },
-    error: function () {
-      Swal.fire({
-        icon: "error",
-        title: "Got Error Please Recheck Orders!"
-      })
-    }
-  })
-
-}
-
 
 function sendWhatsappSessionTemplateRemainder(id, amount, mobile, order_ids, amount_str, name) {
     Swal.fire({
@@ -2259,7 +2156,11 @@ function copyText(text) {
     }
 }
 
-function gen_multipayment(id, c_id, amount, name, phone, balance, type, check) {
+
+function sendPaymentRemainder() {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+
   Swal.fire({
     showConfirmButton: false,
     allowOutsideClick: false,
@@ -2267,6 +2168,125 @@ function gen_multipayment(id, c_id, amount, name, phone, balance, type, check) {
       Swal.showLoading()
     },
   })
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/sendPaymentRemainder",
+    data: { 'ids': inp_select_v },
+    success: function (res) {
+      if (res.result == 'errors') {
+        console.log(res);
+        trs = ""
+        for (var o in res.orders) {
+          trs += '<tr>'
+          trs += '<td>' + o + '</td>'
+          trs += '<td class="text-danger">' + res.orders[o] + '</td>'
+          trs += '</tr>'
+        }
+        Swal.fire({
+          icon: "warning",
+          title: "There are some errors in orders. Please check following orders.",
+          html: `
+          <table class='table'>
+            <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Errors</th>
+            <tr>
+            </thead>
+            <tbody>
+              `+ trs + `
+            </tbody>
+          <table>
+          `,
+          width: 900
+        })
+      }
+      else if (res.result == 'success') {
+        Swal.fire({
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+        timer: 500
+      })
+        trs = ""
+        for (var c of res.customers) {
+          console.log(c);
+          trs += '<tr>'
+          trs += '<td>' + c['name'] + '</td>'
+          trs += '<td>' + c['mobile'] + '</td>'
+          trs += '<td>' + c['order_ids'] + '</td>'
+          trs += '<td>' + c['total'] + '</td>'
+          if (c.link){
+            trs += `<td id="rem-`+c.customer_id+`"><button onclick="sendWhatsappSessionTemplateRemainder('${c.customer_id}','${c.total}', '${c.mobile}', '${c.order_ids}','${c.total_str}','${c.name}')" class="btn btn-sm btn-success">Send Reminder</button></td>`
+          }else{
+            btns = ''
+            var o_ids = "[" + c.order_ids + "]"
+            if (c.pbw) {
+              btns = '<button id="' + c.customer_id + '-pbw" onclick="payByWallet(' + o_ids + ')" class="btn btn-success btn-sm mr-1 mt-2">Pay by wallet</button>'
+            } else if (c.genl || c.genm) {
+              var type = 'add'
+              if (c.genm) {
+                type = 'remove'
+              }
+              btns = `<button id="` + c.customer_id + `-gpmw" onclick="gen_multipayment('` + c.order_ids + `','` + c.customer_id + `', '` + (parseFloat(c.total) - parseFloat(c.wallet_balance)).toFixed(2) + `','` + c.name + `','` + c.mobile + `','` + c.wallet_balance + `','` + type + `','','reminder')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + (parseFloat(c.total) - parseFloat(c.wallet_balance)).toFixed(2) + `</button>`
+            }
+              trs += `<td><button id="` + c.customer_id + `-gpm" onclick="gen_multipayment('` + c.order_ids + `','` + c.customer_id + `', '` + c.total + `','` + c.name + `','` + c.mobile + `,','','','','reminder')" class="btn mt-2 btn-success btn-sm mr-1">Generate Payment Link of ` + c.total + `</button>` +btns +`</td>`
+            }
+          trs += `<td style="display: flex;" id="status-${c.customer_id}"></td></tr>`
+        }
+        $('#exampleModal').modal({
+      show: true
+    })
+    $(".modal-body").html(`
+    <table class='table'>
+            <thead>
+            <tr>
+              <th>Customer Name</th>
+              <th>Mobile Number</th>
+              <th>Order IDs</th>
+              <th>Total Amount Payble</th>
+              <th></th>
+              <th></th>
+            <tr>
+            </thead>
+            <tbody>
+              `+ trs + `
+            </tbody>
+          <table>
+    `)
+      }
+      else {
+        Swal.fire({
+          icon: "error",
+          title: "Got Error Please Recheck Orders!"
+        })
+      }
+    },
+    error: function () {
+      Swal.fire({
+        icon: "error",
+        title: "Got Error Please Recheck Orders!"
+      })
+    }
+  })
+
+}
+
+
+
+function gen_multipayment(id, c_id, amount, name, phone, balance, type, check, reminder) {
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+  console.log(reminder, "REM.....");
   if (check == undefined){
     $.ajax({
     type: "POST",
@@ -2308,11 +2328,11 @@ function gen_multipayment(id, c_id, amount, name, phone, balance, type, check) {
           showCancelButton: true,
         }).then((result) => {
           if (result.isConfirmed) {
-            gen_multipayment(id, c_id, amount, name, phone, balance, type, 'ok')
+            gen_multipayment(id, c_id, amount, name, phone, balance, type, 'ok', reminder)
           }
         })
       } else {
-        gen_multipayment(id, c_id, amount, name, phone, balance, type, 'ok')
+        gen_multipayment(id, c_id, amount, name, phone, balance, type, 'ok', reminder)
       }
 
     },
@@ -2346,11 +2366,15 @@ function gen_multipayment(id, c_id, amount, name, phone, balance, type, check) {
         timer: 500
       })
       if (res.result == 'success' || res.result == 'already') {
+        if (reminder == 'reminder'){
+          $('#status-' + c_id).append(`<td id="rem-`+c_id+`"><button onclick="sendWhatsappSessionTemplateRemainder('${c_id}','${amount}', '${phone}', '${id}','${amount}','${name}')" class="btn btn-sm btn-success">Send Reminder</button></td>`)
+        }else{
         $('#status-' + c_id).append(`
         <div>
           <b class="text-success ml-2 mr-1">${res.result} Link: ${res.short_url}</b>
           <button onclick="sendWPaymentLink('${id}','${phone}','${res.vendor}')" class='btn btn-sm btn-success ml-2'>Send Payment Link</button></div>`)
-        if (type == undefined) {
+        }
+          if (type == undefined) {
           $('#' + c_id + '-gpm').remove()
         } else {
           $('#' + c_id + '-gpmw').remove()
@@ -2375,3 +2399,40 @@ function gen_multipayment(id, c_id, amount, name, phone, balance, type, check) {
   })
 }
 }
+function deliveryChargeMessage(path) {
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+  $.ajax({
+    type: "GET",
+    crossDomain: true,
+    dataType: "json",
+    url: path,
+    success: function (res) {
+      if (["success", "PENDING", "SENT", true].includes(res.result)) {
+        Swal.fire({
+          icon: "success",
+          title: "Message Sent!"
+        })
+        updateSpan(res.order_id, res.template_name, 'text-success')
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Can't send message!"
+        })
+        updateSpan(res.order_id, res.template_name, 'text-danger')
+      }
+    },
+    error: function (res) {
+      Swal.fire({
+          icon: "error",
+          title: "Can't send message!"
+      })
+    },
+  });
+}
+
