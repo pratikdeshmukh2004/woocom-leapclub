@@ -1515,7 +1515,7 @@ function copyToClipboard(id) {
 }
 
 
-function sendWhatsappSessionTemplate(id, amount) {
+function sendWhatsappSessionTemplate(id, amount, ids) {
     Swal.fire({
     showConfirmButton: false,
     allowOutsideClick: false,
@@ -1527,7 +1527,7 @@ function sendWhatsappSessionTemplate(id, amount) {
     type: "GET",
     crossDomain: true,
     dataType: "json",
-    url: "/sendWhatsappSessionTemplate/"+id+"/"+amount,
+    url: "/sendWhatsappSessionTemplate/"+id+"/"+amount+"/"+ids,
     success: function (res) {
       console.log(res);
       if (res.status == 'success'){
@@ -1904,7 +1904,7 @@ function payByWallet(inp_s_v, pp) {
           trs += '<td>' + c['wallet_balance'] + '</td>'
           trs += '<td >' + c['status'] + '</td>'
           if (c['status'] == 'success') {
-            trs += `<td id="inform-`+c.customer_id+`"><button onclick="sendWhatsappSessionTemplate('`+c.customer_id+`','`+c.total+`')" class="btn btn-sm btn-success">Inform Customer</button></td>`
+            trs += `<td id="inform-`+c.customer_id+`"><button onclick="sendWhatsappSessionTemplate('`+c.customer_id+`','`+c.total+`','`+c.order_ids+`')" class="btn btn-sm btn-success">Inform Customer</button></td>`
           }
           trs += '</tr>'
         }

@@ -195,7 +195,7 @@ def filter_orders_for_errors(orders):
     new_orders = []
     for o in orders:
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
-        if o['status'] in ['processing', 'pending', 'failed']:
+        if o['status'] in ['pending', 'failed']:
             new_orders.append(o)
         elif vendor == "" or delivery_date == "":
             new_orders.append(o)
@@ -389,6 +389,7 @@ def send_whatsapp(name):
             nav_active = "any"
         mobile_number = format_mobile(args["mobile_number"])
         result = send_whatsapp_msg(args, mobile_number, name)
+        print(result)
         if result["result"] in ["success", "PENDING", "SENT", True]:
             new_wt = wtmessages(order_id=int(args["order_id"]), template_name=result["template_name"], broadcast_name=result["broadcast_name"], status="success", time_sent=datetime.utcnow())
         else:
@@ -485,6 +486,7 @@ def download_csv():
         o = orders[0]
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         for order in orders:
+            order['vendor'], manager, delivery_da, order_note,  = get_meta_data(order)
             wallet_payment = 0
             if len(order["fee_lines"]) > 0:
                 for item in order["fee_lines"]:
@@ -770,6 +772,7 @@ def send_session_message(order_id):
     if not g.user:
         return redirect(url_for('login'))
     order = wcapi.get("orders/"+order_id).json()
+    order['total'] = (float(get_total_from_line_items(order["line_items"]))+float(order["shipping_total"])-float(get_total_from_line_items(order["refunds"])*-1))
     mobile_number = format_mobile(order["billing"]["phone"])
     order = get_orders_with_messages([order], wcapi)
     url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
@@ -1005,12 +1008,13 @@ def order_details():
         return {'result':'errors', 'orders': checks}
     print("Time to fetch orders: ", time.time()-c_time)
     c_time = time.time()
-    orders = get_orders_with_messages_without(orders, wcapi)
-    print("Time to message: ", time.time()-c_time)
     main_text = ""
     total = 0
     for o in orders:
-        total += float(o['total_amount'])
+        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
+        total += float(o['total'])
+        print(total)
+    orders = get_orders_with_messages_without(orders, wcapi)
     for o in orders:
         main_text += o['c_msg']
         main_text += "-----------------------------------------\n\n"
@@ -1033,12 +1037,7 @@ def order_details_mini():
     for o in orders:
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         total_amount = 0
-        wallet_payment = 0
-        if len(o["fee_lines"]) > 0:
-            for item in o["fee_lines"]:
-                if "wallet" in item["name"].lower():
-                    wallet_payment += (-1)*float(item["total"])
-        total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1))
+        total_amount += (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         if len(delivery_date)>0:
@@ -1051,11 +1050,10 @@ def order_details_mini():
             vendor_t = " ("+vendor_type[vendor]+")"
         main_text += ("Order ID: "+str(o['id'])+vendor_t)
         main_text += ("\nDelivery Date: "+d_date)
-        main_text += ("\n\nTotal Amount: "+str(total_amount))
+        main_text += ("\n\nTotal Amount: "+str(format_decimal(str(total_amount))))
         main_text += "\n\n-----------------------------------------\n\n"
         total += total_amount
-    main_text += ("*Total Amount: "+str(round(total,1))+"*\n\n")
-    print(main_text)
+    main_text += ("*Total Amount: "+str(format_decimal(str(total)))+"*\n\n")
     return {"result": main_text}
 
 
@@ -1382,7 +1380,7 @@ def send_whatsapp_messages_m(name):
             else:
                 r['payment_status'] = "Unpaid"
         else:
-            td = 'feedback_old_prepaid_v2'
+            td = 'feedback_1506_1'
             months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
             if len(delivery_date)>0:
@@ -1604,6 +1602,7 @@ def change_order_status():
 @app.route("/get_copy_messages/<string:id>")
 def get_copy_messages(id):
     o = wcapi.get("orders/"+id[6:]).json()
+    o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
     product_list = list_product_list_form_orders([o], wcapi)
     order_refunds = []
     if len(o["refunds"]) > 0:
@@ -2075,12 +2074,14 @@ def movetoprocessing(id, payment_method):
         return {'result': 'error','error': 'error while adding fee!'}
     return{'result': 'success'}
 
-@app.route("/sendWhatsappSessionTemplate/<string:id>/<string:amount>")
-def sendWhatsappSessionTemplate(id, amount):
+@app.route("/sendWhatsappSessionTemplate/<string:id>/<string:amount>/<string:o_ids>")
+def sendWhatsappSessionTemplate(id, amount, o_ids):
     amount = format_decimal(amount)
+    o_ids = format_order_ids(o_ids)
     balance = wcapiw.get("current_balance/"+id).json()
     customer = wcapi.get("customers/"+id).json()
-    s_msg = "*Your wallet is updated!*\n\nAmount {}: {}\n\nCurrent Wallet Balance: {}\n\nLet us know if you have any queries.".format("debited", amount, balance)
+    c_name = customer['billing']['first_name']+" "+customer['billing']['last_name']
+    s_msg = "Hi {},\n\nWe have deducted {} from your Leap wallet for your order %23 {}.\n\nYour current wallet balance is Rs. {}.\n\nLet us know if you have any queries.".format(c_name, amount, o_ids, balance)
     mobile_number = format_mobile(customer["billing"]["phone"])
     url = app.config["WATI_URL"]+"/api/v1/sendSessionMessage/" + \
         mobile_number + "?messageText="+s_msg
@@ -2096,15 +2097,15 @@ def sendWhatsappSessionTemplate(id, amount):
     else:
         url = app.config["WATI_URL"]+"/api/v1/sendTemplateMessage/" + mobile_number
         parameters_s = "["
-        args = {'credited_debited': 'debited', 'amount_added': amount, 'wallet_balance': balance}
+        args = {'name': c_name, 'total_amount': amount, 'wallet_balance': balance, 'order_id': o_ids}
         for d in args:
             parameters_s = parameters_s + \
                 '{"name":"'+str(d)+'", "value":"'+str(args[d])+'"},'
         parameters_s = parameters_s[:-1]
         parameters_s = parameters_s+"]"
         payload = {
-            "template_name": 'wallet_balance',
-            "broadcast_name": 'wallet_balance',
+            "template_name": 'paid_by_wallet',
+            "broadcast_name": 'pay_by_wallet',
             "parameters": parameters_s
         }
         headers = {
@@ -2116,8 +2117,11 @@ def sendWhatsappSessionTemplate(id, amount):
             "POST", url, headers=headers, data=json.dumps(payload))
 
         result = json.loads(response.text.encode('utf8'))
+        print(result)
         if result["result"] in ["success", "PENDING", "SENT", True]:
             return {'status': 'success'}
+        else:
+            return {'status': 'error'}
 
 @app.route("/sendPaymentRemainder", methods=['POST'])
 def sendPaymentRemainder():

@@ -769,6 +769,7 @@ def get_csv_from_products(orders, wcapi, format):
 
 def get_orders_with_customer_detail(orders):
     for o in orders:
+        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
         cnmsg = ""
         if o['payment_method']=='other':
             cnmsg = "\n\nCash on delivery"
@@ -782,6 +783,7 @@ def get_orders_with_customer_detail(orders):
 def get_orders_with_supplier(orders, wcapi):
     product_list = list_product_list_form_orders(orders, wcapi)
     for o in orders:
+        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
         if len(o["refunds"]) > 0:
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
         else:
