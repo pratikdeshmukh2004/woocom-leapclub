@@ -115,10 +115,10 @@ TemplatesBroadcast = {
 
     },
     "confirm_msg": {
-        'bakery': {"template": "pending_payment_3", "broadcast": "order_confirm"},
-        'grocery': {"template": "pending_payment_3", "broadcast": "order_confirm"},
-        'personal_care': {"template": "pending_payment_3", "broadcast": "order_confirm"},
-        'dairy': {"template": "pending_payment_3", "broadcast": "order_confirm"}
+        'bakery': {"template": "abandoned_cart_v9", "broadcast": "abandoned_cart_v9"},
+        'grocery': {"template": "abandoned_cart_v9", "broadcast": "abandoned_cart_v9"},
+        'personal_care': {"template": "abandoned_cart_v9", "broadcast": "abandoned_cart_v9"},
+        'dairy': {"template": "abandoned_cart_v9", "broadcast": "abandoned_cart_v9"}
 
     },
     "payment_received": {

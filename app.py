@@ -219,6 +219,26 @@ def get_tabs_nums():
         result = executor.map(_get_tabs_nums, main_dict)
     return main_dict
 
+def get_product_text(id):
+    order = wcapi.get("orders/"+str(id)).json()
+    text_l = []
+    for item in order['line_items']:
+        item['product'] = wcapi.get("products/"+str(item['product_id'])).json()
+        name_w = item['name'].split("(")
+        if item['product']['weight'] != "" and len(name_w) == 2 and item['name'] == item['product']['name']:
+            f_q = float(item['product']['weight'])*float(item['quantity'])
+            if f_q<1:
+                f_q = f_q*1000
+                f_q = int(f_q) if float(int(f_q))==f_q else round(f_q, 2)
+                name_w = name_w[0]+"("+str(f_q)+" gm)"
+            else:
+                f_q = int(f_q) if float(int(f_q))==f_q else round(f_q, 2)
+                name_w = name_w[0]+"("+str(f_q)+" kg)"
+            text_l.append(name_w)
+        else:
+            text_l.append(item['name']+" x "+str(item['quantity']))
+    text = " | ".join(text_l)
+    return text
 
 def get_orders_for_home(args, tab):
     params = get_params(args.copy())
@@ -387,9 +407,10 @@ def send_whatsapp(name):
             nav_active = args["status"]
         else:
             nav_active = "any"
+        if "products" in args:
+            args['products'] = get_product_text(args['order_id'])
         mobile_number = format_mobile(args["mobile_number"])
         result = send_whatsapp_msg(args, mobile_number, name)
-        print(result)
         if result["result"] in ["success", "PENDING", "SENT", True]:
             new_wt = wtmessages(order_id=int(args["order_id"]), template_name=result["template_name"], broadcast_name=result["broadcast_name"], status="success", time_sent=datetime.utcnow())
         else:
@@ -418,9 +439,14 @@ def download_csv():
 
     # Collecting Meta and PopUp ready ---------------
     delivery_dates = {}
+    vendor_list = []
+    delivery_list = []
     status_list = {}
     for o in orders:
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        if o['status'] != "subscription":
+            delivery_list.append(delivery_date)
+            vendor_list.append(vendor)
         if delivery_date not in delivery_dates:
             delivery_dates[delivery_date] = {"count": 1}
         else:
@@ -432,7 +458,8 @@ def download_csv():
             status_list[status_t] = {'count': 1}
         else:
             status_list[status_t]['count'] +=1
-    
+    if vendor_list.count(vendor_list[0]) != len(vendor_list) and vendor_list.count(vendor_list[0]) != len(vendor_list):
+        return {'result': 'delivery_vendor'}
     # Conditions Download buttons........
     if data["action"][0] == "order_sheet":
         csv_text = get_csv_from_orders(orders, wcapi)
@@ -462,17 +489,30 @@ def download_csv():
         product_list = list_product_list_form_orders(orders, wcapi)
         print("Time to fetch products: ",time.time()-c_time)
         c_time = time.time()
-        for o in orders:
+        new_orders = []
+        for order in orders:
             refunds = []
-            if len(o["refunds"]) > 0:
-                refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
-            o['line_items_text'] = list_order_items_csv(
-                o["line_items"], refunds, wcapi, product_list).replace("&amp;", "&")
-            o['total_text'] = get_total_from_line_items(o["line_items"])
+            if len(order["refunds"]) > 0:
+                refunds = wcapi.get("orders/"+str(order["id"])+"/refunds").json()
+            order['line_items_text'] = list_order_items_csv(
+                order["line_items"], refunds, wcapi, product_list).replace("&amp;", "&")
+            order['total_text'] = get_total_from_line_items(order["line_items"])
+            for n_order in new_orders:
+                b_n_ad = n_order["shipping"]["address_1"] + ", " + n_order["shipping"]["address_2"] + ", " +n_order["shipping"]["city"] + ", " + n_order["shipping"]["state"] +", " + n_order["shipping"]["postcode"]
+                s_ad = order["billing"]["address_1"] + ", " + order["billing"]["address_2"] + ", " +order["billing"]["city"] + ", " + order["billing"]["state"] +", " + order["billing"]["postcode"]
+                s_n_ad = order["shipping"]["address_1"] + ", " + order["shipping"]["address_2"] + ", " +order["shipping"]["city"] + ", " + order["shipping"]["state"] +", " + order["shipping"]["postcode"]
+                b_ad = n_order["billing"]["address_1"] + ", " + n_order["billing"]["address_2"] + ", " +n_order["billing"]["city"] + ", " + n_order["billing"]["state"] +", " + n_order["billing"]["postcode"]
+                if order['billing']['phone'] == n_order['billing']['phone'] and b_n_ad == s_n_ad and s_ad == b_ad:
+                    n_order['total_text'] = str(float(n_order['total_text'])+float(order['total_text']))
+                    n_order['line_items_text'] = n_order['line_items_text']+order['line_items_text']
+                    n_order['id'] = str(order['id'])+" + "+str(n_order['id'])
+                    break
+            else:
+                new_orders.append(order)
         print("Time to fetch line_items and refunds: ", time.time()-c_time)
         c_time = time.time()
         response = requests.post(
-            app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=orders)
+            app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=new_orders)
         print("Time to send to google sheet: ",time.time()- c_time)
         sheet_url = app.config["SHEET_URL"]+response.json()['ssUrl']
         print("Total Time: ", time.time()-m_time)
@@ -484,6 +524,7 @@ def download_csv():
         sheet_url = app.config["SHEET_URL"]+response.json()['ssUrl']
     elif data['action'][0] == 'delivery-google-sheet':
         o = orders[0]
+        new_orders = []
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         for order in orders:
             order['vendor'], manager, delivery_da, order_note,  = get_meta_data(order)
@@ -493,7 +534,17 @@ def download_csv():
                     if "wallet" in item["name"].lower():
                         wallet_payment += (-1)*float(item["total"])
             order['total']= float(order['total'])+wallet_payment
-        response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=delivery_sheet", json=orders)
+            for n_order in new_orders:
+                b_n_ad = n_order["shipping"]["address_1"] + ", " + n_order["shipping"]["address_2"] + ", " +n_order["shipping"]["city"] + ", " + n_order["shipping"]["state"] +", " + n_order["shipping"]["postcode"]
+                s_ad = order["billing"]["address_1"] + ", " + order["billing"]["address_2"] + ", " +order["billing"]["city"] + ", " + order["billing"]["state"] +", " + order["billing"]["postcode"]
+                s_n_ad = order["shipping"]["address_1"] + ", " + order["shipping"]["address_2"] + ", " +order["shipping"]["city"] + ", " + order["shipping"]["state"] +", " + order["shipping"]["postcode"]
+                b_ad = n_order["billing"]["address_1"] + ", " + n_order["billing"]["address_2"] + ", " +n_order["billing"]["city"] + ", " + n_order["billing"]["state"] +", " + n_order["billing"]["postcode"]
+                if order['billing']['phone'] == n_order['billing']['phone'] and b_n_ad == s_n_ad and s_ad == b_ad:
+                    n_order['total'] = str(float(n_order['total'])+float(order['total']))
+                    break
+            else:
+                new_orders.append(order)
+        response = requests.post(app.config["GOOGLE_SHEET_URL"]+"?action=delivery_sheet", json=new_orders)
         sheet_url = app.config["SHEET_URL"]+response.json()['ssUrl']
     else:
         csv_text = get_csv_from_vendor_orders(orders, wcapi)
@@ -1011,7 +1062,7 @@ def order_details():
     main_text = ""
     total = 0
     for o in orders:
-        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
+        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
         total += float(o['total'])
         print(total)
     orders = get_orders_with_messages_without(orders, wcapi)
@@ -1335,6 +1386,7 @@ def send_whatsapp_messages_m(name):
             refunds = refunds + float(r["total"])
         o["total_refunds"] = refunds*-1
         o["total"] = float(o["total"])
+        o['m_total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
@@ -1365,9 +1417,10 @@ def send_whatsapp_messages_m(name):
             if o["date_paid"] == None:
                 td = 'today_postpay'
             params = {'c_name': o['billing']['first_name'], 
-            'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
+            'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['m_total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
                 'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
             r = send_whatsapp_temp_sess(params)
+            print(r)
             r['vendor_type'] = o['vendor_type']
             r['button'] = False
             if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] in ['Pre-paid','Wallet payment']):
@@ -1420,6 +1473,7 @@ def send_whatsapp_messages_m(name):
         r['customer_name'] = o['billing']['first_name']+" "+o['billing']['last_name']
         r['phone_number'] = format_mobile(o['billing']['phone'])
         r['customer_id'] = str(o['customer_id'])
+        r['m_total'] = o['m_total']
         results.append(r)
     if name == 'feedback':
         results = []
@@ -1602,7 +1656,7 @@ def change_order_status():
 @app.route("/get_copy_messages/<string:id>")
 def get_copy_messages(id):
     o = wcapi.get("orders/"+id[6:]).json()
-    o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
+    o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
     product_list = list_product_list_form_orders([o], wcapi)
     order_refunds = []
     if len(o["refunds"]) > 0:
