@@ -446,7 +446,7 @@ def download_csv():
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         if o['status'] != "subscription":
             delivery_list.append(delivery_date)
-            vendor_list.append(vendor)
+            vendor_list.append(vendor.lower().replace(" ", ''))
         if delivery_date not in delivery_dates:
             delivery_dates[delivery_date] = {"count": 1}
         else:
