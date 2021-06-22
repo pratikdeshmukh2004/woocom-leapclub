@@ -1064,7 +1064,6 @@ def order_details():
     for o in orders:
         o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
         total += float(o['total'])
-        print(total)
     orders = get_orders_with_messages_without(orders, wcapi)
     for o in orders:
         main_text += o['c_msg']
@@ -1420,7 +1419,6 @@ def send_whatsapp_messages_m(name):
             'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['m_total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
                 'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
             r = send_whatsapp_temp_sess(params)
-            print(r)
             r['vendor_type'] = o['vendor_type']
             r['button'] = False
             if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] in ['Pre-paid','Wallet payment']):
@@ -1517,19 +1515,19 @@ def send_whatsapp_messages_m(name):
             for o in unpaid_orders[r['customer_id']]:
                 total_payble+=o['amount_payble']
                 order_ids.append(str(o['id']))
-            payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+", ".join(order_ids)+"%")).all()
+            payment_links = PaymentLinks.query.filter(PaymentLinks.receipt.like("%"+(", ".join(order_ids))+"%")).all()
+            r['total_unpaid_payble'] = total_payble
+            r['ids'] = ", ".join(order_ids)
+            r['balance'] = wcapiw.get("current_balance/"+r['customer_id']).json()
             if len(payment_links)!=0:
                 p_l = payment_links.copy()
                 p_l.reverse()
                 for p in p_l:
-                    if float(p.amount)/100 == float(total_payble):
+                    if float(p.amount)/100 == round(float(total_payble),2):
                         r['button'] = True
                         r['show'] = False
             if r['show']:
                 r['button'] = False
-                r['total_unpaid_payble'] = total_payble
-                r['ids'] = ", ".join(order_ids)
-                r['balance'] = wcapiw.get("current_balance/"+r['customer_id']).json()
                 if float(r['balance'])>=total_payble:
                     r['pbw']=True
                 elif float(r['balance'])>0:
@@ -2171,7 +2169,6 @@ def sendWhatsappSessionTemplate(id, amount, o_ids):
             "POST", url, headers=headers, data=json.dumps(payload))
 
         result = json.loads(response.text.encode('utf8'))
-        print(result)
         if result["result"] in ["success", "PENDING", "SENT", True]:
             return {'status': 'success'}
         else:
