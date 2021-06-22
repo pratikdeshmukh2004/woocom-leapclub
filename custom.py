@@ -90,7 +90,7 @@ def list_order_refunds(order_refunds, line_item):
         item_id = list(filter(lambda x: x['key'] == '_refunded_item_id', order_item['meta_data']))[0]['value']
         o_i = list(filter(lambda oi: int(oi["id"]) == int(item_id), line_item))
         if len(o_i)>0:
-            if int(o_i[0]['quantity']) == 0:
+            if float(o_i[0]['quantity']) == 0:
                 msg = (
                     msg
                     + order_item["name"]
@@ -355,7 +355,7 @@ def get_orders_with_messages(orders, wcapi):
         c_msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
             list_order_items(o["line_items"], order_refunds, wcapi, product_list) + \
             "*Total Amount: " + \
-            get_totals(o["total"], order_refunds) + \
+            str(float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1)) + \
             get_shipping_total(o)+"*\n\n"
         c_msg = c_msg + \
             list_order_refunds(order_refunds, o['line_items']) + \
@@ -769,6 +769,7 @@ def get_csv_from_products(orders, wcapi, format):
 
 def get_orders_with_customer_detail(orders):
     for o in orders:
+        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
         cnmsg = ""
         if o['payment_method']=='other':
             cnmsg = "\n\nCash on delivery"
@@ -782,6 +783,7 @@ def get_orders_with_customer_detail(orders):
 def get_orders_with_supplier(orders, wcapi):
     product_list = list_product_list_form_orders(orders, wcapi)
     for o in orders:
+        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
         if len(o["refunds"]) > 0:
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
         else:

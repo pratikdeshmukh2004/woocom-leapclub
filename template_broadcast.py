@@ -115,10 +115,10 @@ TemplatesBroadcast = {
 
     },
     "confirm_msg": {
-        'bakery': {"template": "pending_payment_3", "broadcast": "order_confirm"},
-        'grocery': {"template": "pending_payment_3", "broadcast": "order_confirm"},
-        'personal_care': {"template": "pending_payment_3", "broadcast": "order_confirm"},
-        'dairy': {"template": "pending_payment_3", "broadcast": "order_confirm"}
+        'bakery': {"template": "abandoned_cart_v9", "broadcast": "abandoned_cart_v9"},
+        'grocery': {"template": "abandoned_cart_v9", "broadcast": "abandoned_cart_v9"},
+        'personal_care': {"template": "abandoned_cart_v9", "broadcast": "abandoned_cart_v9"},
+        'dairy': {"template": "abandoned_cart_v9", "broadcast": "abandoned_cart_v9"}
 
     },
     "payment_received": {
@@ -136,12 +136,12 @@ TemplatesBroadcast = {
         'dairy': {"template": "delivery_today_0203", "broadcast": "delivery_today"}
 
     },
-    "feedback_old_prepaid_v2":{
-        'bakery': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
-        'grocery': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
-        'personal_care': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
-        'dairy': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"},
-        'any': {"template": "feedback_old_prepaid_v2", "broadcast": "feedback_msg"}
+    "feedback_1506_1":{
+        'bakery': {"template": "feedback_1506_1", "broadcast": "feedback_msg"},
+        'grocery': {"template": "feedback_1506_1", "broadcast": "feedback_msg"},
+        'personal_care': {"template": "feedback_1506_1", "broadcast": "feedback_msg"},
+        'dairy': {"template": "feedback_1506_1", "broadcast": "feedback_msg"},
+        'any': {"template": "feedback_1506_1", "broadcast": "feedback_msg"}
 
     },
     "payment_link_6":{
