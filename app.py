@@ -1,7 +1,10 @@
 import re
 from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response, g, session
 from flask_sqlalchemy import SQLAlchemy, model
+from numpy import unicode_
 import sqlalchemy
+from sqlalchemy.orm import joinedload
+from sqlalchemy.sql.sqltypes import Unicode
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
@@ -25,7 +28,7 @@ from slack_bot import send_slack_message_, send_slack_message_calcelled, send_sl
 from flask_crontab import Crontab
 from slack_chennels import CHANNELS
 from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance, checkBefore
-
+import pandas as pd
 # Configuration and importing secrets....
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_pyfile("config.py")
@@ -1937,6 +1940,7 @@ def customers():
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(_get_in_less_time, ['wallet', 'unpaid_orders'])
     customers, unpaid_list = list(result)
+    unpaid_list = []
     main_unpaid_list = {}
     for c in unpaid_list:
         total_amount = 0
@@ -2312,7 +2316,63 @@ def deliverychargemessages():
     result = json.loads(response.text.encode('utf8'))
     return result
 
-    
+
+@app.route("/upload_wallet_transactions", methods=['POST'])
+def upload_wallet_transactions():
+    f = request.files['csv-file']
+    f.save("csv_file.csv")
+    try:
+        jsondata = csv.DictReader(open("csv_file.csv"), delimiter=',', quotechar='|')
+    except:
+        return {'status': 'error', 'error': 'Error while parsing csv file please check your file.'}
+    transactions = []
+    for row in jsondata:
+        transactions.append(row)
+    if len(transactions)==0:
+        return {'status': 'error', 'error': 'No transaction found'}
+    customers = {}
+    for t in transactions:
+        print(t)
+        if float(t['Amount'])<=0 or t['Action'].lower() not in ['credit', 'debit'] or t['Reason'] in [None, '', ' ']:
+            return {'status': 'error', 'error':'Invalid Amount/Action/Reason'}
+        if t['Username'] not in customers:
+            customers[t['Username']] = [t]
+        else:
+            customers[t['Username']].append(t)
+    def get_customer_id_by_username(name):
+        params = params={'per_page': 100,'role': 'all', 'search': name}
+        c_list = wcapi.get("customers", params=params).json()
+        for c_n in c_list:
+            if name == c_n['username']:
+                return c_n
+        else:
+            return False
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(get_customer_id_by_username, customers.keys())
+    results = list(result)
+    if False in results:
+        return {'status': 'error', 'error': 'Username not matching with customers'}
+    results2 = []
+    added_transactions = []
+    try:
+        for c in results:
+            transactions = customers[c['username']]
+            for t in transactions:
+                added_transactions.append(t)
+                response = wcapiw.post("wallet/"+str(c['id']), data={'type': t['Action'].lower(), 'amount': float(t['Amount']), 'details': t['Reason']}).json()
+                if response['response'] != 'success' and response['id'] == False: 
+                    results2.append(False)
+                else:
+                    results2.append(True)
+    except:
+        return {'status': 'timeout', 'added': added_transactions}
+    if False in results2:
+        return {'status':'error', 'error': 'error while processing with wallet'}
+    else:
+        return {'status':'success'}
+
+
+
 if __name__ == "__main__":
     db.create_all()
     app.run(debug=True)
