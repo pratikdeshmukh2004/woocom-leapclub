@@ -202,3 +202,10 @@ def checkBefore(orders, conditions):
                 else:
                     results[id] = [error_t]
     return results
+
+def format_decimal(dec):
+    dec = float(dec)
+    if float(dec) == int(dec):
+        return int(dec)
+    else:
+        return round(float(dec),2)

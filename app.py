@@ -27,7 +27,7 @@ from slack import WebClient
 from slack_bot import send_slack_message_, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
 from flask_crontab import Crontab
 from slack_chennels import CHANNELS
-from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance, checkBefore
+from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance, checkBefore, format_decimal
 import pandas as pd
 # Configuration and importing secrets....
 app = Flask(__name__, instance_relative_config=True)
@@ -118,12 +118,6 @@ class PaymentLinks(db.Model):
     created_at = db.Column(db.String)
     amount = db.Column(db.Float)
 
-def format_decimal(dec):
-    dec = float(dec)
-    if float(dec) == int(dec):
-        return int(dec)
-    else:
-        return round(float(dec),2)
 
 def format_order_ids(s):
     s_int = s.split(", ")
@@ -745,7 +739,18 @@ def new_order():
                                     "broadcast_name"], status="failed", time_sent=datetime.utcnow())
             db.session.add(new_wt)
             db.session.commit()
-
+            o['customer_id'] = str(o['customer_id'])
+            unpaid_orders = list_unpaid_amounts([{'id': o['customer_id']}])[0][o['customer_id']]
+            total_amount = 0
+            for o_n in unpaid_orders:
+                wallet_payment = 0
+                if len(o_n["fee_lines"]) > 0:
+                    for item in o_n["fee_lines"]:
+                        if "wallet" in item["name"].lower():
+                            wallet_payment += (-1)*float(item["total"])
+                total_amount += float(get_total_from_line_items(o_n["line_items"]))+float(o_n["shipping_total"])-wallet_payment-float(get_total_from_line_items(o_n["refunds"])*-1)
+            if len(unpaid_orders)>0:
+                send_slack_message(client, 'PENDING_PAYMENT', "We just received an order from a customer with pending payment!\n\nUnpaid amount: {}\n\nUnpaid orders: {}\n\nClick here to check all unpaid orders: {}".format(format_decimal(total_amount), len(unpaid_orders), app.config['FLASK_PANEL_URL']+"/customers/"+o['customer_id']))
         # End Whatsapp Template Message.....
         # Sending Slack Message....
         if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and (od > nd):
@@ -1660,6 +1665,11 @@ def get_copy_messages(id):
     o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
     product_list = list_product_list_form_orders([o], wcapi)
     order_refunds = []
+    wallet_payment = 0
+    if len(o["fee_lines"]) > 0:
+        for item in o["fee_lines"]:
+            if "wallet" in item["name"].lower():
+                wallet_payment += (-1)*float(item["total"])
     if len(o["refunds"]) > 0:
         order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
     msg = ""
@@ -1676,7 +1686,11 @@ def get_copy_messages(id):
                 delivery_date = months[dt.month-1]+" " + str(dt.day)
             except Exception as e:
                 delivery_date=""
-        msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
+        if o['payment_method'] == 'other':
+            payment_method = "Cash On Delivery"
+        else:
+            payment_method = o['payment_method_title']
+        msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + "Payment Method: "+payment_method+"\n\n" + \
             list_order_items(o["line_items"], order_refunds, wcapi, product_list) + \
             "*Total Amount: " + \
             get_totals(o["total"], order_refunds) + \
@@ -1686,7 +1700,10 @@ def get_copy_messages(id):
             list_only_refunds(order_refunds)
         if o['payment_method_title'] == "Wallet payment":
             balance = wcapiw.get("current_balance/"+str(o["customer_id"])).text[1:-1]
-            msg+="\nWallet balance: RS."+balance
+            msg+="\nWallet balance: RS."+balance+"\n\n"
+        if wallet_payment>0:
+            msg += ("Paid by wallet: "+str(wallet_payment)+"\n\nAmount to be paid: "+str(format_decimal(float(get_totals(o["total"], order_refunds))-wallet_payment)))
+
     else:
         payment_status = "Paid To LeapClub."
         if o['payment_method'] == 'other':
@@ -1940,7 +1957,6 @@ def customers():
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = executor.map(_get_in_less_time, ['wallet', 'unpaid_orders'])
     customers, unpaid_list = list(result)
-    unpaid_list = []
     main_unpaid_list = {}
     for c in unpaid_list:
         total_amount = 0
@@ -1958,6 +1974,7 @@ def customers():
 def customers_show(id):
     customer = wcapi.get("customers/"+id).json()
     transactions = wcapiw.get('wallet/'+id).json()
+    print(transactions[0])
     unpaid_orders = list_unpaid_amounts([customer])
     unpaid_orders = unpaid_orders[0][str(customer['id'])]
     payment_links = {}
