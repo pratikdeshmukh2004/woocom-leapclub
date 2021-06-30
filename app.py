@@ -2389,6 +2389,27 @@ def upload_wallet_transactions():
         return {'status':'success'}
 
 
+@app.route("/witi_webhook_01", methods=["POST"])
+def witi_webhook_01():
+    if request.method == "GET":
+        return "Plese Use POST Method..."
+    e = request.get_json()
+    print(e, "response from webhook 01.........")
+    mobile = format_mobile(e['Mobile'])
+    feedback = e['Feedback']
+    delivery_date = e['Delivery Date']
+    params = {"delivery_date": delivery_date, 'search': mobile}
+    orders = list_orders_with_status(wcapi, params)
+    update_list = list(map(lambda o: {'id': o['id'], 'Feedback': feedback}, orders))
+    updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
+    print(updates)
+
+@app.route("/witi_webhook_02", methods=["POST"])
+def witi_webhook_02():
+    if request.method == "GET":
+        return "Plese Use POST Method..."
+    e = request.get_json()
+    print(e, "response from webhook 02............")
 
 if __name__ == "__main__":
     db.create_all()
