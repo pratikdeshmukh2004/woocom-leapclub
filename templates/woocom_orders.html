@@ -385,11 +385,9 @@
             {% endif %}
             {% endif %}
             {% if nav_active == "failed, pending" %}
-              {% if o.vendor_type %}
-              <button style="font-size: 18px;" title="Confirm Order Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp', c_name = o.billing.first_name, manager=o.manager, order_id = o.id, order_note=o.order_note, total_amount=o.total, delivery_date=o.delivery_date, payment_method=o.payment_method_title, delivery_charge=o.shipping_total, seller=o.vendor, items_amount=o.total|float-o.shipping_total|float, name='confirm_msg', status=nav_active, vendor_type=o.vendor_type, mobile_number=o.billing.phone, order_key=o.order_key,url_post_pay=o.checkout_url[39:], page=page)}}')
+              <button style="font-size: 18px;" title="Confirm Order Message" class="btn btn-success btn-sm" onclick="SendWhatsappMessages('{{url_for('send_whatsapp',order_id = o.id, vendor_type=o.vendor_type, c_name = o.billing.first_name+' '+o.billing.last_name, total_amount=o.total, name='confirm_msg', mobile_number=o.billing.phone, products ='yes')}}')
               ">Confirm
               </button>
-              {% endif %}
             {% endif %}
             {%if o.shipping_total|float>0 and o.vendor%}
             <button style="font-size: 18px;" title="Send Message with Delivery Charge" class="btn btn-success btn-sm font-weight-bold" onclick="deliveryChargeMessage('{{url_for('deliverychargemessages', vendor=o.vendor, name=o.billing.first_name+' '+o.billing.last_name, amount=format_decimal(o.total-o.total_refunds-o.wallet_payment), mobile = o.billing.phone)}}')">D</button>
@@ -463,4 +461,7 @@
     </li>
   </ul>
 </nav>
+<script>
+
+</script>
 {% endblock %}

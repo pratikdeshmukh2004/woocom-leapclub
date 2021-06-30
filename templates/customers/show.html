@@ -173,6 +173,7 @@
     </div>
     <button onclick="MoneyToWallet('{{customer.id}}', 'credit', 'reload')" data-toggle="tooltip" title="Add Money" class="btn btn-success btn-sm mr-3 font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-plus mr-1"></i></button>
     <button onclick="MoneyToWallet('{{customer.id}}', 'debit', 'reload')" data-toggle="tooltip" title="Reduce Money" class="btn btn-success btn-sm mr-3 font-weight-bold"><i style="font-size: 20px;" class="font-weight-bold mdi mdi-minus mr-1"></i></button>
+    <button onclick="genPaymentLinkWallet('{{customer.id}}')" data-toggle="tooltip" title="Generate Payment Link" class="btn btn-success btn-sm font-weight-bold"><i class="mdi mdi-18px mdi-link-plus mr-1"></i></button>
   </div>
   <div class=" pr-2 pl-2" style="overflow-y: scroll; max-height: 600px;" >
   <table class="table">
