@@ -18,5 +18,6 @@ CHANNELS = {
     "DAIRY_NOTIFICATIONS": "flask-bot",
     "PAYMENT_NOTIFICATIONS": "flask-bot",
     "SESSION_MESSAGES": 'session-messages',
-    "PENDING_PAYMENT": 'flask-bot'
+    "PENDING_PAYMENT": 'flask-bot',
+    "PRODUCT_QUESTION_FEEDBACK": 'flask-bot'
 }
