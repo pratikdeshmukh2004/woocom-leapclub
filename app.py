@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, url_for, redirect, jsonify, m
 from flask_sqlalchemy import SQLAlchemy, model
 from numpy import unicode_
 import sqlalchemy
+from sqlalchemy.dialects.postgresql.base import OID
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.sqltypes import Unicode
 from sshtunnel import SSHTunnelForwarder
@@ -29,6 +30,9 @@ from flask_crontab import Crontab
 from slack_chennels import CHANNELS
 from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance, checkBefore, format_decimal
 import pandas as pd
+from whatsapp_bot import send_whatsapp_message_text
+
+
 # Configuration and importing secrets....
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_pyfile("config.py")
@@ -2418,22 +2422,60 @@ def witi_webhook_01():
     if request.method == "GET":
         return "Plese Use POST Method..."
     e = request.get_json()
-    print(e, "response from webhook 01.........")
-    mobile = format_mobile(e['Mobile'])
-    feedback = e['Feedback']
+    mobile = e['Mobile']
     delivery_date = e['Delivery Date']
+    if delivery_date == "" or mobile == "":
+        return {"status": "delivery date/ mobile missing...."}
     params = {"delivery_date": delivery_date, 'search': mobile}
     orders = list_orders_with_status(wcapi, params)
-    update_list = list(map(lambda o: {'id': o['id'], 'Feedback': feedback}, orders))
-    updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
-    print(updates)
+    if len(orders)==0:
+        return {"status": "No orders found"}
+    total = 0
+    main_text=''
+    for o in orders:
+        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
+        total += float(o['total'])
+    orders = get_orders_with_messages_without(orders, wcapi)
+    for o in orders:
+        main_text += o['c_msg']
+        main_text += "-----------------------------------------\n\n"
+    main_text += ("*Total Amount: "+str(total)+"*\n\n")
+    result = send_whatsapp_message_text(app.config["WATI_URL"],mobile,app.config["WATI_AUTHORIZATION"], main_text)
+    return "Done"
 
 @app.route("/witi_webhook_02", methods=["POST"])
 def witi_webhook_02():
     if request.method == "GET":
         return "Plese Use POST Method..."
     e = request.get_json()
-    print(e, "response from webhook 02............")
+    mobile = format_mobile(e['Mobile'])
+    delivery_date = e['Delivery Date']
+    feedback = e['Feedback']
+    f_d = feedback.lower().replace(" ", "")
+    if delivery_date == "" or mobile == "" or feedback =="":
+        return {"status": "delivery date/ mobile missing...."}
+    params = {"delivery_date": delivery_date, 'search': mobile}
+    orders = list_orders_with_status(wcapi, params)
+    if len(orders)==0:
+        return {"status": "No orders found"}
+    total = 0
+    main_text=''
+    update_list = []
+    o_ids = []
+    for o in orders:
+        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
+        total += float(o['total'])
+        update_list.append({"id": o['id'], 'meta_data':[{'key': "_wc_acof_8", "value": f_d}]})
+        o_ids.append(str(o['id']))
+    updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    dt = datetime.strptime(delivery_date, '%Y-%m-%d')
+    delivery_date = days[dt.weekday()]+","+ months[dt.month-1]+" " + str(dt.day)
+    s_text = "{}({})'s feedback for the orders delivered on {}: {}!\n\nOrders Updated: {}".format(orders[0]['billing']['first_name'], mobile, delivery_date, feedback, ", ".join(o_ids))
+    send_slack_message(client, "PRODUCT_QUESTION_FEEDBACK", s_text)
+    return "Done"
 
 if __name__ == "__main__":
     db.create_all()
