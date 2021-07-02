@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from custom import filter_orders, list_order_items, get_params, get_orders_with_messages, get_csv_from_orders, get_checkout_url, list_categories_with_products, list_categories, get_orders_with_wallet_balance, list_all_orders_tbd, list_created_via_with_filter, filter_orders_with_subscription, list_order_items_without_refunds, list_orders_with_status, get_csv_from_vendor_orders, get_list_to_string, get_total_from_line_items, update_order_status, get_csv_from_products, list_order_items_csv, get_totals, get_shipping_total_for_csv, get_orders_with_messages_without, get_orders_with_customer_detail, get_orders_with_supplier, list_order_refunds, get_shipping_total, list_only_refunds, list_orders_with_status_N2
 from werkzeug.datastructures import ImmutableMultiDict
 from template_broadcast import TemplatesBroadcast, vendor_type
-from customselectlist import list_created_via, list_vendor
+from customselectlist import list_created_via, list_vendor, all_vendors_list
 import uuid
 import json
 import requests
@@ -114,6 +114,18 @@ class PaymentLinks(db.Model):
     name = db.Column(db.String)
     created_at = db.Column(db.String)
     amount = db.Column(db.Float)
+
+class ThankYouMessages(db.Model):
+    id = db.Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        unique=True,
+        nullable=False,
+    )
+    receipt = db.Column(db.String)
+    amount = db.Column(db.Float)
+
 
 def format_decimal(dec):
     dec = float(dec)
@@ -444,9 +456,9 @@ def download_csv():
     status_list = {}
     for o in orders:
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
-        if o['status'] != "subscription":
+        if o['status'] != "subscription" and vendor != "":
             delivery_list.append(delivery_date)
-            vendor_list.append(vendor.lower().replace(" ", ''))
+            vendor_list.append(all_vendors_list[vendor])
         if delivery_date not in delivery_dates:
             delivery_dates[delivery_date] = {"count": 1}
         else:
@@ -458,8 +470,9 @@ def download_csv():
             status_list[status_t] = {'count': 1}
         else:
             status_list[status_t]['count'] +=1
-    if vendor_list.count(vendor_list[0]) != len(vendor_list) and vendor_list.count(vendor_list[0]) != len(vendor_list):
-        return {'result': 'delivery_vendor'}
+    if len(vendor_list) != 0:
+        if vendor_list.count(vendor_list[0]) != len(vendor_list):
+            return {'result': 'delivery_vendor'}
     # Conditions Download buttons........
     if data["action"][0] == "order_sheet":
         csv_text = get_csv_from_orders(orders, wcapi)
@@ -924,8 +937,13 @@ def razorpay():
                     order = orders[0]
                     name = order['billing']['first_name']
                     if (order['status'] in ['tbd-unpaid', 'delivered-unpaid'] or (order['status'] == 'processing' and order['payment_method_title'] in ['Pay Online on Delivery', 'other'] )):
-                        msg = send_whatsapp_msg(
-                            {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
+                        payment_links = ThankYouMessages.query.filter_by(receipt=receipt, amount=c_amount).all()
+                        if len(payment_links) == 0:                       
+                            msg = send_whatsapp_msg(
+                                {'vendor_type': "any", "c_name": name}, mobile, 'payment_received')
+                            new_wt = ThankYouMessages(receipt=receipt, amount=c_amount)
+                            db.session.add(new_wt)
+                            db.session.commit()
                         if "W_" in receipt:
                             b = e['payload']['order']['entity']['receipt'][5:].split("_")[1]
                             wcapiw.post("wallet/"+str(order['customer_id']), data={'type': 'credit', 'amount': float(b), 'details': 'Credited from razorpay'}).json()
