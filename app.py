@@ -2422,10 +2422,13 @@ def witi_webhook_01():
     if request.method == "GET":
         return "Plese Use POST Method..."
     e = request.get_json()
+    print(e)
     mobile = e['Mobile']
-    delivery_date = e['Delivery Date']
-    if delivery_date == "" or mobile == "":
+    order_id = e['Order ID']
+    if order_id == "" or mobile == "" or order_id == "{{order_id}}":
         return {"status": "delivery date/ mobile missing...."}
+    orders = wcapi.get("orders", params={'include': order_id}).json()
+    vendor, manager, delivery_date, order_note,  = get_meta_data(orders[0])
     params = {"delivery_date": delivery_date, 'search': mobile}
     orders = list_orders_with_status(wcapi, params)
     if len(orders)==0:
@@ -2448,6 +2451,7 @@ def witi_webhook_02():
     if request.method == "GET":
         return "Plese Use POST Method..."
     e = request.get_json()
+    print(e)
     mobile = format_mobile(e['Mobile'])
     delivery_date = e['Delivery Date']
     feedback = e['Feedback']
