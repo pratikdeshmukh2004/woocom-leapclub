@@ -78,6 +78,10 @@
           icon: "success",
           title: "Transactions added"
         })
+        .then(()=>{
+
+          window.location.reload()
+        })
       } 
       else if (res.status == 'timeout'){
         Swal.fire({

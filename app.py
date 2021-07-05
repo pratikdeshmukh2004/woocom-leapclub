@@ -22,7 +22,7 @@ import ast
 import concurrent.futures
 import time
 import razorpay
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pytz import timezone
 from slack import WebClient
 from slack_bot import send_slack_message_, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
@@ -754,7 +754,7 @@ def new_order():
                             wallet_payment += (-1)*float(item["total"])
                 total_amount += float(get_total_from_line_items(o_n["line_items"]))+float(o_n["shipping_total"])-wallet_payment-float(get_total_from_line_items(o_n["refunds"])*-1)
             if len(unpaid_orders)>0:
-                send_slack_message(client, 'PENDING_PAYMENT', "We just received an order from a customer with pending payment!\n\nUnpaid amount: {}\n\nUnpaid orders: {}\n\nClick here to check all unpaid orders: {}".format(format_decimal(total_amount), len(unpaid_orders), app.config['FLASK_PANEL_URL']+"/customers/"+o['customer_id']))
+                send_slack_message(client, 'PENDING_PAYMENT', "We just received an order from a customer with pending payment!\nCustomer Name: {}\nCustomer Mobile: {}\nUnpaid Amount: {}\n# Unpaid Orders: {}\n\nClick here to check all unpaid orders: {}".format(o['billing']['first_name'], customer_number,format_decimal(total_amount), len(unpaid_orders), app.config['FLASK_PANEL_URL']+"/customers/"+o['customer_id']))
         # End Whatsapp Template Message.....
         # Sending Slack Message....
         if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and (od > nd):
@@ -2403,9 +2403,10 @@ def witi_webhook_01():
     order_id = e['Order ID']
     if order_id == "" or mobile == "" or order_id == "{{order_id}}":
         return {"status": "delivery date/ mobile missing...."}
+    mobile = format_mobile(e['Mobile'])
     orders = wcapi.get("orders", params={'include': order_id}).json()
     vendor, manager, delivery_date, order_note,  = get_meta_data(orders[0])
-    params = {"delivery_date": delivery_date, 'search': mobile}
+    params = {"delivery_date": delivery_date, 'search': mobile, 'status': 'any'}
     orders = list_orders_with_status(wcapi, params)
     if len(orders)==0:
         return {"status": "No orders found"}
@@ -2420,7 +2421,7 @@ def witi_webhook_01():
         main_text += "-----------------------------------------\n\n"
     main_text += ("*Total Amount: "+str(total)+"*\n\n")
     result = send_whatsapp_message_text(app.config["WATI_URL"],mobile,app.config["WATI_AUTHORIZATION"], main_text)
-    return "Done"
+    return {'result':result}
 
 @app.route("/witi_webhook_02", methods=["POST"])
 def witi_webhook_02():
@@ -2430,10 +2431,13 @@ def witi_webhook_02():
     print(e)
     mobile = format_mobile(e['Mobile'])
     delivery_date = e['Delivery Date']
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     feedback = e['Feedback']
     f_d = feedback.lower().replace(" ", "")
     if delivery_date == "" or mobile == "" or feedback =="":
         return {"status": "delivery date/ mobile missing...."}
+    delivery_date = "{}-{}-{}".format(date.today().year, str(months.index(delivery_date.split(" ")[1])+1).zfill(2), delivery_date.split(" ")[-1])
     params = {"delivery_date": delivery_date, 'search': mobile}
     orders = list_orders_with_status(wcapi, params)
     if len(orders)==0:
@@ -2448,12 +2452,9 @@ def witi_webhook_02():
         update_list.append({"id": o['id'], 'meta_data':[{'key': "_wc_acof_8", "value": f_d}]})
         o_ids.append(str(o['id']))
     updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
-    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     dt = datetime.strptime(delivery_date, '%Y-%m-%d')
     delivery_date = days[dt.weekday()]+","+ months[dt.month-1]+" " + str(dt.day)
-    s_text = "{}({})'s feedback for the orders delivered on {}: {}!\n\nOrders Updated: {}".format(orders[0]['billing']['first_name'], mobile, delivery_date, feedback, ", ".join(o_ids))
+    s_text = "{}({})'s feedback for the orders delivered on {}: {}!\n\nOrders Updated: {}".format(orders[0]['billing']['first_name'], mobile, e['Delivery Date'], feedback, ", ".join(o_ids))
     send_slack_message(client, "PRODUCT_QUESTION_FEEDBACK", s_text)
     return "Done"
 
