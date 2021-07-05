@@ -74,12 +74,37 @@
     data: f_d,
     success: function (res) {
       if (res.status == 'success') {
+        trtext = ""
+        for (var o of res.transactions) {
+          trtext += `
+              <tr>
+                <td><p>${o.Username}</p></td>
+                <td><p>${o.Amount}</p></td>
+                <td><p>${o.Action}</p></td>
+                <td><p>${o.Reason}</p></td>
+              </tr>
+          `
+        }
         Swal.fire({
           icon: "success",
-          title: "Transactions added"
+          title: "Following transactions added.",
+          html:`
+          <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Username</b></th>  
+                    <th><b>Amount</b></th>  
+                    <th><b>Action</b></th>  
+                    <th><b>Reason</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+            `
         })
         .then(()=>{
-
           window.location.reload()
         })
       } 

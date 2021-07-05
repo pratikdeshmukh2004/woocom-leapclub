@@ -28,7 +28,7 @@ from slack import WebClient
 from slack_bot import send_slack_message_, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
 from flask_crontab import Crontab
 from slack_chennels import CHANNELS
-from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance, checkBefore, format_decimal
+from modules.universal import get_meta_data_for_home, format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance, checkBefore, format_decimal
 import pandas as pd
 from whatsapp_bot import send_whatsapp_message_text
 
@@ -323,7 +323,8 @@ def get_orders_for_home(args, tab):
             payment_link = ''
         payment_links[o["id"]] = payment_link
         wtmessages_list[o["id"]] = wt_messages
-        vendor, manager, delivery_date, order_note  = get_meta_data(o)
+        vendor, manager, delivery_date, order_note, feedback  = get_meta_data_for_home(o)
+        o['feedback'] = feedback
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
@@ -2376,6 +2377,7 @@ def upload_wallet_transactions():
     if len(transactions)==0:
         return {'status': 'error', 'error': 'No transaction found'}
     customers = {}
+    r_t = transactions.copy()
     for t in transactions:
         print(t)
         if float(t['Amount'])<=0 or t['Action'].lower() not in ['credit', 'debit'] or t['Reason'] in [None, '', ' ']:
@@ -2414,73 +2416,13 @@ def upload_wallet_transactions():
     if False in results2:
         return {'status':'error', 'error': 'error while processing with wallet'}
     else:
-        return {'status':'success'}
+        return {'status':'success', 'transactions': r_t}
 
-
-@app.route("/witi_webhook_01", methods=["POST"])
-def witi_webhook_01():
-    if request.method == "GET":
-        return "Plese Use POST Method..."
-    e = request.get_json()
-    print(e)
-    mobile = e['Mobile']
-    order_id = e['Order ID']
-    if order_id == "" or mobile == "" or order_id == "{{order_id}}":
-        return {"status": "delivery date/ mobile missing...."}
-    mobile = format_mobile(e['Mobile'])
-    orders = wcapi.get("orders", params={'include': order_id}).json()
-    vendor, manager, delivery_date, order_note,  = get_meta_data(orders[0])
-    params = {"delivery_date": delivery_date, 'search': mobile, 'status': 'any'}
-    orders = list_orders_with_status(wcapi, params)
-    if len(orders)==0:
-        return {"status": "No orders found"}
-    total = 0
-    main_text=''
-    for o in orders:
-        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
-        total += float(o['total'])
-    orders = get_orders_with_messages_without(orders, wcapi)
-    for o in orders:
-        main_text += o['c_msg']
-        main_text += "-----------------------------------------\n\n"
-    main_text += ("*Total Amount: "+str(total)+"*\n\n")
-    result = send_whatsapp_message_text(app.config["WATI_URL"],mobile,app.config["WATI_AUTHORIZATION"], main_text)
-    return {'result':result}
-
-@app.route("/witi_webhook_02", methods=["POST"])
-def witi_webhook_02():
-    if request.method == "GET":
-        return "Plese Use POST Method..."
-    e = request.get_json()
-    print(e)
-    mobile = format_mobile(e['Mobile'])
-    delivery_date = e['Delivery Date']
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    feedback = e['Feedback']
-    f_d = feedback.lower().replace(" ", "")
-    if delivery_date == "" or mobile == "" or feedback =="":
-        return {"status": "delivery date/ mobile missing...."}
-    delivery_date = "{}-{}-{}".format(date.today().year, str(months.index(delivery_date.split(" ")[1])+1).zfill(2), delivery_date.split(" ")[-1])
-    params = {"delivery_date": delivery_date, 'search': mobile}
-    orders = list_orders_with_status(wcapi, params)
-    if len(orders)==0:
-        return {"status": "No orders found"}
-    total = 0
-    main_text=''
-    update_list = []
-    o_ids = []
-    for o in orders:
-        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
-        total += float(o['total'])
-        update_list.append({"id": o['id'], 'meta_data':[{'key': "_wc_acof_8", "value": f_d}]})
-        o_ids.append(str(o['id']))
-    updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
-    dt = datetime.strptime(delivery_date, '%Y-%m-%d')
-    delivery_date = days[dt.weekday()]+","+ months[dt.month-1]+" " + str(dt.day)
-    s_text = "{}({})'s feedback for the orders delivered on {}: {}!\n\nOrders Updated: {}".format(orders[0]['billing']['first_name'], mobile, e['Delivery Date'], feedback, ", ".join(o_ids))
-    send_slack_message(client, "PRODUCT_QUESTION_FEEDBACK", s_text)
-    return "Done"
+@app.route("/changeFeedback/<string:id>", methods=["POST"])
+def changeFeedback(id):
+    params = {'meta_data':[{'key': "_wc_acof_8", "value": "nothappy"}]}
+    update = wcapi_write.put("orders/"+id,params).json()
+    return {"result": 'success'}
 
 if __name__ == "__main__":
     db.create_all()
