@@ -6,7 +6,9 @@ CHANNELS = {
     "TAG_USER_ID": "<@U01HP4Q58S2>",
     "DAIRY_NOTIFICATIONS": "dairy-updates",
     "PAYMENT_NOTIFICATIONS": "payment-notifications",
-    "SESSION_MESSAGES": 'session-messages'
+    "SESSION_MESSAGES": 'session-messages',
+    "PENDING_PAYMENT": 'pending-payments',
+
 }
 #
 # # This dict is for testing....
