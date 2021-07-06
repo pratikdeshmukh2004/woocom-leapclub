@@ -38,7 +38,7 @@
 </nav>
 <div class="mt-3 ml-5 mr-5 d-flex justify-content-between">
   <div><h4>Customers</h4></div>
-  <div class="ml-auto">
+  <div class="ml-auto d-flex">
   <form  autocomplete="off" class="form-inline" role="form">
     <!-- Default Search -->
     <input style="display: none;" name="page" value="{{page}}">
@@ -47,8 +47,125 @@
     <button class="btn btn-info ml-1"><i class="uil uil-search-alt" aria-hidden="true"></i>
     </button>
   </form>
+  <img style="display: none;" id="csv-icon" src="https://cdn.icon-icons.com/icons2/2753/PNG/512/ext_csv_filetype_icon_176252.png" width="50px" height="50px">
+  <form id='csv_file_inp' enctype = "multipart/form-data"  autocomplete="off" class="form-inline" role="form">
+    <input name='csv-file' required class="ml-2" onchange="document.getElementById('csv-icon').style.display='block'" type="file" style="width:100px">
+    <button type="button" onclick="upload_wallet_transactions()" class="btn btn-info ml-1">Upload CSV</i>
+  </form>
   </div>
 </div>
+<script>
+  function upload_wallet_transactions() {
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+  var f_d = new FormData($('#csv_file_inp')[0])
+  console.log(f_d);
+  $.ajax({
+    type: "POST",
+    processData: false,
+    contentType: false,
+    crossDomain: true,
+    url: '/upload_wallet_transactions',
+    data: f_d,
+    success: function (res) {
+      if (res.status == 'success') {
+        trtext = ""
+        for (var o of res.transactions) {
+          trtext += `
+              <tr>
+                <td><p>${o.Username}</p></td>
+                <td><p>${o.Amount}</p></td>
+                <td><p>${o.Action}</p></td>
+                <td><p>${o.Reason}</p></td>
+              </tr>
+          `
+        }
+        Swal.fire({
+          icon: "success",
+          title: "Following transactions added.",
+          html:`
+          <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Username</b></th>  
+                    <th><b>Amount</b></th>  
+                    <th><b>Action</b></th>  
+                    <th><b>Reason</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+            `
+        })
+        .then(()=>{
+          window.location.reload()
+        })
+      } 
+      else if (res.status == 'timeout'){
+        Swal.fire({
+          showConfirmButton: false,
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading()
+          },
+          timer: 500
+        })
+        trtext = ""
+        for (var o of res.added) {
+          trtext += `
+              <tr>
+                <td><p>${o.Username}</p></td>
+                <td><p>${o.Amount}</p></td>
+                <td><p>${o.Action}</p></td>
+                <td><p>${o.Reason}</p></td>
+              </tr>
+          `
+        }
+      $('#exampleModal').modal({
+          show: true
+        })
+        $(".modal-body").html(`
+          <center><h4>Timeout following transactions were added!</h4><center>
+            <table class='table'>
+                  <thead>
+                  <tr>
+                    <th><b>Username</b></th>  
+                    <th><b>Amount</b></th>  
+                    <th><b>Action</b></th>  
+                    <th><b>Reason</b></th>  
+                  </tr>  
+                  </thead>
+                  <tbody>
+                  `+ trtext + `
+                  </tbody>
+                </table>
+        `)
+      }
+      else {
+        Swal.fire({
+          icon: "error",
+          title: res.error
+        })
+      }
+    },
+    error: function (res) {
+      Swal.fire({
+          icon: "error",
+          title: "Error while uploading file please check transactions!"
+      })
+    },
+  });
+}
+
+
+</script>
 <div class="ml-5 mr-5 pt-3">
     <table class="table">
         <thread>
@@ -71,7 +188,7 @@
                     <button onclick="genPaymentLinkWallet('{{c.id}}')" data-toggle="tooltip" title="Generate Payment Link" class="btn btn-success btn-sm font-weight-bold"><i class="mdi mdi-18px mdi-link-plus mr-1"></i></button>
                   </td>
                   <td>{{format_mobile(c.billing.phone)}}</td>
-                  <td>{{c.first_name}} {{c.last_name}}</td>
+                  <td>{{c.first_name}} {{c.last_name}} ({{c.username}})</td>
                 <td id="balance-{{c.id}}">₹ {{c.wallet_balance}}</td>
                 <td>₹ {{unpaid_list[c.id | string]}}</td>
             </tr>

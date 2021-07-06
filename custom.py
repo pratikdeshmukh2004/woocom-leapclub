@@ -5,8 +5,7 @@ import datetime
 import concurrent.futures
 from customselectlist import list_created_via
 from pytz import timezone
-from modules.universal import format_mobile, list_product_list_form_orders
-
+from modules.universal import format_mobile, list_product_list_form_orders, format_decimal
 
 def format_delivery_date(d):
     d_s = d.split("/")
@@ -399,10 +398,20 @@ def get_orders_with_messages_without(orders, wcapi):
         if delivery_date:
             dt = datetime.datetime.strptime(delivery_date, '%Y-%m-%d')
             delivery_date = months[dt.month-1]+" " + str(dt.day)
+        if o['payment_method'] == 'other':
+            payment_method = "Cash On Delivery"
+        else:
+            payment_method = o['payment_method_title']
         order_refunds = []
+        wallet_payment = 0
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment += (-1)*float(item["total"])
+
         if len(o["refunds"]) > 0:
             order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
-        c_msg = "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
+        c_msg = "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + "Payment Method: "+payment_method+"\n\n" + \
             list_order_items(o["line_items"], order_refunds, wcapi, product_list) + \
             "*Total Amount: " + \
             get_totals(o["total"], order_refunds) + \
@@ -410,6 +419,8 @@ def get_orders_with_messages_without(orders, wcapi):
         c_msg = c_msg + \
             list_order_refunds(order_refunds, o['line_items']) + \
             list_only_refunds(order_refunds)
+        if wallet_payment>0:
+            c_msg += ("Paid by wallet: "+str(wallet_payment)+"\n\nAmount to be paid: "+str(format_decimal(float(get_totals(o["total"], order_refunds))-wallet_payment))+"\n\n")
         o["c_msg"] = c_msg
         o['total_amount'] = get_totals(o["total"], order_refunds)
         return o

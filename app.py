@@ -1,7 +1,11 @@
 import re
 from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response, g, session
 from flask_sqlalchemy import SQLAlchemy, model
+from numpy import unicode_
 import sqlalchemy
+from sqlalchemy.dialects.postgresql.base import OID
+from sqlalchemy.orm import joinedload
+from sqlalchemy.sql.sqltypes import Unicode
 from sshtunnel import SSHTunnelForwarder
 from woocommerce import API
 from sqlalchemy.dialects.postgresql import UUID
@@ -18,13 +22,16 @@ import ast
 import concurrent.futures
 import time
 import razorpay
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pytz import timezone
 from slack import WebClient
 from slack_bot import send_slack_message_, send_slack_message_calcelled, send_slack_for_product, send_slack_for_vendor_wise, send_every_day_at_9, vendor_wise_tbd_tomorrow, send_slack_message_dairy, send_slack_message_calcelled_dairy
 from flask_crontab import Crontab
 from slack_chennels import CHANNELS
-from modules.universal import format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance, checkBefore
+from modules.universal import get_meta_data_for_home, format_mobile, send_slack_message, get_meta_data, list_product_list_form_orders, list_customers_with_wallet_balance, checkBefore, format_decimal
+import pandas as pd
+from whatsapp_bot import send_whatsapp_message_text
+
 
 # Configuration and importing secrets....
 app = Flask(__name__, instance_relative_config=True)
@@ -316,7 +323,8 @@ def get_orders_for_home(args, tab):
             payment_link = ''
         payment_links[o["id"]] = payment_link
         wtmessages_list[o["id"]] = wt_messages
-        vendor, manager, delivery_date, order_note  = get_meta_data(o)
+        vendor, manager, delivery_date, order_note, feedback  = get_meta_data_for_home(o)
+        o['feedback'] = feedback
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
                 if "wallet" in item["name"].lower():
@@ -755,7 +763,18 @@ def new_order():
                                     "broadcast_name"], status="failed", time_sent=datetime.utcnow())
             db.session.add(new_wt)
             db.session.commit()
-
+            o['customer_id'] = str(o['customer_id'])
+            unpaid_orders = list_unpaid_amounts([{'id': o['customer_id']}])[0][o['customer_id']]
+            total_amount = 0
+            for o_n in unpaid_orders:
+                wallet_payment = 0
+                if len(o_n["fee_lines"]) > 0:
+                    for item in o_n["fee_lines"]:
+                        if "wallet" in item["name"].lower():
+                            wallet_payment += (-1)*float(item["total"])
+                total_amount += float(get_total_from_line_items(o_n["line_items"]))+float(o_n["shipping_total"])-wallet_payment-float(get_total_from_line_items(o_n["refunds"])*-1)
+            if len(unpaid_orders)>0:
+                send_slack_message(client, 'PENDING_PAYMENT', "We just received an order from a customer with pending payment!\nCustomer Name: {}\nCustomer Mobile: {}\nUnpaid Amount: {}\n# Unpaid Orders: {}\n\nClick here to check all unpaid orders: {}".format(o['billing']['first_name'], customer_number,format_decimal(total_amount), len(unpaid_orders), app.config['FLASK_PANEL_URL']+"/customers/"+o['customer_id']))
         # End Whatsapp Template Message.....
         # Sending Slack Message....
         if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and (od > nd):
@@ -1675,6 +1694,11 @@ def get_copy_messages(id):
     o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
     product_list = list_product_list_form_orders([o], wcapi)
     order_refunds = []
+    wallet_payment = 0
+    if len(o["fee_lines"]) > 0:
+        for item in o["fee_lines"]:
+            if "wallet" in item["name"].lower():
+                wallet_payment += (-1)*float(item["total"])
     if len(o["refunds"]) > 0:
         order_refunds = wcapi.get("orders/"+str(o["id"])+"/refunds").json()
     msg = ""
@@ -1691,7 +1715,11 @@ def get_copy_messages(id):
                 delivery_date = months[dt.month-1]+" " + str(dt.day)
             except Exception as e:
                 delivery_date=""
-        msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + \
+        if o['payment_method'] == 'other':
+            payment_method = "Cash On Delivery"
+        else:
+            payment_method = o['payment_method_title']
+        msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + "Payment Method: "+payment_method+"\n\n" + \
             list_order_items(o["line_items"], order_refunds, wcapi, product_list) + \
             "*Total Amount: " + \
             get_totals(o["total"], order_refunds) + \
@@ -1701,7 +1729,10 @@ def get_copy_messages(id):
             list_only_refunds(order_refunds)
         if o['payment_method_title'] == "Wallet payment":
             balance = wcapiw.get("current_balance/"+str(o["customer_id"])).text[1:-1]
-            msg+="\nWallet balance: RS."+balance
+            msg+="\nWallet balance: RS."+balance+"\n\n"
+        if wallet_payment>0:
+            msg += ("Paid by wallet: "+str(wallet_payment)+"\n\nAmount to be paid: "+str(format_decimal(float(get_totals(o["total"], order_refunds))-wallet_payment)))
+
     else:
         payment_status = "Paid To LeapClub."
         if o['payment_method'] == 'other':
@@ -1972,6 +2003,7 @@ def customers():
 def customers_show(id):
     customer = wcapi.get("customers/"+id).json()
     transactions = wcapiw.get('wallet/'+id).json()
+    print(transactions[0])
     unpaid_orders = list_unpaid_amounts([customer])
     unpaid_orders = unpaid_orders[0][str(customer['id'])]
     payment_links = {}
@@ -2330,7 +2362,68 @@ def deliverychargemessages():
     result = json.loads(response.text.encode('utf8'))
     return result
 
-    
+
+@app.route("/upload_wallet_transactions", methods=['POST'])
+def upload_wallet_transactions():
+    f = request.files['csv-file']
+    f.save("csv_file.csv")
+    try:
+        jsondata = csv.DictReader(open("csv_file.csv"), delimiter=',', quotechar='|')
+    except:
+        return {'status': 'error', 'error': 'Error while parsing csv file please check your file.'}
+    transactions = []
+    for row in jsondata:
+        transactions.append(row)
+    if len(transactions)==0:
+        return {'status': 'error', 'error': 'No transaction found'}
+    customers = {}
+    r_t = transactions.copy()
+    for t in transactions:
+        print(t)
+        if float(t['Amount'])<=0 or t['Action'].lower() not in ['credit', 'debit'] or t['Reason'] in [None, '', ' ']:
+            return {'status': 'error', 'error':'Invalid Amount/Action/Reason'}
+        if t['Username'] not in customers:
+            customers[t['Username']] = [t]
+        else:
+            customers[t['Username']].append(t)
+    def get_customer_id_by_username(name):
+        params = params={'per_page': 100,'role': 'all', 'search': name}
+        c_list = wcapi.get("customers", params=params).json()
+        for c_n in c_list:
+            if name == c_n['username']:
+                return c_n
+        else:
+            return False
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = executor.map(get_customer_id_by_username, customers.keys())
+    results = list(result)
+    if False in results:
+        return {'status': 'error', 'error': 'Username not matching with customers'}
+    results2 = []
+    added_transactions = []
+    try:
+        for c in results:
+            transactions = customers[c['username']]
+            for t in transactions:
+                added_transactions.append(t)
+                response = wcapiw.post("wallet/"+str(c['id']), data={'type': t['Action'].lower(), 'amount': float(t['Amount']), 'details': t['Reason']}).json()
+                if response['response'] != 'success' and response['id'] == False: 
+                    results2.append(False)
+                else:
+                    results2.append(True)
+    except:
+        return {'status': 'timeout', 'added': added_transactions}
+    if False in results2:
+        return {'status':'error', 'error': 'error while processing with wallet'}
+    else:
+        return {'status':'success', 'transactions': r_t}
+
+@app.route("/changeFeedback/<string:id>", methods=["POST"])
+def changeFeedback(id):
+    params = {'meta_data':[{'key': "_wc_acof_8", "value": "nothappy"}]}
+    update = wcapi_write.put("orders/"+id,params).json()
+    return {"result": 'success'}
+
 if __name__ == "__main__":
     db.create_all()
     app.run(debug=True)
