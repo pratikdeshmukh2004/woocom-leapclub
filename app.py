@@ -234,7 +234,7 @@ def get_tabs_nums():
     def _get_tabs_nums(params):
         orders = wcapi.get("order2", params=main_dict[params]).headers['X-WP-Total']
         main_dict[params] = orders
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         result = executor.map(_get_tabs_nums, main_dict)
     return main_dict
 
@@ -260,15 +260,12 @@ def get_product_text(id):
     return text
 
 def get_orders_for_home(args, tab):
+    c_time = time.time()
     params = get_params(args.copy())
-    if 'payment_status' in args:
-        p_s = args['payment_status'].copy()
-    else:
-        p_s = ""
-    if "created_via" in params:
-        args["created_via"] = params["created_via"]
-    t_orders = time.time()
+    p_s = args['payment_status'].copy() if 'payment_status' in args else ""
+    args["created_via"] = params["created_via"] if "created_via" in params else ""
     tabs_nums = get_tabs_nums()
+    print("Time to get params and set variables:", time.time() - c_time)
     if 'status' in args:
         if args['status'][0] == 'dairy' and 'delivery_date' in params:
             delivery = params['delivery_date']
@@ -306,8 +303,7 @@ def get_orders_for_home(args, tab):
     wtmessages_list = {}
     payment_links = {}
     total_payble = 0
-    vendor_payble = {'dairy': 0, 'bakery': 0,
-                     "grocery": 0, "personal_care": 0, '': 0}
+    vendor_payble = {'dairy': 0, 'bakery': 0,"grocery": 0, "personal_care": 0, '': 0}
     for o in orders:
         wallet_payment = 0
         refunds = 0
@@ -331,10 +327,7 @@ def get_orders_for_home(args, tab):
                     wallet_payment += (-1)*float(item["total"])
         if manager not in managers:
             managers.append(manager)
-        if vendor in vendor_type.keys():
-            o["vendor_type"] = vendor_type[vendor]
-        else:
-            o["vendor_type"] = ""
+        o['vendor_type'] = o["vendor_type"] = vendor_type[vendor] if vendor in vendor_type.keys() else ""
         o["vendor"] = vendor
         o["delivery_date"] = delivery_date
         o["order_note"] = order_note
@@ -554,7 +547,7 @@ def download_csv():
                 for item in order["fee_lines"]:
                     if "wallet" in item["name"].lower():
                         wallet_payment += (-1)*float(item["total"])
-            order['total']= float(order['total'])+wallet_payment
+            order['total']= float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1)
             for n_order in new_orders:
                 b_n_ad = n_order["shipping"]["address_1"] + ", " + n_order["shipping"]["address_2"] + ", " +n_order["shipping"]["city"] + ", " + n_order["shipping"]["state"] +", " + n_order["shipping"]["postcode"]
                 s_ad = order["billing"]["address_1"] + ", " + order["billing"]["address_2"] + ", " +order["billing"]["city"] + ", " + order["billing"]["state"] +", " + order["billing"]["postcode"]
@@ -725,12 +718,7 @@ def new_order():
     else:
         vendor_type1 = ""
     checkout_url = str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])
-    wallet_payment = 0
-    if len(o["fee_lines"]) > 0:
-        for item in o["fee_lines"]:
-            if "wallet" in item["name"].lower():
-                wallet_payment += (-1)*float(item["total"])
-    o["total"] = float(o["total"]) + float(wallet_payment)
+    o["total"] = format_decimal(get_total_from_line_items(o["line_items"])+float(o['shipping_total']))
     params["c_name"] = o["billing"]["first_name"]
     params["order_id"] = o["id"]
     params["order_note"] = order_note
@@ -931,9 +919,9 @@ def razorpay():
                 if 'code' not in customer:
                     refund = wcapiw.post("wallet/"+customer_id, data={'type': 'credit', 'amount': total, 'details': 'Credited by Razorpay'}).json()
                     if refund['response'] == 'success' and refund['id'] != False: 
-                        response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", str(total)+' added to wallet of '+customer['first_name']+" "+customer['last_name'])
+                        response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", str(total)+' added to wallet of '+customer['first_name']+" "+customer['last_name']+"\n<@U01HP4Q58S2>")
                     else:
-                        response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", 'Error while adding money to wallet of '+customer['first_name']+" "+customer['last_name'])
+                        response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", 'Error while adding money to wallet of '+customer['first_name']+" "+customer['last_name']+"\n<@U01NLKFSHG8>")
             else:
                 mobile = e['payload']['payment']['entity']['contact']
                 c_amount = e['payload']['payment']['entity']['amount']
@@ -950,7 +938,7 @@ def razorpay():
                     orders = orders.json()
                     orders2 = order_id.split(", ")
                     if len(orders)==0 or len(orders) != len(orders2):
-                        txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {}".format(c_amount, mobile, receipt)
+                        txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {} \n<@U01NLKFSHG8>".format(c_amount, mobile, receipt)
                         response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", txt_msg)
                         return {'status': 'error no orders'}
                     order = orders[0]
@@ -978,7 +966,7 @@ def razorpay():
                         elif status:
                             txt_msg = "These orders are marked as paid in admin panel: {} Reciept: {}".format(order_id, receipt)
                         else:
-                            txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {}".format(c_amount, mobile, receipt)
+                            txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {} \n<@U01NLKFSHG8>".format(c_amount, mobile, receipt)
                         response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", txt_msg)
             return("Done")
         else:
@@ -1247,7 +1235,7 @@ def gen_multipayment():
                     refund = wcapiw.post("wallet/"+str(data['customer_id']), data={'type': 'debit', 'amount': balance, 'details': 'Debited for order ID-'+str(o['id'])}).json()
                     if refund['response'] != 'success' and refund['id'] == False:
                         return {'result': 'error'}
-                    d = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(balance)*-1)}]}
+                    d = {'fee_lines': [{'name': 'Wallet', 'total': str(float(balance)*-1)}]}
                     u_order = wcapi_write.put("orders/"+str(o['id']), d).json()
                     if 'id' not in u_order.keys():
                         return {'result': 'error_s','error': 'error while adding fee!'}
@@ -1256,7 +1244,7 @@ def gen_multipayment():
                     refund = wcapiw.post("wallet/"+str(data['customer_id']), data={'type': 'debit', 'amount': total_amount, 'details': 'Debited for order ID-'+str(o['id'])}).json()
                     if refund['response'] != 'success' and refund['id'] == False:
                         return {'result': 'error'}
-                    d = {'fee_lines': [{'name': 'Via wallet', 'total': str(float(total_amount)*-1)}]}
+                    d = {'fee_lines': [{'name': 'Wallet', 'total': str(float(total_amount)*-1)}]}
                     u_order = wcapi_write.put("orders/"+str(o['id']), d).json()
                     if 'id' not in u_order.keys():
                         return {'result': 'error_s','error': 'error while adding fee!'}
@@ -1421,7 +1409,7 @@ def send_whatsapp_messages_m(name):
         for r in o["refunds"]:
             refunds = refunds + float(r["total"])
         o["total_refunds"] = refunds*-1
-        o["total"] = float(o["total"])
+        o["total"] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
         o['m_total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-float(get_total_from_line_items(o["refunds"])*-1))
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         if len(o["fee_lines"]) > 0:
@@ -1721,9 +1709,7 @@ def get_copy_messages(id):
             payment_method = o['payment_method_title']
         msg = "Here are the order details:\n\n" + "Order ID: " + str(o["id"]) + "\nDelivery Date: " + delivery_date + "\n\n" + "Payment Method: "+payment_method+"\n\n" + \
             list_order_items(o["line_items"], order_refunds, wcapi, product_list) + \
-            "*Total Amount: " + \
-            get_totals(o["total"], order_refunds) + \
-            get_shipping_total(o)+"*\n\n"
+            "*Total Amount: " +str(float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))+get_shipping_total(o)+"*\n\n"
         msg = msg + \
             list_order_refunds(order_refunds, o['line_items']) + \
             list_only_refunds(order_refunds)
@@ -1743,9 +1729,7 @@ def get_copy_messages(id):
                  + "\nMobile: "+format_mobile(o["billing"]["phone"])
                  + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", "+o["shipping"]["city"]+", "+o["shipping"]["state"]+", "+o["shipping"]["postcode"] +
                  ", "+o["billing"]["address_2"]
-                     + "\n\nTotal Amount: " +
-                 get_totals(o["total"], order_refunds)
-                     + get_shipping_total(o)
+                     + "\n\nTotal Amount: " + str(float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))+get_shipping_total(o)
                      + "\n\n"+list_order_items(o["line_items"], order_refunds, wcapi, product_list)
                      + "Payment Status: "+payment_status
                      + "\nCustomer Note: "+o["customer_note"])
@@ -2148,8 +2132,8 @@ def payByWallet():
 @app.route("/payByCash", methods=['POST'])
 def payByCash():
     data = request.form.to_dict(flat=False)
-    args = request.args.to_dict(flat=True)
-    orders = wcapi.get("orders", params={'include': ", ".join(data['ids[]']), 'per_page': 50}).json()
+    o_ids = ", ".join(data['ids[]'])
+    orders = wcapi.get("orders", params={'include': o_ids, 'per_page': 50}).json()
     paid_orders = list(filter(lambda o: o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method'] in ['wallet', 'pre-paid']), orders))
     if len(paid_orders)>0:
         return {'result': 'paid','orders': paid_orders}
@@ -2161,6 +2145,7 @@ def payByCash():
         else:
             updates.append({'id': o['id'], 'status': s, 'payment_method': 'other', 'payment_method_title': 'other'})
     update_list = wcapi_write.post("orders/batch", {"update": updates}).json()
+    response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", 'These orders were marked as paid in cash: '+o_ids)
     return {'result': 'success', 'orders': update_list['update']}
 
 @app.route("/movetoprocessing/<string:id>/<string:payment_method>")

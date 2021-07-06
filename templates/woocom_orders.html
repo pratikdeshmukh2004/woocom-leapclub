@@ -322,6 +322,7 @@
 
           </div>
           <div style="min-width: 216;" class="mt-1">
+            <a class="btn btn-warning" target="blank" href="https://app.metorik.com/customers/{{o.customer_id}}"><span style="font-size: 14px;" class="font-weight-bold">M</span></a>
             {%if o.total_refunds|float >0 and o.feedback == ""%}
             <button style="font-size: 18px;" title="Mark as not happy" data-toggle="tooltip" class="btn btn-success btn-sm" onclick="changeFeedback('{{o.id}}')">😔</button>
             {%endif%}
