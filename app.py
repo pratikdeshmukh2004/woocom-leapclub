@@ -2003,7 +2003,6 @@ def customers():
 def customers_show(id):
     customer = wcapi.get("customers/"+id).json()
     transactions = wcapiw.get('wallet/'+id).json()
-    print(transactions[0])
     unpaid_orders = list_unpaid_amounts([customer])
     unpaid_orders = unpaid_orders[0][str(customer['id'])]
     payment_links = {}
