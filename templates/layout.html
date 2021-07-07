@@ -32,6 +32,11 @@
     <script src="{{url_for('static', filename='js/sweetalert2.js')}}"></script>
     <script src="{{url_for('static', filename='js/custom.js')}}"></script>
     <script src="{{url_for('static', filename='js/wallet-script.js')}}"></script>
+    <style>
+      #removescroll::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
   </head>
   <body>
     <div data-backdrop="static" data-keyboard="false" class="modal fade show" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">

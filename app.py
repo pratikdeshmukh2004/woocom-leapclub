@@ -260,14 +260,23 @@ def get_product_text(id):
     return text
 
 def get_orders_for_home(args, tab):
-    c_time = time.time()
+    a_time = time.time()    
     params = get_params(args.copy())
+    def get_orders_and_pages_together(name):
+        if name == "orders":
+            orders = wcapi.get("orders", params=params).json()
+            return orders
+        else:
+            return get_tabs_nums()
     p_s = args['payment_status'].copy() if 'payment_status' in args else ""
     args["created_via"] = params["created_via"] if "created_via" in params else ""
-    tabs_nums = get_tabs_nums()
-    print("Time to get params and set variables:", time.time() - c_time)
-    if 'status' in args:
+    if  'status' not in args:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            result = executor.map(get_orders_and_pages_together, ['orders', 'pange_nums'])
+        orders, tabs_nums = list(result)
+    else:
         if args['status'][0] == 'dairy' and 'delivery_date' in params:
+            tabs_nums = get_tabs_nums()
             delivery = params['delivery_date']
             del params['delivery_date']
             orders = list_orders_with_status(wcapi, params.copy())
@@ -278,6 +287,7 @@ def get_orders_for_home(args, tab):
                 filter(lambda o: get_dairy_condition(o, delivery), orders))
             tabs_nums['dairy'] = len(orders)
         elif args['status'][0] == 'errors':
+            tabs_nums = get_tabs_nums()
             params['status'] = 'any'
             params['created_via'] = "admin,checkout,Order clone"
             d3 = datetime.now() - timedelta(days=3)
@@ -287,23 +297,27 @@ def get_orders_for_home(args, tab):
             orders = filter_orders_for_errors(orders)
             tabs_nums['errors'] = len(orders)
         elif args['status'][0] == 'dairy':
+            tabs_nums = get_tabs_nums()
             orders = list_orders_with_status(wcapi, params.copy())
             del params['vendor']
             params['created_via'] = "subscription"
             orders.extend(list_orders_with_status(wcapi, params.copy()))
             tabs_nums['dairy'] = len(orders)
         else:
-            orders = wcapi.get("order2", params=params)
-            tabs_nums[params['status']] = orders.headers['X-WP-Total']
-            orders = orders.json()
-    else:
-        orders = wcapi.get("order2", params=params).json()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                result = executor.map(get_orders_and_pages_together, ['orders', 'pange_nums'])
+            orders, tabs_nums = list(result)
+    print("Time to get orders from api:", time.time() - a_time)
+    c_time = time.time()
     orders = filter_orders(orders, args.copy())
+    print("Time to filter orders: ", time.time()-c_time)
+    c_time = time.time()
     managers = []
     wtmessages_list = {}
     payment_links = {}
     total_payble = 0
     vendor_payble = {'dairy': 0, 'bakery': 0,"grocery": 0, "personal_care": 0, '': 0}
+    c_time = time.time()
     for o in orders:
         wallet_payment = 0
         refunds = 0
@@ -351,8 +365,9 @@ def get_orders_for_home(args, tab):
             params['status'] = 'tbd-paid, tbd-unpaid'
         elif params['status'] in ['delivered-unpaid', 'completed']:
             params['status'] = 'delivered-unpaid, completed'
-
     args['payment_status'] = p_s
+    print("Time to setup status and variables: ", time.time()-c_time)
+    print("Total Time: ", time.time()-a_time)
     return render_template("woocom_orders.html", format_decimal = format_decimal, admin_url=app.config['ADMIN_PANEL_URL'], json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
 
 
