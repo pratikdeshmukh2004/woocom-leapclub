@@ -754,9 +754,9 @@ def new_order():
         if (o["status"] == "processing") and (o["created_via"] == "checkout") and vendor and (od > nd):
             for num in mobile_numbers:
                 if o["date_paid"] != None:
-                    result = send_whatsapp_msg(params, num, "order_prepay")
+                    result = send_whatsapp_msg(params, num, "order_today_new")
                 else:
-                    result = send_whatsapp_msg(params, num, "order_postpay")
+                    result = send_whatsapp_msg(params, num, "order_today_new")
 
             if result["result"] in ["success", "PENDING", "SENT", True]:
                 new_wt = wtmessages(order_id=params["order_id"], template_name=result["template_name"], broadcast_name=result[
@@ -768,6 +768,7 @@ def new_order():
             db.session.commit()
             o['customer_id'] = str(o['customer_id'])
             unpaid_orders = list_unpaid_amounts([{'id': o['customer_id']}])[0][o['customer_id']]
+            u_orders = []
             total_amount = 0
             for o_n in unpaid_orders:
                 wallet_payment = 0
@@ -775,9 +776,11 @@ def new_order():
                     for item in o_n["fee_lines"]:
                         if "wallet" in item["name"].lower():
                             wallet_payment += (-1)*float(item["total"])
+                if o['date_created'] != o_n['date_created']:
+                    u_orders.append(o_n)
                 total_amount += float(get_total_from_line_items(o_n["line_items"]))+float(o_n["shipping_total"])-wallet_payment-float(get_total_from_line_items(o_n["refunds"])*-1)
-            if len(unpaid_orders)>0:
-                send_slack_message(client, 'PENDING_PAYMENT', "We just received an order from a customer with pending payment!\nCustomer Name: {}\nCustomer Mobile: {}\nUnpaid Amount: {}\n# Unpaid Orders: {}\n\nClick here to check all unpaid orders: {}".format(o['billing']['first_name'], customer_number,format_decimal(total_amount), len(unpaid_orders), app.config['FLASK_PANEL_URL']+"/customers/"+o['customer_id']))
+            if len(u_orders)>0:
+                send_slack_message(client, 'PENDING_PAYMENT', "We just received an order from a customer with pending payment!\nCustomer Name: {}\nCustomer Mobile: {}\nCreated Via: {}\nUnpaid Amount: {}\n# Unpaid Orders: {}\n\nClick here to check all unpaid orders: {}".format(o['billing']['first_name'], customer_number, o['billing']['phone'],format_decimal(total_amount), len(unpaid_orders), app.config['FLASK_PANEL_URL']+"/customers/"+o['customer_id']))
         # End Whatsapp Template Message.....
         # Sending Slack Message....
         if (o["status"] in ["processing", "tdb-paid", "tdb-unpaid"]) and (o["created_via"] in ["admin", "checkout"]) and (od > nd):
@@ -1370,7 +1373,7 @@ def send_whatsapp_temp_sess(args):
 
 def send_whatsapp_temp(args, name):
     args['order_type'] = args['vendor_type']
-    if "#" in args['vendor_type']:
+    if "#" in args['vendor_type'] or "+" in args['vendor_type']:
         args['vendor_type'] = 'any'
     order_note = args["order_note"].replace("\r", "")
     order_note = order_note.replace("\n", " ")
@@ -1378,6 +1381,8 @@ def send_whatsapp_temp(args, name):
     args['order_note'] = order_note
     mobile_number = format_mobile(args["mobile_number"])
     result = send_whatsapp_msg(args, mobile_number, name)
+    if ',' in args['order_id']:
+        args['order_id'] = args['order_id'].split(",")[0]
     if result["result"] in ["success", "PENDING", "SENT", True]:
         new_wt = wtmessages(order_id=args["order_id"], template_name=result["template_name"], broadcast_name=result[
                             "broadcast_name"], status="success", time_sent=datetime.utcnow())
@@ -1516,8 +1521,11 @@ def send_whatsapp_messages_m(name):
     if name == 'feedback':
         results = []
         for c in feedback_list:
+            order_ids = feedback_list[c]['vendor_type'].split(" (")[1][:-1].replace("#", "")
+            feedback_list[c]['vendor_type'] = feedback_list[c]['vendor_type'].split(" (")[0]
+            feedback_list[c]['order_id'] = order_ids
+            print(order_ids, feedback_list[c])
             r = send_whatsapp_temp(feedback_list[c], feedback_list[c]['name'])
-            order_ids = feedback_list[c]['order_type'].split(" (")[1][:-1].replace("#", "")
             feedback_list[c]['result'] = r['result']
             feedback_list[c]['customer_name'] = feedback_list[c]['c_name']
             feedback_list[c]['phone_number'] = feedback_list[c]['mobile_number']
@@ -2423,6 +2431,72 @@ def changeFeedback(id):
     params = {'meta_data':[{'key': "_wc_acof_8", "value": "nothappy"}]}
     update = wcapi_write.put("orders/"+id,params).json()
     return {"result": 'success'}
+
+
+@app.route("/witi_webhook_01", methods=["POST"])
+def witi_webhook_01():
+    if request.method == "GET":
+        return "Plese Use POST Method..."
+    e = request.get_json()
+    print(e)
+    mobile = e['Mobile']
+    order_id = e['Order ID']
+    if order_id == "" or mobile == "" or order_id == "{{order_id}}":
+        return {"status": "delivery date/ mobile missing...."}
+    mobile = format_mobile(e['Mobile'])
+    orders = wcapi.get("orders", params={'include': order_id}).json()
+    vendor, manager, delivery_date, order_note,  = get_meta_data(orders[0])
+    params = {"delivery_date": delivery_date, 'search': mobile, 'status': 'any'}
+    orders = list_orders_with_status(wcapi, params)
+    if len(orders)==0:
+        return {"status": "No orders found"}
+    total = 0
+    main_text=''
+    for o in orders:
+        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
+        total += float(o['total'])
+    orders = get_orders_with_messages_without(orders, wcapi)
+    for o in orders:
+        main_text += o['c_msg']
+        main_text += "-----------------------------------------\n\n"
+    main_text += ("*Total Amount: "+str(total)+"*\n\n")
+    result = send_whatsapp_message_text(app.config["WATI_URL"],mobile,app.config["WATI_AUTHORIZATION"], main_text)
+    return {'result':result}
+
+@app.route("/witi_webhook_02", methods=["POST"])
+def witi_webhook_02():
+    if request.method == "GET":
+        return "Plese Use POST Method..."
+    e = request.get_json()
+    print(e)
+    mobile = format_mobile(e['Mobile'])
+    order_id = e['Order ID']
+    feedback = e['Feedback']
+    if order_id == "" or mobile == "" or order_id == "{{order_id}}":
+        return {"status": "delivery date/ mobile missing...."}
+    params = {"include": order_id}
+    orders = list_orders_with_status(wcapi, params)
+    vendor, manager, delivery_date, order_note,  = get_meta_data(orders[0])
+    params = {"delivery_date": delivery_date, 'customer_id': orders[0]['customer_id']}
+    orders = list_orders_with_status(wcapi, params)
+    if len(orders)==0:
+        s_text = "{}({})'s shared feedback. '{}' but we couldn't find the order IDs. Please do it manually.".format(orders[0]['billing']['first_name'], mobile, feedback)
+        send_slack_message(client, "PRODUCT_QUESTION_FEEDBACK", s_text)
+        return {"status": "No orders found"}
+    total = 0
+    main_text=''
+    update_list = []
+    o_ids = []
+    for o in orders:
+        o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
+        total += float(o['total'])
+        update_list.append({"id": o['id'], 'meta_data':[{'key': "_wc_acof_8", "value": feedback}]})
+        o_ids.append(str(o['id']))
+    updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
+    dt = datetime.strptime(delivery_date, '%Y-%m-%d')
+    s_text = "{}({})'s feedback for the orders delivered on {}: {}!\n\nOrders Updated: {}".format(orders[0]['billing']['first_name'], mobile, delivery_date, feedback, ", ".join(o_ids))
+    send_slack_message(client, "PRODUCT_QUESTION_FEEDBACK", s_text)
+    return "Done"
 
 if __name__ == "__main__":
     db.create_all()
