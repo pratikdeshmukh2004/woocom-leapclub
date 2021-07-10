@@ -947,7 +947,7 @@ def razorpay():
                 order_id = receipt[5:].split(
                     "-")[0]
                 if order_id in ["", " "] or "Leap"  not in receipt:
-                    txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {}".format(c_amount, mobile, receipt)
+                    txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {}\n<@U01NLKFSHG8>".format(c_amount, mobile, receipt)
                     response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", txt_msg)
                     return "Invalid order id..."
                 invoice_id = e['payload']['invoice']['entity']['id']
@@ -2161,14 +2161,17 @@ def payByCash():
     if len(paid_orders)>0:
         return {'result': 'paid','orders': paid_orders}
     updates = []
+    o_idstr = []
     for o in orders:
+        vendor, manager, delivery_date, order_note,  = get_meta_data(orders[0])
+        o_idstr.append("{} ({})".format(o['id'], vendor))
         s = update_order_status_with_id(o, 'paid', 'status')
         if o['status'] == 'processing':
             updates.append({'id': o['id'], 'payment_method': 'other', 'payment_method_title': 'other'})
         else:
             updates.append({'id': o['id'], 'status': s, 'payment_method': 'other', 'payment_method_title': 'other'})
     update_list = wcapi_write.post("orders/batch", {"update": updates}).json()
-    response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", 'These orders were marked as paid in cash: '+o_ids)
+    response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", 'These orders were marked as paid in cash: '+", ".join(o_idstr))
     return {'result': 'success', 'orders': update_list['update']}
 
 @app.route("/movetoprocessing/<string:id>/<string:payment_method>")
@@ -2490,7 +2493,7 @@ def witi_webhook_02():
     for o in orders:
         o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
         total += float(o['total'])
-        update_list.append({"id": o['id'], 'meta_data':[{'key': "_wc_acof_8", "value": feedback}]})
+        update_list.append({"id": o['id'], 'meta_data':[{'key': "_wc_acof_8", "value": feedback.lower().replace(" ", '')}]})
         o_ids.append(str(o['id']))
     updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
     dt = datetime.strptime(delivery_date, '%Y-%m-%d')
