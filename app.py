@@ -944,12 +944,12 @@ def razorpay():
                 mobile = e['payload']['payment']['entity']['contact']
                 c_amount = e['payload']['payment']['entity']['amount']
                 receipt = e['payload']['order']['entity']['receipt']
-                order_id = receipt[5:].split(
-                    "-")[0]
-                if order_id in ["", " "] or "Leap"  not in receipt:
-                    txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {}\n<@U01NLKFSHG8>".format(c_amount, mobile, receipt)
+                if receipt in ["", " "] or "Leap"  not in receipt:
+                    txt_msg = "A payment of Rs. {} was received but no order was marked as paid. Mobile number: {}, Receipt: {}\n<@U01NLKFSHG8>".format(float(c_amount)/100, mobile, receipt)
                     response =send_slack_message(client, "PAYMENT_NOTIFICATIONS", txt_msg)
                     return "Invalid order id..."
+                order_id = receipt[5:].split(
+                    "-")[0]
                 invoice_id = e['payload']['invoice']['entity']['id']
                 orders = wcapi.get("orders", params={"include": order_id})
                 if orders.status_code == 200:
