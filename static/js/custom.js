@@ -1024,6 +1024,102 @@ function moveToProcessing(payment_method) {
   });
 }
 
+function assignRider(rider_name) {
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val().join()
+  console.log(inp_select_v, rider_name);
+  if (rider_name == undefined) {
+    $('#exampleModal').modal({
+      show: true
+    })
+    $(".modal-body").html(`
+      <h3 class="text-center font-weight-bold">Select Rider</h3>
+      <div class="justify-content-center mt-3">
+      <center class"mt-3">
+      <button type='button' onclick="assignRider('salman')" class="btn btn-success btn-lg">Salman</button>
+      <button type='button' onclick="assignRider('pidge')" class="btn btn-success btn-lg">Pidge</button>
+      <button type='button' onclick="assignRider('salmanpidge')" class="btn btn-success btn-lg">Salman + Pidge</button>
+      </center>
+      </div>
+    `)
+    return ""
+  }
+  $('#exampleModal').modal('hide')
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+  $.ajax({
+    type: "GET",
+    crossDomain: true,
+    dataType: "json",
+    url: '/assign_rider/' + inp_select_v + "/" + rider_name,
+    success: function (res) {
+      if (res.result == 'success') {
+        Swal.fire({
+          title: "Success, Rider assigned to selected orders!",
+          icon: "success",
+        })
+        .then(()=>{
+
+          location.reload()
+        })
+      } else {
+        Swal.fire({
+        title: "Errors, Can't assign rider!",
+        icon: "error",
+      });
+      }
+    },
+    error: function () {
+      Swal.fire({
+        title: "Errors, Can't assign rider!",
+        icon: "error",
+      });
+    }
+  });
+}
+
+
+function changeFeedback(id) {
+  Swal.fire({
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/changeFeedback/"+id,
+    success: function (res) {
+      if (res.result == 'success') {
+        Swal.fire({
+          title: "Success",
+          icon: "success",
+        });
+      } else {
+        Swal.fire({
+          title: "Error",
+          icon: "error",
+        });
+      }
+    },
+    error: function (res) {
+      Swal.fire({
+        title: "API Error, Message Not Sent!",
+        icon: "error",
+      });
+    },
+  });
+}
+
+
 
 
 function genMultipleLinks() {

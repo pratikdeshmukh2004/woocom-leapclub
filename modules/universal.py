@@ -72,7 +72,7 @@ def get_meta_data(order):
 
 
 def get_meta_data_for_home(order):
-    vendor, manager, delivery_date, order_note, feedback  = "", "", "", "", ""
+    vendor, manager, delivery_date, order_note, feedback, rider  = "", "", "", "", "",""
     for item in order["meta_data"]:
         if item["key"] == "wos_vendor_data":
             vendor = item["value"]["vendor_name"]
@@ -91,7 +91,11 @@ def get_meta_data_for_home(order):
         elif item["key"] == "_wc_acof_8":
             if feedback == "":
                 feedback = item["value"]
-    return [vendor, manager, delivery_date, order_note, feedback]
+        elif item["key"] == "_wc_acof_9":
+            if rider == "":
+                rider = item["value"]
+
+    return [vendor, manager, delivery_date, order_note, feedback, rider]
 
 
 def list_product_with_ids(wcapi, ids):

@@ -297,8 +297,9 @@ def get_params(args):
         if args["phone_number"][0] != "":
             params["search"] = args["phone_number"][0]
     if "created_via" in args:
-        if args['created_via'][0] != "":
-            params["created_via"] = get_list_to_string(args["created_via"])
+        if args['created_via'] != "":
+            if args['created_via'][0] != "":
+                params["created_via"] = get_list_to_string(args["created_via"])
     if "vendor" in args:
         if args["vendor"][0] != "":
             params["vendor"] = get_list_to_string(args["vendor"])

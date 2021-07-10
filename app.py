@@ -260,8 +260,8 @@ def get_product_text(id):
     return text
 
 def get_orders_for_home(args, tab):
-    a_time = time.time()    
     params = get_params(args.copy())
+    print(args)
     def get_orders_and_pages_together(name):
         if name == "orders":
             orders = wcapi.get("orders", params=params).json()
@@ -275,7 +275,31 @@ def get_orders_for_home(args, tab):
             result = executor.map(get_orders_and_pages_together, ['orders', 'pange_nums'])
         orders, tabs_nums = list(result)
     else:
-        if args['status'][0] == 'dairy' and 'delivery_date' in params:
+        if 'linked_vendor' in args and 'vendor' in args:
+            tabs_nums = get_tabs_nums()
+            vendor1 = ", ".join(args['vendor']).split(", ")
+            vendor2 = ", ".join(args['linked_vendor']).split(", ")
+            vendor1_list = []
+            vendor2_list = []
+            args['vendor'].extend(args['linked_vendor'])
+            params = get_params(args.copy())
+            orders = list_orders_with_status(wcapi, params.copy())
+            for o in orders:
+                vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+                o['vendor'] = vendor
+                o['delivery_date'] = delivery_date
+                if vendor in vendor1:
+                    vendor1_list.append(o)
+                elif vendor in vendor2:
+                    vendor2_list.append(o)
+                c_id = str(o['customer_id'])
+            new_orders = []
+            for o in vendor1_list:
+                for o2 in vendor2_list:
+                    if o['customer_id'] == o2['customer_id'] and o['delivery_date'] == o2['delivery_date']:
+                        new_orders.append(o)
+            orders = new_orders
+        elif args['status'][0] == 'dairy' and 'delivery_date' in params:
             tabs_nums = get_tabs_nums()
             delivery = params['delivery_date']
             del params['delivery_date']
@@ -307,17 +331,12 @@ def get_orders_for_home(args, tab):
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 result = executor.map(get_orders_and_pages_together, ['orders', 'pange_nums'])
             orders, tabs_nums = list(result)
-    print("Time to get orders from api:", time.time() - a_time)
-    c_time = time.time()
     orders = filter_orders(orders, args.copy())
-    print("Time to filter orders: ", time.time()-c_time)
-    c_time = time.time()
     managers = []
     wtmessages_list = {}
     payment_links = {}
     total_payble = 0
     vendor_payble = {'dairy': 0, 'bakery': 0,"grocery": 0, "personal_care": 0, '': 0}
-    c_time = time.time()
     for o in orders:
         wallet_payment = 0
         refunds = 0
@@ -333,7 +352,7 @@ def get_orders_for_home(args, tab):
             payment_link = ''
         payment_links[o["id"]] = payment_link
         wtmessages_list[o["id"]] = wt_messages
-        vendor, manager, delivery_date, order_note, feedback  = get_meta_data_for_home(o)
+        vendor, manager, delivery_date, order_note, feedback, o['rider']  = get_meta_data_for_home(o)
         o['feedback'] = feedback
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
@@ -366,8 +385,6 @@ def get_orders_for_home(args, tab):
         elif params['status'] in ['delivered-unpaid', 'completed']:
             params['status'] = 'delivered-unpaid, completed'
     args['payment_status'] = p_s
-    print("Time to setup status and variables: ", time.time()-c_time)
-    print("Total Time: ", time.time()-a_time)
     return render_template("woocom_orders.html", format_decimal = format_decimal, admin_url=app.config['ADMIN_PANEL_URL'], json=json, orders=orders, query=args, nav_active=params["status"], managers=managers, vendors=list_vendor, wtmessages_list=wtmessages_list, user=g.user, list_created_via=list_created_via, page=params["page"], payment_links=payment_links, t_p=total_payble, vendor_payble=vendor_payble, tab=tab, tab_nums=tabs_nums)
 
 
@@ -520,6 +537,7 @@ def download_csv():
         c_time = time.time()
         new_orders = []
         for order in orders:
+            vendor, manager, delivery_date, order_note, feedback, order['rider']  = get_meta_data_for_home(o)
             refunds = []
             if len(order["refunds"]) > 0:
                 refunds = wcapi.get("orders/"+str(order["id"])+"/refunds").json()
@@ -2490,13 +2508,26 @@ def witi_webhook_02():
     for o in orders:
         o['total'] = (float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"]))
         total += float(o['total'])
-        update_list.append({"id": o['id'], 'meta_data':[{'key': "_wc_acof_8", "value": feedback}]})
+        update_list.append({"id": o['id'], 'meta_data':[{'key': "_wc_acof_8", "value": feedback.lower().replace(" ", '')}]})
         o_ids.append(str(o['id']))
     updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
     dt = datetime.strptime(delivery_date, '%Y-%m-%d')
     s_text = "{}({})'s feedback for the orders delivered on {}: {}!\n\nOrders Updated: {}".format(orders[0]['billing']['first_name'], mobile, delivery_date, feedback, ", ".join(o_ids))
     send_slack_message(client, "PRODUCT_QUESTION_FEEDBACK", s_text)
     return "Done"
+
+@app.route("/assign_rider/<string:ids>/<string:rider>")
+def assignrider(ids, rider):
+    print(rider, ids)
+    orders = wcapi.get("orders", params={'include': ids, 'per_page': 50}).json()
+    if len(orders) != len(ids.split(",")) or ids == "" or rider == "":
+        return {"error": 'error'}
+    p_m = {'key': '_wc_acof_9', 'value': rider}
+    update_list = list(map(lambda o: {'id': o['id'], 'meta_data': [p_m]}, orders))
+    print(update_list)
+    updates = wcapi_write.post("orders/batch", {"update": update_list}).json()
+    return{'result': 'success'}
+
 
 if __name__ == "__main__":
     db.create_all()

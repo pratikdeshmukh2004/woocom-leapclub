@@ -119,7 +119,18 @@
       </option>
       {%endif%}
       {% endfor%}
-    </select> <select data-live-search="true" multiple title="Manager" name="manager" class="selectpicker mr-2">
+    </select>
+    <select data-live-search="true" multiple title="Linked vendor"name="linked_vendor" class="selectpicker mr-2">
+      {% for v in vendors %}
+      {% if v != ""%}
+      <option {% if "linked_vendor" in query %} {% if vendors[v] in query["linked_vendor"] %} selected {% endif %} {% endif %} value="{{vendors[v]}}">{{v}}</option>
+      {% else %}
+      <option {% if "linked_vendor" in query %} {% if vendors[v] in query["linked_vendor"] %} selected {% endif %} {% endif %} value="">Null
+      </option>
+      {%endif%}
+      {% endfor%}
+    </select>
+    <select data-live-search="true" multiple title="Manager" name="manager" class="selectpicker mr-2">
       {% for m in managers %}
       {% if m != ""%}
       <option {% if "manager" in query %} {% if m in query["manager"] %} selected {% endif %} {% endif %}>{{m}}</option>
@@ -261,6 +272,12 @@
     >Payment Reminder
     </button>
     {%endif%}
+    {% if tab == 'vendor_orders'%}
+    <button type="button" onclick="assignRider()" title="Assign Rider" class="btn btn-info ml-2 button" 
+    >Assign Rider
+    </button>
+    {%endif%}
+  
   </form>
   {%if nav_active == 'any'%}
   <div class='card p-1 ml-auto mt-1'>
@@ -276,7 +293,13 @@
         <th scope="col"></th>
         <th scope="col">Order_ID</th>
         <th scope="col" class="text-center">Name (Phone_Number)</th>
+        {% if tab == 'vendor_orders'%}
+        <th scope="col">Address</th>
+        {%endif%}
         <th scope="col">City</th>
+        {% if tab == 'vendor_orders'%}
+        <th scope="col">Rider</th>
+        {%endif%}
         <th scope="col">Status</th>
         <th scope="col">Order Date</th>
         <th scope="col">Delivery Date</th>
@@ -401,7 +424,13 @@
         </td>
         <td scope="row">{{ o.id}}</td>
         <td scope="row">{{ o.billing.first_name}} {{ o.billing.last_name}} ({{ o.billing.phone}})</td>
+        {% if tab == 'vendor_orders'%}
+        <td scope="row"><p style="width: 200px;">{{ o.shipping.address_1}}, {{o.shipping.address_2}}</p></th>
+        {%endif%}
         <td scope="row">{{ o.billing.city}}</td>
+        {% if tab == 'vendor_orders'%}
+        <td scope="row">{{ o.rider}}</th>
+        {%endif%}
         <td scope="row">{{ o.status}}</td>
         <td scope="row">{{ o.date_created}}</td>
         <td scope="row">{{ o.delivery_date}}</td>
@@ -466,42 +495,4 @@
     </li>
   </ul>
 </nav>
-<script>
-
-function changeFeedback(id) {
-  Swal.fire({
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading()
-    },
-  })
-  $.ajax({
-    type: "POST",
-    crossDomain: true,
-    dataType: "json",
-    url: "/changeFeedback/"+id,
-    success: function (res) {
-      if (res.result == 'success') {
-        Swal.fire({
-          title: "Success",
-          icon: "success",
-        });
-      } else {
-        Swal.fire({
-          title: "Error",
-          icon: "error",
-        });
-      }
-    },
-    error: function (res) {
-      Swal.fire({
-        title: "API Error, Message Not Sent!",
-        icon: "error",
-      });
-    },
-  });
-}
-
-</script>
 {% endblock %}
