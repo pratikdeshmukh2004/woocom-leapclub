@@ -2477,9 +2477,9 @@ def witi_webhook_01():
     mobile = format_mobile(e['Mobile'])
     orders = wcapi.get("orders", params={'include': order_id}).json()
     vendor, manager, delivery_date, order_note,  = get_meta_data(orders[0])
-    params = {"delivery_date": delivery_date, 'search': mobile, 'status': 'any'}
+    params = {"delivery_date": delivery_date, 'search': orders[0]['billing']['phone'], 'status': 'any'}
     orders = list_orders_with_status(wcapi, params)
-    print(orders)
+    print(params)
     if len(orders)==0:
         return {"status": "No orders found"}
     total = 0
@@ -2511,7 +2511,8 @@ def witi_webhook_02():
     orders = list_orders_with_status(wcapi, params)
     print(orders, "fetch........")
     vendor, manager, delivery_date, order_note,  = get_meta_data(orders[0])
-    params = {"delivery_date": delivery_date, 'customer_id': orders[0]['customer_id']}
+    params = {"delivery_date": delivery_date, 'search': orders[0]['billing']['phone']}
+    print(params)
     orders = list_orders_with_status(wcapi, params)
     print(orders, 'sencond.....')
     if len(orders)==0:
