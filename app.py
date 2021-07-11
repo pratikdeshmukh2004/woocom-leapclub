@@ -2479,6 +2479,7 @@ def witi_webhook_01():
     vendor, manager, delivery_date, order_note,  = get_meta_data(orders[0])
     params = {"delivery_date": delivery_date, 'search': mobile, 'status': 'any'}
     orders = list_orders_with_status(wcapi, params)
+    print(orders)
     if len(orders)==0:
         return {"status": "No orders found"}
     total = 0
@@ -2492,6 +2493,7 @@ def witi_webhook_01():
         main_text += "-----------------------------------------\n\n"
     main_text += ("*Total Amount: "+str(total)+"*\n\n")
     result = send_whatsapp_message_text(app.config["WATI_URL"],mobile,app.config["WATI_AUTHORIZATION"], main_text)
+    print(result)
     return {'result':result}
 
 @app.route("/witi_webhook_02", methods=["POST"])
@@ -2507,9 +2509,11 @@ def witi_webhook_02():
         return {"status": "delivery date/ mobile missing...."}
     params = {"include": order_id}
     orders = list_orders_with_status(wcapi, params)
+    print(orders, "fetch........")
     vendor, manager, delivery_date, order_note,  = get_meta_data(orders[0])
     params = {"delivery_date": delivery_date, 'customer_id': orders[0]['customer_id']}
     orders = list_orders_with_status(wcapi, params)
+    print(orders, 'sencond.....')
     if len(orders)==0:
         s_text = "{}({})'s shared feedback. '{}' but we couldn't find the order IDs. Please do it manually.".format(orders[0]['billing']['first_name'], mobile, feedback)
         send_slack_message(client, "PRODUCT_QUESTION_FEEDBACK", s_text)
@@ -2527,6 +2531,7 @@ def witi_webhook_02():
     dt = datetime.strptime(delivery_date, '%Y-%m-%d')
     s_text = "{}({})'s feedback for the orders delivered on {}: {}!\n\nOrders Updated: {}".format(orders[0]['billing']['first_name'], mobile, delivery_date, feedback, ", ".join(o_ids))
     send_slack_message(client, "PRODUCT_QUESTION_FEEDBACK", s_text)
+    print('done')
     return "Done"
 
 if __name__ == "__main__":
