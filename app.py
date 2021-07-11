@@ -717,6 +717,31 @@ def update_wati_contact_attributs(o):
         return True
 
 
+
+def update_whatsapp_attributes(mobile, att):
+    mobile_number = format_mobile(mobile)
+    url = app.config["WATI_URL"] + \
+        "/api/v1/updateContactAttributes/" + mobile_number
+    parameters_s = "["
+    for d in att:
+        parameters_s = parameters_s + \
+            '{"name":"'+str(d)+'", "value":"'+str(att[d])+'"},'
+    parameters_s = parameters_s[:-1]
+    parameters_s = parameters_s+"]"
+    payload = {"customParams": json.loads(parameters_s)}
+    headers = {
+        'Authorization': app.config["WATI_AUTHORIZATION"],
+        'Content-Type': 'application/json',
+    }
+
+    response = requests.request(
+        "POST", url, headers=headers, data=json.dumps(payload))
+
+    result = json.loads(response.text.encode('utf8'))
+    if result["result"]:
+        return True
+
+
 @app.route("/new_order", methods=["GET", "POST"])
 def new_order():
     if request.method == "GET":
@@ -1464,6 +1489,8 @@ def send_whatsapp_messages_m(name):
             'manager': manager, 'order_id': o['id'], 'order_note': order_note, 'total_amount': o['m_total'], 'delivery_date': delivery_date, 'payment_method': o['payment_method_title'], 'delivery_charge': o['shipping_total'], 'seller': vendor, 'items_amount': float(o['total'])-float(o['shipping_total']),
                 'name': td, 'status': 'tbd-paid, tbd-unpaid', 'vendor_type': o['vendor_type'], 'mobile_number': format_mobile(o['billing']['phone']), 'order_key': o['order_key'], 'url_post_pay': str(o["id"])+"/?pay_for_order=true&key="+str(o["order_key"])}
             r = send_whatsapp_temp_sess(params)
+            r2 = update_whatsapp_attributes(o['billing']['phone'], {"order_id": o['id'], "name": o['billing']['first_name']})
+            print(r2, '..................')
             r['vendor_type'] = o['vendor_type']
             r['button'] = False
             if o['status'] in ['tbd-paid', 'completed'] or (o['status'] == 'processing' and o['payment_method_title'] in ['Pre-paid','Wallet payment']):
@@ -1526,6 +1553,7 @@ def send_whatsapp_messages_m(name):
             feedback_list[c]['order_id'] = order_ids
             print(order_ids, feedback_list[c])
             r = send_whatsapp_temp(feedback_list[c], feedback_list[c]['name'])
+            r2 = update_whatsapp_attributes(feedback_list[c]['mobile_number'], {"order_id": order_ids, "name": feedback_list[c]['c_name']})
             feedback_list[c]['result'] = r['result']
             feedback_list[c]['customer_name'] = feedback_list[c]['c_name']
             feedback_list[c]['phone_number'] = feedback_list[c]['mobile_number']
