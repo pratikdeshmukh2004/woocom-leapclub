@@ -91,7 +91,7 @@
 
 </ul>
 <div class="mt-3 ml-3 mr-3">
-  <form autocomplete="off" class="form-inline" role="form">
+  <form autocomplete="off" class="form-inline filters" role="form">
     <input style="display: none;" name="page" value="{{page}}">
     {% if nav_active != '' %}
     <input style="display: none;" name="status" value="{{nav_active}}">
@@ -177,6 +177,117 @@
     <button class="btn btn-info ml-1"><i class="uil uil-search-alt" aria-hidden="true"></i>
     </button>
   </form>
+  <script>
+    $(function(){
+    $('.filters').on('submit', function(event){
+      console.log(event.target.linked_vendor.value, event.target.vendor.value, event.target.delivery_date.value);
+      if (event.target.linked_vendor.value != '' && event.target.vendor.value == '' || event.target.delivery_date.value == ''){
+        alert("Please select delivery date and vendor!");
+        event.preventDefault()
+      }
+    });
+});
+
+function sendToGoogleSheet(act, status, vendors) {
+  var new_vendors = {}
+  for (const [key, value] of Object.entries(vendors)) {
+    new_vendors[value] = key
+  }
+  var inp_select = $('#select_inps')
+  var inp_select_v = inp_select.val()
+  if (["google_sheet", 'delivery-google-sheet'].includes(act)){
+    Swal.fire({
+    allowOutsideClick: false,
+    confirmButtonText: "Continue",
+    html: `
+    <center>Select linked order vendor if any:</center>
+    `, 
+    input: 'select',
+  inputOptions: new_vendors,
+  inputPlaceholder: 'Vendors',
+  })
+  .then(function (result) {
+  if (result.isConfirmed) {
+    Swal.fire({
+    title: 'Generating Sheet...',
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading()
+    },
+  })
+  $.ajax({
+    type: "POST",
+    crossDomain: true,
+    dataType: "json",
+    url: "/csv",
+    timeout: 900000,
+    data: { 'order_ids': inp_select_v, 'action': [act], 'status': status, 'vendor': result.value },
+    success: function (res) {
+      if (res.result == 'success') {
+        delivery_dates_text = ""
+        delivery_date_msg = ""
+        for (var d of Object.keys(res.delivery_dates)) {
+          dt = d
+          if (d == '') {
+            dt = "No Date"
+          }
+          delivery_dates_text += (dt + " : " + res.delivery_dates[d]['count'].toString() + " orders <br>")
+        }
+        if (Object.keys(res.delivery_dates).length > 1) {
+          delivery_date_msg = "There are orders with different delivery date or no delivery date. Please change it now."
+        }
+        status_text = ""
+        status_msg = ""
+        for (var d of Object.keys(res.status_list)) {
+          status_text += (d + " : " + res.status_list[d]['count'].toString() + " orders <br>")
+        }
+        if (Object.keys(res.status_list).length > 1) {
+          status_msg = "There are orders with different status. Please change all orders to To Be Delivered. "
+        }
+        Swal.fire({
+          html: `
+<b>`+ res.total_o + ` orders added to Google Sheet <a target='blank' href='` + res.ssUrl + `'>` + res.ssName + `</a></b><br/><br/>
+<div style='text-align: left'><b>Delivery Dates</b><br/>
+`+ delivery_dates_text + `<br>
+`+ delivery_date_msg + `</div><br/><br/>
+<div style='text-align: left'><b>Status</b><br/>
+`+ status_text + `<br>
+`+ status_msg + `</div>
+            `,
+          width: 700,
+          backdrop: `
+              rgba(0,0,123,0.4)
+            `
+        })
+      }
+      else if (res.result == 'delivery_vendor'){
+        Swal.fire({
+          title: "Warning: Orders have different delivery date / vendor.",
+          icon: 'warning'
+        })
+      }
+      else {
+        Swal.fire({
+          title: "Error While creating sheet",
+          icon: 'error'
+        })
+      }
+    },
+    error: function (res) {
+      Swal.fire({
+        title: "Error While creating sheet",
+        icon: 'error'
+      })
+    },
+  });
+
+  }
+});
+  }
+}
+
+  </script>
   <div style="display: flex;">
   <form autocomplete="off" action="{{url_for('download_csv')}}" , method="POST" class="form-inline mt-2" role="form">
     {% if nav_active != '' %}
@@ -200,13 +311,13 @@
       <button data-toggle="tooltip" title="Download Vendor Order Sheet" name="action" value="vendor_sheet" class="btn btn-info ml-2"><i
           class="mdi mdi-18px mdi-progress-download" aria-hidden="true"></i></button>
 
-      <button data-toggle="tooltip" type='button' title="Order-Sheet To Google Sheet" onclick="sendToGoogleSheet('google_sheet', '{{nav_active}}')" class="btn btn-info ml-2"><i
+      <button data-toggle="tooltip" type='button' title="Order-Sheet To Google Sheet" onclick="sendToGoogleSheet('google_sheet', '{{nav_active}}', {{vendors}})" class="btn btn-info ml-2"><i
           class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
 
       <button data-toggle="tooltip" onclick="sendToGoogleSheet('product_google_sheet', '{{nav_active}}')" type="button" title="Product-Sheet To Google Sheet"
         class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
 
-      <button data-toggle="tooltip" onclick="sendToGoogleSheet('delivery-google-sheet', '{{nav_active}}')" type="button" title="Delivery-Sheet To Google Sheet"
+      <button data-toggle="tooltip" onclick="sendToGoogleSheet('delivery-google-sheet', '{{nav_active}}', {{vendors}})" type="button" title="Delivery-Sheet To Google Sheet"
         class="btn btn-info ml-2"><i class="mdi mdi-18px mdi-google-spreadsheet" aria-hidden="true"></i></button>
 
 
@@ -281,7 +392,7 @@
   </form>
   {%if nav_active == 'any'%}
   <div class='card p-1 ml-auto mt-1'>
-  <p><b>Total Amount Payble:</b> {{t_p}}<br/><b>bakery: </b>{{vendor_payble.bakery}} | <b>grocery: </b>{{vendor_payble.grocery}} | <b>personal_care: </b>{{vendor_payble.personal_care}} | <b> dairy:</b> {{vendor_payble.dairy}} | <b>without_vendor: </b>{{vendor_payble['']}}</p>
+  <p><b>Total Amount Payble:</b> {{format_decimal(t_p)}}<br/><b>bakery: </b>{{format_decimal(vendor_payble.bakery)}} | <b>grocery: </b>{{format_decimal(vendor_payble.grocery)}} | <b>personal_care: </b>{{format_decimal(vendor_payble.personal_care)}} | <b> dairy:</b> {{format_decimal(vendor_payble.dairy)}} | <b>without_vendor: </b>{{format_decimal(vendor_payble[''])}}</p>
     </div>
   {%endif%}
 </div>

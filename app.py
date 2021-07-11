@@ -264,7 +264,7 @@ def get_orders_for_home(args, tab):
     print(args)
     def get_orders_and_pages_together(name):
         if name == "orders":
-            orders = wcapi.get("orders", params=params).json()
+            orders = wcapi.get("order2", params=params).json()
             return orders
         else:
             return get_tabs_nums()
@@ -277,12 +277,15 @@ def get_orders_for_home(args, tab):
     else:
         if 'linked_vendor' in args and 'vendor' in args:
             tabs_nums = get_tabs_nums()
-            vendor1 = ", ".join(args['vendor']).split(", ")
-            vendor2 = ", ".join(args['linked_vendor']).split(", ")
+            args2 = args.copy()
+            old_vendor = args['vendor'].copy()
+            print(old_vendor, "oldvendor")
+            vendor1 = ", ".join(args2['vendor']).split(", ")
+            vendor2 = ", ".join(args2['linked_vendor']).split(", ")
             vendor1_list = []
             vendor2_list = []
-            args['vendor'].extend(args['linked_vendor'])
-            params = get_params(args.copy())
+            args2['vendor'].extend(args2['linked_vendor'])
+            params = get_params(args2.copy())
             orders = list_orders_with_status(wcapi, params.copy())
             for o in orders:
                 vendor, manager, delivery_date, order_note,  = get_meta_data(o)
@@ -298,7 +301,10 @@ def get_orders_for_home(args, tab):
                 for o2 in vendor2_list:
                     if o['customer_id'] == o2['customer_id'] and o['delivery_date'] == o2['delivery_date']:
                         new_orders.append(o)
+                        break
             orders = new_orders
+            args['vendor'] = old_vendor
+            print(old_vendor)
         elif args['status'][0] == 'dairy' and 'delivery_date' in params:
             tabs_nums = get_tabs_nums()
             delivery = params['delivery_date']
@@ -473,6 +479,9 @@ def download_csv():
     if not g.user:
         return redirect(url_for('login'))
     data = request.form.to_dict(flat=False)
+    print(data)
+    if "action[]" not in data or "order_ids[]" not in data:
+        return {"error": 'error'}
     if ['action[]'][0] in data:
         data['order_ids'] = data['order_ids[]']
         data['action'] = data['action[]']
@@ -503,7 +512,7 @@ def download_csv():
             status_list[status_t] = {'count': 1}
         else:
             status_list[status_t]['count'] +=1
-    if len(vendor_list) != 0:
+    if len(vendor_list) != 0 and len(data['vendor'])==0:
         if vendor_list.count(vendor_list[0]) != len(vendor_list):
             return {'result': 'delivery_vendor'}
     # Conditions Download buttons........
@@ -530,11 +539,7 @@ def download_csv():
         return response
     # Google Sheets................
     elif data["action"][0] == 'google_sheet':
-        m_time = time.time()
-        c_time = time.time()
         product_list = list_product_list_form_orders(orders, wcapi)
-        print("Time to fetch products: ",time.time()-c_time)
-        c_time = time.time()
         new_orders = []
         for order in orders:
             vendor, manager, delivery_date, order_note, feedback, order['rider']  = get_meta_data_for_home(o)
@@ -556,13 +561,9 @@ def download_csv():
                     break
             else:
                 new_orders.append(order)
-        print("Time to fetch line_items and refunds: ", time.time()-c_time)
-        c_time = time.time()
         response = requests.post(
             app.config["GOOGLE_SHEET_URL"]+"?action=order_sheet", json=new_orders)
-        print("Time to send to google sheet: ",time.time()- c_time)
         sheet_url = app.config["SHEET_URL"]+response.json()['ssUrl']
-        print("Total Time: ", time.time()-m_time)
     elif data['action'][0] == 'product_google_sheet':
         o = orders[0]
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
