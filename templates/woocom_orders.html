@@ -110,7 +110,7 @@
       name="phone_number">
     <input class="form-control mr-2" type="name" placeholder="Name" {% if "name" in query %} {% if query["name"][0] !=""
       %} value="{{query["name"][0]}}" {% endif %} {% endif %} name="name">
-    <select data-live-search="true" multiple title="Vendor"name="vendor" class="selectpicker mr-2">
+    <select id="vendor" data-live-search="true" multiple title="Vendor"name="vendor" class="selectpicker mr-2">
       {% for v in vendors %}
       {% if v != ""%}
       <option {% if "vendor" in query %} {% if vendors[v] in query["vendor"] %} selected {% endif %} {% endif %} value="{{vendors[v]}}">{{v}}</option>
@@ -120,7 +120,7 @@
       {%endif%}
       {% endfor%}
     </select>
-    <select data-live-search="true" multiple title="Linked vendor"name="linked_vendor" class="selectpicker mr-2">
+    <select id="l_vendor" data-live-search="true" multiple title="Linked vendor"name="linked_vendor" class="selectpicker mr-2">
       {% for v in vendors %}
       {% if v != ""%}
       <option {% if "linked_vendor" in query %} {% if vendors[v] in query["linked_vendor"] %} selected {% endif %} {% endif %} value="{{vendors[v]}}">{{v}}</option>
@@ -157,7 +157,7 @@
       {%endif%}
       {% endfor%}
     </select>
-    <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker" class="form-control mr-2" {%if "delivery_date" in query %} {% if query["delivery_date"][0] !="" %} value="{{query["delivery_date"][0]}}" {%endif %} {% endif %}>
+    <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker delivery_d" class="form-control mr-2" {%if "delivery_date" in query %} {% if query["delivery_date"][0] !="" %} value="{{query["delivery_date"][0]}}" {%endif %} {% endif %}>
     <input placeholder="Date From" type="text" name="after" id="datepicker1" class="form-control mr-2" {% if "after" in
       query %} {% if query["after"][0] !="" %} value="{{query["after"][0]}}" {% endif %} {% endif %}>
     <input placeholder="Date To" type="text" name="before" id="datepicker2" class="form-control mr-2" {% if "before" in
@@ -187,29 +187,14 @@
       }
     });
 });
-
-function sendToGoogleSheet(act, status, vendors) {
-  var new_vendors = {}
-  for (const [key, value] of Object.entries(vendors)) {
-    new_vendors[value] = key
-  }
+function sendToGoogleSheet(act, status) {
   var inp_select = $('#select_inps')
   var inp_select_v = inp_select.val()
-  if (["google_sheet", 'delivery-google-sheet'].includes(act)){
-    Swal.fire({
-    allowOutsideClick: false,
-    confirmButtonText: "Continue",
-    html: `
-    <center>Select linked order vendor if any:</center>
-    `, 
-    input: 'select',
-  inputOptions: new_vendors,
-  inputPlaceholder: 'Vendors',
-  })
-  .then(function (result) {
-  if (result.isConfirmed) {
-    Swal.fire({
-    title: 'Generating Sheet...',
+  var vendor = $('#vendor').val()
+  var l_vendor = $('#l_vendor').val()
+  var delivery = $('#delivery_d').val()
+  Swal.fire({
+    title: 'Processing Your Request....',
     showConfirmButton: false,
     allowOutsideClick: false,
     didOpen: () => {
@@ -222,7 +207,7 @@ function sendToGoogleSheet(act, status, vendors) {
     dataType: "json",
     url: "/csv",
     timeout: 900000,
-    data: { 'order_ids': inp_select_v, 'action': [act], 'status': status, 'vendor': result.value },
+    data: { 'order_ids': inp_select_v, 'action': [act], 'status': status, 'vendor': vendor, 'l_vendor': l_vendor, 'delivery_date': delivery },
     success: function (res) {
       if (res.result == 'success') {
         delivery_dates_text = ""
@@ -281,12 +266,7 @@ function sendToGoogleSheet(act, status, vendors) {
       })
     },
   });
-
-  }
-});
-  }
 }
-
   </script>
   <div style="display: flex;">
   <form autocomplete="off" action="{{url_for('download_csv')}}" , method="POST" class="form-inline mt-2" role="form">

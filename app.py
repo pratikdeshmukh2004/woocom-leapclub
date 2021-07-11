@@ -279,7 +279,6 @@ def get_orders_for_home(args, tab):
             tabs_nums = get_tabs_nums()
             args2 = args.copy()
             old_vendor = args['vendor'].copy()
-            print(old_vendor, "oldvendor")
             vendor1 = ", ".join(args2['vendor']).split(", ")
             vendor2 = ", ".join(args2['linked_vendor']).split(", ")
             vendor1_list = []
@@ -295,7 +294,6 @@ def get_orders_for_home(args, tab):
                     vendor1_list.append(o)
                 elif vendor in vendor2:
                     vendor2_list.append(o)
-                c_id = str(o['customer_id'])
             new_orders = []
             for o in vendor1_list:
                 for o2 in vendor2_list:
@@ -480,6 +478,12 @@ def download_csv():
         return redirect(url_for('login'))
     data = request.form.to_dict(flat=False)
     print(data)
+    islinked = False
+    if 'vendor' in data and "l_vendor" in data and 'delivery_date' in data:
+        vendor1 = ", ".join(data['vendor']).split(", ")
+        vendor2 = ", ".join(data['l_vendor']).split(", ")
+        islinked = True
+
     if "action[]" not in data or "order_ids[]" not in data:
         return {"error": 'error'}
     if ['action[]'][0] in data:
@@ -496,8 +500,24 @@ def download_csv():
     vendor_list = []
     delivery_list = []
     status_list = {}
+    vendor1_list = []
+    vendor2_list = []
     for o in orders:
+        wallet_payment = 0
+        if len(o["fee_lines"]) > 0:
+            for item in o["fee_lines"]:
+                if "wallet" in item["name"].lower():
+                    wallet_payment += (-1)*float(item["total"])
+
+        o['total']= float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1)
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+        o['vendor'] = vendor
+        o['delivery_date'] = delivery_date
+        if islinked:
+            if vendor in vendor1:
+                vendor1_list.append(o)
+            elif vendor in vendor2:
+                vendor2_list.append(o)
         if o['status'] != "subscription" and vendor != "":
             delivery_list.append(delivery_date)
             vendor_list.append(all_vendors_list[vendor])
@@ -512,9 +532,25 @@ def download_csv():
             status_list[status_t] = {'count': 1}
         else:
             status_list[status_t]['count'] +=1
-    if len(vendor_list) != 0 and len(data['vendor'])==0:
+    if len(vendor_list) != 0 and 'l_vendor' in data:
         if vendor_list.count(vendor_list[0]) != len(vendor_list):
             return {'result': 'delivery_vendor'}
+    if islinked:
+        new_orders = []
+        inserted = []
+        for o in vendor1_list:
+            for o2 in vendor2_list:
+                if o['customer_id'] == o2['customer_id'] and o['delivery_date'] == o2['delivery_date']:
+                    if o['id'] not in inserted:
+                        o['linked_orders'] = str(o2['id'])
+                        if data['action'] == 'delivery-google-sheet' and o2['payment_method_title'] == 'Pay Online on Delivery':
+                            o['total'] = o['total']+o2['total']
+                    else:
+                        o['linked_orders'] = o['linked_orders']+", "+str(o2['id'])
+                        if data['action'] == 'delivery-google-sheet' and o2['payment_method_title'] == 'Pay Online on Delivery':
+                            o['total'] = o['total']+o2['total']
+            new_orders.append(o)
+        orders = new_orders
     # Conditions Download buttons........
     if data["action"][0] == "order_sheet":
         csv_text = get_csv_from_orders(orders, wcapi)
@@ -576,12 +612,6 @@ def download_csv():
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         for order in orders:
             order['vendor'], manager, delivery_da, order_note,  = get_meta_data(order)
-            wallet_payment = 0
-            if len(order["fee_lines"]) > 0:
-                for item in order["fee_lines"]:
-                    if "wallet" in item["name"].lower():
-                        wallet_payment += (-1)*float(item["total"])
-            order['total']= float(get_total_from_line_items(o["line_items"]))+float(o["shipping_total"])-wallet_payment-float(get_total_from_line_items(o["refunds"])*-1)
             for n_order in new_orders:
                 b_n_ad = n_order["shipping"]["address_1"] + ", " + n_order["shipping"]["address_2"] + ", " +n_order["shipping"]["city"] + ", " + n_order["shipping"]["state"] +", " + n_order["shipping"]["postcode"]
                 s_ad = order["billing"]["address_1"] + ", " + order["billing"]["address_2"] + ", " +order["billing"]["city"] + ", " + order["billing"]["state"] +", " + order["billing"]["postcode"]
