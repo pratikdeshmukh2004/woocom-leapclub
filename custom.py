@@ -449,7 +449,7 @@ def get_csv_from_orders(orders, wcapi):
         wallet_payment = 0
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
-                if item["name"] == "Via wallet":
+                if "wallet" in item["name"].lower():
                     wallet_payment += (-1)*float(item["total"])
                     break
         o["total"] = float(o["total"]) + float(wallet_payment)
@@ -462,7 +462,7 @@ def get_csv_from_orders(orders, wcapi):
             + "\nAddress: "+o["shipping"]["address_1"] + ", "+o["shipping"]["address_2"]+", " +
             o["shipping"]["city"]+", "+o["shipping"]["state"] +
             ", "+o["shipping"]["postcode"],
-            "Total Amount": get_totals(o["total"], refunds)+get_shipping_total_for_csv(o),
+            "Total Amount": get_total_from_line_items(o["line_items"]),
             "Order Details": list_order_items_csv(o["line_items"], refunds, wcapi, product_list),
             "Comments": "Payment Status: Paid To Leap",
             "Customer Note": o["customer_note"]
@@ -500,7 +500,7 @@ def get_csv_from_vendor_orders(orders, wcapi):
         wallet_payment = 0
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
-                if item["name"] == "Via wallet":
+                if "wallet" in item["name"].lower():
                     wallet_payment += (-1)*float(item["total"])
                     break
         o["total"] = float(o["total"]) + float(wallet_payment)
@@ -630,7 +630,7 @@ def list_orders_with_status(wcapi, params):
         params["page"] = p
         p_list.append(params.copy())
         p += 1
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
         result = executor.map(get_order, p_list)
     orders = list(result)
     orders.insert(0, forder)

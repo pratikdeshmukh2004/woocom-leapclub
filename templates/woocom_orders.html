@@ -263,8 +263,8 @@
     {%endif%}
   </form>
   {%if nav_active == 'any'%}
-  <div class='ml-auto mt-1'>
-  <p>Total Amount Payble: {{t_p}}<br/>bakery: {{vendor_payble.bakery}}; grocery: {{vendor_payble.grocery}}; personal_care: {{vendor_payble.personal_care}}; dairy: {{vendor_payble.dairy}}; without_vendor: {{vendor_payble['']}}</p>
+  <div class='card p-1 ml-auto mt-1'>
+  <p><b>Total Amount Payble:</b> {{t_p}}<br/><b>bakery: </b>{{vendor_payble.bakery}} | <b>grocery: </b>{{vendor_payble.grocery}} | <b>personal_care: </b>{{vendor_payble.personal_care}} | <b> dairy:</b> {{vendor_payble.dairy}} | <b>without_vendor: </b>{{vendor_payble['']}}</p>
     </div>
   {%endif%}
 </div>
@@ -274,8 +274,8 @@
     <thead>
       <tr class="bg-info text-white">
         <th scope="col"></th>
-        <th scope="col">Order ID</th>
-        <th scope="col">Name (Phone_Number)</th>
+        <th scope="col">Order_ID</th>
+        <th scope="col" class="text-center">Name (Phone_Number)</th>
         <th scope="col">City</th>
         <th scope="col">Status</th>
         <th scope="col">Order Date</th>
@@ -295,6 +295,7 @@
       {% for o in orders %}
       <tr id='order-{{o.id}}'>
         <td class="{{o.id}}" scope="row">
+          <div style="overflow-x: hidden;transition: width 1s ;" class="buttons">
           <div style="min-width: 216px;">
             <a data-toggle="tooltip" target='_blank' href="{{admin_url}}{{o.id}}&action=edit"><i
                 title="Edit Order" class="mdi mdi-18px mdi-pencil-outline btn-sm btn btn-warning"
@@ -322,6 +323,7 @@
 
           </div>
           <div style="min-width: 216;" class="mt-1">
+            <a class="btn btn-warning" target="blank" href="https://app.metorik.com/customers/{{o.customer_id}}"><span style="font-size: 14px;" class="font-weight-bold">M</span></a>
             {%if o.total_refunds|float >0 and o.feedback == ""%}
             <button style="font-size: 18px;" title="Mark as not happy" data-toggle="tooltip" class="btn btn-success btn-sm" onclick="changeFeedback('{{o.id}}')">😔</button>
             {%endif%}
@@ -395,6 +397,7 @@
             <button style="font-size: 18px;" title="Send Message with Delivery Charge" class="btn btn-success btn-sm font-weight-bold" onclick="deliveryChargeMessage('{{url_for('deliverychargemessages', vendor=o.vendor, name=o.billing.first_name+' '+o.billing.last_name, amount=format_decimal(o.total-o.total_refunds-o.wallet_payment), mobile = o.billing.phone)}}')">D</button>
             {%endif%}
           </div>
+          </div>
         </td>
         <td scope="row">{{ o.id}}</td>
         <td scope="row">{{ o.billing.first_name}} {{ o.billing.last_name}} ({{ o.billing.phone}})</td>
@@ -412,7 +415,7 @@
 
         <td scope="row">{{ format_decimal(o.total-o.total_refunds-o.wallet_payment)}}</td>
         <td scope="row">
-          <div class="wtmessage-{{o.id}}" style="max-height: 100px; overflow-y: scroll;">
+          <div id='removescroll' class="wtmessage-{{o.id}}" style="max-height: 80px; max-width: 150px; overflow-y: scroll;">
             {% for wt in wtmessages_list[o.id]%}
             {% if wt.status == "success"%}
             <span class="text-success">{{wt.template_name}}, </span>
@@ -439,7 +442,7 @@
         <td scope="row">{{o.manager}}</td>
         <td scope="row">{{o.created_via}}</td>
         <td scope="row">
-          <p style="cursor: pointer;" onclick="copyText('{{o.checkout_url}}')">click_to_copy</p>
+          <p style="cursor: pointer;" class="text-success" onclick="copyText('{{o.checkout_url}}')">copy</p>
         </td>
       </tr>
       {% endfor %}

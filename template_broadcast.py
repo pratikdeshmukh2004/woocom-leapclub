@@ -137,15 +137,20 @@ TemplatesBroadcast = {
 
     },
     "feedback_1506_1":{
-        'bakery': {"template": "feedback_1506_1", "broadcast": "feedback_msg"},
-        'grocery': {"template": "feedback_1506_1", "broadcast": "feedback_msg"},
-        'personal_care': {"template": "feedback_1506_1", "broadcast": "feedback_msg"},
-        'dairy': {"template": "feedback_1506_1", "broadcast": "feedback_msg"},
-        'any': {"template": "feedback_1506_1", "broadcast": "feedback_msg"}
+        'bakery': {"template": "feedback_0607_1", "broadcast": "feedback_msg"},
+        'grocery': {"template": "feedback_0607_1", "broadcast": "feedback_msg"},
+        'personal_care': {"template": "feedback_0607_1", "broadcast": "feedback_msg"},
+        'dairy': {"template": "feedback_0607_1", "broadcast": "feedback_msg"},
+        'any': {"template": "feedback_0607_1", "broadcast": "feedback_msg"}
 
     },
     "payment_link_6":{
         'any': {"template": "payment_link_6", "broadcast": "send_payment_link"}
+    },
+    'order_today_new': {
+        'bakery':  {"template": "order_prepaid_notification_0607_2", "broadcast": "order_today"},
+        'grocery': {"template": "order_prepaid_notification_0607_2", "broadcast": "order_today"},
+        'dairy': {"template": "order_prepaid_notification_0607_2", "broadcast": "order_today"}
     }
 }
 

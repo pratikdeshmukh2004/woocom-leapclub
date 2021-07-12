@@ -8,6 +8,7 @@ CHANNELS = {
     "PAYMENT_NOTIFICATIONS": "payment-notifications",
     "SESSION_MESSAGES": 'session-messages',
     "PENDING_PAYMENT": 'pending-payments',
+    "PRODUCT_QUESTION_FEEDBACK": 'products-questions-feedback'
 
 }
 #
