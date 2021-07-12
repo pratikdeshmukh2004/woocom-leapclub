@@ -479,9 +479,9 @@ def download_csv():
     data = request.form.to_dict(flat=False)
     print(data)
     islinked = False
-    if 'vendor' in data and "l_vendor" in data and 'delivery_date' in data:
-        vendor1 = ", ".join(data['vendor']).split(", ")
-        vendor2 = ", ".join(data['l_vendor']).split(", ")
+    if 'vendor[]' in data and "l_vendor[]" in data and 'delivery_date' in data:
+        vendor1 = ", ".join(data['vendor[]']).split(", ")
+        vendor2 = ", ".join(data['l_vendor[]']).split(", ")
         islinked = True
 
     if "action[]" not in data or "order_ids[]" not in data:
@@ -535,6 +535,7 @@ def download_csv():
     if len(vendor_list) != 0 and 'l_vendor' in data:
         if vendor_list.count(vendor_list[0]) != len(vendor_list):
             return {'result': 'delivery_vendor'}
+    print(vendor1_list, vendor2_list) 
     if islinked:
         new_orders = []
         inserted = []
@@ -543,14 +544,21 @@ def download_csv():
                 if o['customer_id'] == o2['customer_id'] and o['delivery_date'] == o2['delivery_date']:
                     if o['id'] not in inserted:
                         o['linked_orders'] = str(o2['id'])
-                        if data['action'] == 'delivery-google-sheet' and o2['payment_method_title'] == 'Pay Online on Delivery':
+                        if data['action'] == 'delivery-google-sheet' and o['payment_method'] == 'other' and o2['payment_method'] == 'other':
                             o['total'] = o['total']+o2['total']
+                        elif data['action'] == 'delivery-google-sheet' and o2['payment_method'] == 'other':
+                            o['total'] = o2['total']
+                            o['payment_method'] = 'other'
                     else:
                         o['linked_orders'] = o['linked_orders']+", "+str(o2['id'])
-                        if data['action'] == 'delivery-google-sheet' and o2['payment_method_title'] == 'Pay Online on Delivery':
+                        if data['action'] == 'delivery-google-sheet' and o['payment_method'] == 'other' and o2['payment_method'] == 'other':
                             o['total'] = o['total']+o2['total']
+                        elif data['action'] == 'delivery-google-sheet' and o2['payment_method'] == 'other':
+                            o['total'] = o2['total']
+                            o['payment_method'] = 'other'
             new_orders.append(o)
         orders = new_orders
+        print(orders)
     # Conditions Download buttons........
     if data["action"][0] == "order_sheet":
         csv_text = get_csv_from_orders(orders, wcapi)

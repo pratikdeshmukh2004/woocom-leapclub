@@ -157,7 +157,7 @@
       {%endif%}
       {% endfor%}
     </select>
-    <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker delivery_d" class="form-control mr-2" {%if "delivery_date" in query %} {% if query["delivery_date"][0] !="" %} value="{{query["delivery_date"][0]}}" {%endif %} {% endif %}>
+    <input placeholder="Delivery Date" type="text" name="delivery_date" id="datepicker" class="form-control mr-2 delivery_d" {%if "delivery_date" in query %} {% if query["delivery_date"][0] !="" %} value="{{query["delivery_date"][0]}}" {%endif %} {% endif %}>
     <input placeholder="Date From" type="text" name="after" id="datepicker1" class="form-control mr-2" {% if "after" in
       query %} {% if query["after"][0] !="" %} value="{{query["after"][0]}}" {% endif %} {% endif %}>
     <input placeholder="Date To" type="text" name="before" id="datepicker2" class="form-control mr-2" {% if "before" in
@@ -192,7 +192,7 @@ function sendToGoogleSheet(act, status) {
   var inp_select_v = inp_select.val()
   var vendor = $('#vendor').val()
   var l_vendor = $('#l_vendor').val()
-  var delivery = $('#delivery_d').val()
+  var delivery = $('.delivery_d').val()
   Swal.fire({
     title: 'Processing Your Request....',
     showConfirmButton: false,
