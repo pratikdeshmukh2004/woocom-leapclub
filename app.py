@@ -535,7 +535,6 @@ def download_csv():
     if len(vendor_list) != 0 and 'l_vendor' in data:
         if vendor_list.count(vendor_list[0]) != len(vendor_list):
             return {'result': 'delivery_vendor'}
-    print(vendor1_list, vendor2_list) 
     if islinked:
         new_orders = []
         inserted = []
@@ -602,6 +601,8 @@ def download_csv():
                     n_order['total_text'] = str(float(n_order['total_text'])+float(order['total_text']))
                     n_order['line_items_text'] = n_order['line_items_text']+order['line_items_text']
                     n_order['id'] = str(order['id'])+" + "+str(n_order['id'])
+                    if "linked_orders" in n_order:
+                        n_order['linked_orders'] = n_order['linked_orders']+", "+order['linked_orders']
                     break
             else:
                 new_orders.append(order)
