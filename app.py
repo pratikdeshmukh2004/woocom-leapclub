@@ -284,22 +284,24 @@ def get_orders_for_home(args, tab):
             vendor1_list = []
             vendor2_list = []
             args2['vendor'].extend(args2['linked_vendor'])
-            params = get_params(args2.copy())
+            params['vendor'] = get_list_to_string(args2['vendor'])
+            print(params, 'lksdflsj')
             orders = list_orders_with_status(wcapi, params.copy())
+            print(len(orders), vendor1, vendor2)
             for o in orders:
                 vendor, manager, delivery_date, order_note,  = get_meta_data(o)
                 o['vendor'] = vendor
                 o['delivery_date'] = delivery_date
                 if vendor in vendor1:
                     vendor1_list.append(o)
-                elif vendor in vendor2:
+                if vendor in vendor2:
                     vendor2_list.append(o)
             new_orders = []
+            print(len(vendor1_list), len(vendor2_list), "lists...")
             for o in vendor1_list:
                 for o2 in vendor2_list:
                     if o['customer_id'] == o2['customer_id'] and o['delivery_date'] == o2['delivery_date']:
                         new_orders.append(o)
-                        break
             orders = new_orders
             args['vendor'] = old_vendor
             print(old_vendor)
@@ -503,6 +505,9 @@ def download_csv():
     vendor1_list = []
     vendor2_list = []
     for o in orders:
+        vendor, manager, delivery_date, order_note, feedback, rider  = get_meta_data_for_home(o)
+        print(rider, "rider", o['id'])
+        o['rider'] = rider
         wallet_payment = 0
         if len(o["fee_lines"]) > 0:
             for item in o["fee_lines"]:
@@ -585,7 +590,6 @@ def download_csv():
         product_list = list_product_list_form_orders(orders, wcapi)
         new_orders = []
         for order in orders:
-            vendor, manager, delivery_date, order_note, feedback, order['rider']  = get_meta_data_for_home(o)
             refunds = []
             if len(order["refunds"]) > 0:
                 refunds = wcapi.get("orders/"+str(order["id"])+"/refunds").json()
