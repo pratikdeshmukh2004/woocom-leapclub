@@ -485,6 +485,7 @@ def download_csv():
         vendor1 = ", ".join(data['vendor[]']).split(", ")
         vendor2 = ", ".join(data['l_vendor[]']).split(", ")
         islinked = True
+        delivery_dd = data['delivery_date']
 
     if "action[]" not in data or "order_ids[]" not in data:
         return {"error": 'error'}
@@ -495,15 +496,17 @@ def download_csv():
     params["include"] = get_list_to_string(data["order_ids"])
     c_time = time.time()
     orders = wcapi.get("orders", params=params).json()
+    if islinked:
+        params['delivery_date'] = delivery_dd[0].replace("/", "-")
+        params['vendor'] = get_list_to_string(vendor2)
+        del params['include']
+        linked_orders = list_orders_with_status(wcapi, params)
     print("time to fetch orders: ", time.time()-c_time)
-
     # Collecting Meta and PopUp ready ---------------
     delivery_dates = {}
     vendor_list = []
     delivery_list = []
     status_list = {}
-    vendor1_list = []
-    vendor2_list = []
     for o in orders:
         vendor, manager, delivery_date, order_note, feedback, rider  = get_meta_data_for_home(o)
         print(rider, "rider", o['id'])
@@ -518,11 +521,6 @@ def download_csv():
         vendor, manager, delivery_date, order_note,  = get_meta_data(o)
         o['vendor'] = vendor
         o['delivery_date'] = delivery_date
-        if islinked:
-            if vendor in vendor1:
-                vendor1_list.append(o)
-            elif vendor in vendor2:
-                vendor2_list.append(o)
         if o['status'] != "subscription" and vendor != "":
             delivery_list.append(delivery_date)
             vendor_list.append(all_vendors_list[vendor])
@@ -543,16 +541,22 @@ def download_csv():
     if islinked:
         new_orders = []
         inserted = []
-        for o in vendor1_list:
-            for o2 in vendor2_list:
+        for o in orders:
+            for o2 in linked_orders:
+                vendor, manager, delivery_date, order_note,  = get_meta_data(o)
+                o2['vendor'] = vendor
+                o2['delivery_date'] = delivery_date
                 if o['customer_id'] == o2['customer_id'] and o['delivery_date'] == o2['delivery_date']:
                     if o['id'] not in inserted:
                         o['linked_orders'] = str(o2['id'])
-                        if data['action'] == 'delivery-google-sheet' and o['payment_method'] == 'other' and o2['payment_method'] == 'other':
+                        print(data['action'], o['payment_method'], o2['payment_method'])
+                        if data['action'][0] == 'delivery-google-sheet' and o['payment_method'] == 'other' and o2['payment_method'] == 'other':
                             o['total'] = o['total']+o2['total']
-                        elif data['action'] == 'delivery-google-sheet' and o2['payment_method'] == 'other':
+                        elif data['action'][0] == 'delivery-google-sheet' and o2['payment_method'] == 'other':
                             o['total'] = o2['total']
                             o['payment_method'] = 'other'
+                            print(o['total'], 'total update......')
+                        inserted.append(o['id'])
                     else:
                         o['linked_orders'] = o['linked_orders']+", "+str(o2['id'])
                         if data['action'] == 'delivery-google-sheet' and o['payment_method'] == 'other' and o2['payment_method'] == 'other':

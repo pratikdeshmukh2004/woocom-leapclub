@@ -180,10 +180,12 @@
   <script>
     $(function(){
     $('.filters').on('submit', function(event){
-      console.log(event.target.linked_vendor.value, event.target.vendor.value, event.target.delivery_date.value);
-      if (event.target.linked_vendor.value != '' && event.target.vendor.value == '' || event.target.delivery_date.value == ''){
-        alert("Please select delivery date and vendor!");
+      if (event.target.linked_vendor.value != ''){
+        if (event.target.vendor.value == '' || event.target.delivery_date.value == ''){
+          alert("Please select delivery date and vendor!");
         event.preventDefault()
+
+        }
       }
     });
 });
