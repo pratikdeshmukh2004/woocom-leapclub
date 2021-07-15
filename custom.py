@@ -1,5 +1,6 @@
 import os
 import csv
+import re
 import time
 import datetime
 import concurrent.futures
@@ -237,6 +238,8 @@ def get_totals(total, refunds):
 
 
 def get_list_to_string(l):
+    if type(l) != type([]):
+        return l
     list_s = ""
     for i in l:
         list_s += i

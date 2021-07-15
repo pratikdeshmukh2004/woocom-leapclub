@@ -481,11 +481,11 @@ def download_csv():
     data = request.form.to_dict(flat=False)
     print(data)
     islinked = False
-    if 'vendor[]' in data and "l_vendor[]" in data and 'delivery_date' in data:
-        vendor1 = ", ".join(data['vendor[]']).split(", ")
-        vendor2 = ", ".join(data['l_vendor[]']).split(", ")
-        islinked = True
-        delivery_dd = data['delivery_date']
+    if "l_vendor[]" in data:
+        if len(data['l_vendor[]']) !=0:
+            if data['l_vendor[]'][0] != "":
+                vendor2 = ", ".join(data['l_vendor[]']).split(", ")
+                islinked = True
 
     if "action[]" not in data or "order_ids[]" not in data:
         return {"error": 'error'}
@@ -496,11 +496,6 @@ def download_csv():
     params["include"] = get_list_to_string(data["order_ids"])
     c_time = time.time()
     orders = wcapi.get("orders", params=params).json()
-    if islinked:
-        params['delivery_date'] = delivery_dd[0].replace("/", "-")
-        params['vendor'] = get_list_to_string(vendor2)
-        del params['include']
-        linked_orders = list_orders_with_status(wcapi, params)
     print("time to fetch orders: ", time.time()-c_time)
     # Collecting Meta and PopUp ready ---------------
     delivery_dates = {}
@@ -509,7 +504,6 @@ def download_csv():
     status_list = {}
     for o in orders:
         vendor, manager, delivery_date, order_note, feedback, rider  = get_meta_data_for_home(o)
-        print(rider, "rider", o['id'])
         o['rider'] = rider
         wallet_payment = 0
         if len(o["fee_lines"]) > 0:
@@ -538,7 +532,11 @@ def download_csv():
     if len(vendor_list) != 0 and 'l_vendor' in data:
         if vendor_list.count(vendor_list[0]) != len(vendor_list):
             return {'result': 'delivery_vendor'}
+    print(islinked)
     if islinked:
+        params['vendor'] = get_list_to_string(vendor2)
+        del params['include']
+        linked_orders = list_orders_with_status(wcapi, params)
         new_orders = []
         inserted = []
         for o in orders:
@@ -555,7 +553,6 @@ def download_csv():
                         elif data['action'][0] == 'delivery-google-sheet' and o2['payment_method'] == 'other':
                             o['total'] = o2['total']
                             o['payment_method'] = 'other'
-                            print(o['total'], 'total update......')
                         inserted.append(o['id'])
                     else:
                         o['linked_orders'] = o['linked_orders']+", "+str(o2['id'])
@@ -566,7 +563,6 @@ def download_csv():
                             o['payment_method'] = 'other'
             new_orders.append(o)
         orders = new_orders
-        print(orders)
     # Conditions Download buttons........
     if data["action"][0] == "order_sheet":
         csv_text = get_csv_from_orders(orders, wcapi)
